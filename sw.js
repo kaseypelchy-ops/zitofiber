@@ -1,5 +1,5 @@
 // Zito Fiber Sales — Service Worker
-const CACHE = 'zito-fiber-v1';
+const CACHE = 'zito-fiber-v2';
 
 // Core assets to cache on install
 const PRECACHE = [
