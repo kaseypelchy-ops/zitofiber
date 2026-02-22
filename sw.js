@@ -1,6 +1,5 @@
 // Zito Fiber Sales — Service Worker
-// Bump this version whenever you deploy changes so users instantly get the latest UI.
-const CACHE = 'zito-fiber-v2';
+const CACHE = 'zito-fiber-v3';
 
 // Core assets to cache on install
 const PRECACHE = [

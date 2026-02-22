@@ -14,7 +14,10 @@
 <link rel="icon" type="image/png" href="https://www.zitomedia.net/wp-content/uploads/2025/03/Untitled-design-6.png">
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js">
+// Restore rep profile on first load (helps after redeploy)
+restoreRepProfile();
+</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
@@ -937,6 +940,81 @@ body { font-family: 'Syne', sans-serif; color: var(--text); background: var(--bg
 .splash-prog-label { margin-top: 10px; text-align: center; font-size: 9px; font-family: 'Space Mono', monospace; color: rgba(255,255,255,.2); letter-spacing: 2px; text-transform: uppercase; }
 .splash-ver { position: absolute; bottom: 28px; font-size: 9px; color: rgba(255,255,255,.1); font-family: 'Space Mono', monospace; letter-spacing: 2px; }
 @keyframes s-rise { to { opacity: 1; transform: translateY(0) scale(1); } }
+
+/* ── Setup: rep contact ── */
+.rep-contact-grid{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 10px;
+}
+.sublabel{
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: rgba(255,255,255,.65);
+  font-family: 'Space Mono', monospace;
+  margin: 0 0 6px;
+}
+.rep-contact-note{
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+@media (max-width: 520px){
+  .rep-contact-grid{ grid-template-columns: 1fr; }
+}
+
+/* ── Badge: contact + email buttons ── */
+.badge-contact{
+  display:flex;
+  flex-direction:column;
+  gap: 6px;
+  margin-top: 10px;
+}
+.badge-contact-row{
+  font-size: 12px;
+  color: rgba(255,255,255,.82);
+  font-family: 'Space Mono', monospace;
+}
+.badge-contact-row a{
+  color: var(--text);
+  text-decoration: none;
+  border-bottom: 1px dashed rgba(255,255,255,.25);
+}
+.badge-contact-row a:hover{
+  border-bottom-color: rgba(255,255,255,.55);
+  color: var(--accent);
+}
+.badge-email-actions{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 14px;
+}
+.badge-email-btn{
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text);
+  padding: 12px 10px;
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all .2s;
+}
+.badge-email-btn:hover{ border-color: var(--accent); transform: translateY(-1px); }
+.badge-email-btn.mega{ border-color: rgba(139,92,246,.35); }
+.badge-email-btn.mega:hover{ border-color: rgba(139,92,246,.9); }
+.badge-email-btn.gig{ border-color: rgba(16,185,129,.35); }
+.badge-email-btn.gig:hover{ border-color: rgba(16,185,129,.9); }
+@media (max-width: 360px){
+  .badge-email-actions{ grid-template-columns: 1fr; }
+}
+
 </style>
 </head>
 <body>
@@ -999,6 +1077,18 @@ body { font-family: 'Syne', sans-serif; color: var(--text); background: var(--bg
       <div class="slabel">Step 1 — Your Name</div>
       <input class="txt-in" type="text" id="rep-name" placeholder="e.g. John Smith" oninput="validateRepName()">
       <div id="rep-name-hint" style="font-size:11px;color:var(--muted);margin-top:6px;font-family:'Space Mono',monospace;display:none;">⚠ Please enter your first and last name</div>
+      <div class="rep-contact-grid">
+        <div>
+          <div class="sublabel">Rep Phone</div>
+          <input class="txt-in" type="tel" id="rep-phone" placeholder="e.g. 814-555-1234">
+        </div>
+        <div>
+          <div class="sublabel">Rep Email</div>
+          <input class="txt-in" type="email" id="rep-email" placeholder="e.g. you@zitomedia.com">
+        </div>
+      </div>
+      <div class="rep-contact-note">These show on your badge and are added to the customer email buttons.</div>
+
     </div>
 
     <div class="step">
@@ -1071,6 +1161,18 @@ body { font-family: 'Syne', sans-serif; color: var(--text); background: var(--bg
         <div class="badge-avatar" id="badge-avatar">?</div>
         <div class="badge-name" id="badge-rep-name">—</div>
         <div class="badge-title">Sales Representative</div>
+        
+        <div class="badge-contact">
+          <div class="badge-contact-row">📞 <a id="badge-phone-link" href="#"><span id="badge-rep-phone">—</span></a></div>
+          <div class="badge-contact-row">✉️ <a id="badge-email-link" href="#"><span id="badge-rep-email">—</span></a></div>
+          <div class="badge-contact-row">🌐 <a id="badge-web-link" href="#" target="_blank" rel="noopener"><span id="badge-rep-web">zitomedia.net</span></a></div>
+        </div>
+
+        <div class="badge-email-actions">
+          <button class="badge-email-btn mega" onclick="emailCustomerOffer('mega')">Email Mega Offer</button>
+          <button class="badge-email-btn gig" onclick="emailCustomerOffer('gig')">Email Gig Offer</button>
+        </div>
+
         <div class="badge-divider"></div>
         <div class="badge-stats">
           <div class="badge-stat">
@@ -1341,6 +1443,9 @@ var selStatus  = null;
 var selSlot    = null;
 var webhookURL = 'https://script.google.com/macros/s/AKfycbx6BOPtlmk9xoYejGY25wnM7BiPnm-5umIVC83wli9Nynls5hE6nN3wW6LQKUZCaomr/exec';
 var repName    = 'Rep';
+var repPhone   = '';
+var repEmail   = '';
+var repWebsite = 'https://www.zitomedia.net';
 var mapObj     = null;
 var mapMarkers = {};
 var kmlGeoJSON = null;
@@ -1634,7 +1739,17 @@ function startPolling() {
 function launchApp() {
   repName = (document.getElementById('rep-name').value || '').trim();
 
-  // Show splash
+  
+  repPhone = (document.getElementById('rep-phone') ? (document.getElementById('rep-phone').value || '').trim() : '');
+  repEmail = (document.getElementById('rep-email') ? (document.getElementById('rep-email').value || '').trim() : '');
+
+  // Persist profile so it survives refresh / PWA cache
+  try {
+    localStorage.setItem('zito_rep_name', repName);
+    localStorage.setItem('zito_rep_phone', repPhone);
+    localStorage.setItem('zito_rep_email', repEmail);
+  } catch(e) {}
+// Show splash
   var splash = document.getElementById('splash');
   document.getElementById('splash-rep-name').textContent = repName;
   var fill = document.getElementById('splash-prog-fill');
@@ -2300,6 +2415,9 @@ function submitSale(pkgLabel) {
 
   var payload = {
     salesperson: repName,
+    repPhone: repPhone,
+    repEmail: repEmail,
+    repWebsite: repWebsite,
     address: addr.address, city: addr.city||'', state: addr.state||'', zip: addr.zip||'',
     firstName: first, lastName: last, phone: phone, email: email,
     package: pricingSummary,
@@ -2478,6 +2596,9 @@ function confirmSignOut() {
     document.getElementById('page-app').style.display   = 'none';
     document.getElementById('page-setup').style.display = 'flex';
     document.getElementById('rep-name').value = '';
+    if (document.getElementById('rep-phone')) document.getElementById('rep-phone').value = '';
+    if (document.getElementById('rep-email')) document.getElementById('rep-email').value = '';
+    try { localStorage.removeItem('zito_rep_name'); localStorage.removeItem('zito_rep_phone'); localStorage.removeItem('zito_rep_email'); } catch(e) {}
     document.getElementById('launch-btn').disabled = true;
     document.getElementById('fetch-addr-status').textContent = '';
     document.getElementById('btn-manager').style.display = 'none';
@@ -2485,6 +2606,69 @@ function confirmSignOut() {
     toast('👋 Signed out successfully', 't-info');
   }, 400);
 }
+// ── Rep profile restore (PWA cache safe) ───────────────────
+function restoreRepProfile() {
+  try {
+    var n = localStorage.getItem('zito_rep_name')  || '';
+    var p = localStorage.getItem('zito_rep_phone') || '';
+    var e = localStorage.getItem('zito_rep_email') || '';
+    if (n && document.getElementById('rep-name'))  document.getElementById('rep-name').value  = n;
+    if (document.getElementById('rep-phone')) document.getElementById('rep-phone').value = p;
+    if (document.getElementById('rep-email')) document.getElementById('rep-email').value = e;
+  } catch(err) {}
+}
+
+// ── Customer email buttons (opens device email client) ─────
+function emailCustomerOffer(pkgKey) {
+  // Try to pull customer email from the sales form (if it exists / is open)
+  var to = '';
+  var custEmailEl = document.getElementById('f-email');
+  if (custEmailEl) to = (custEmailEl.value || '').trim();
+  if (!to) to = prompt('Customer email address to send the package info to:');
+  if (!to) return;
+
+  var rep = repName || 'Zito Fiber Sales';
+  var rp  = repPhone || '';
+  var re  = repEmail || '';
+  var pkg = (pkgKey === 'gig') ? { name:'Gig Speed Fiber', speed:'1000/1000 Mbps', promo:'$49.95/mo', term:'2 years', reg:'$90.95/mo' }
+                               : { name:'Mega Speed Fiber', speed:'400/400 Mbps',  promo:'$39.95/mo', term:'2 years', reg:'$87.39/mo' };
+
+  var custFirst = '';
+  var fn = document.getElementById('f-first');
+  if (fn) custFirst = (fn.value || '').trim();
+
+  var greet = custFirst ? ('Hi ' + custFirst + ',') : 'Hi there,';
+  var subject = 'Zito Fiber Internet Package Details — ' + pkg.name;
+
+  var bodyLines = [
+    greet,
+    '',
+    'Here are the Zito Fiber details we discussed:',
+    '',
+    pkg.name,
+    'Speed (Download/Upload): ' + pkg.speed,
+    'Promo Price: ' + pkg.promo,
+    'Promo Term: ' + pkg.term,
+    'Regular Rate (after promo): ' + pkg.reg,
+    '',
+    'Whole‑Home Wi‑Fi (Required): eero 6+ mesh Wi‑Fi',
+    '• $5/mo per eero device (coverage depends on home size)',
+    '',
+    'Ready to get started? Reply to this email and I can help schedule your install.',
+    '',
+    'Thanks,',
+    rep + (rp ? (' | ' + rp) : ''),
+    (re ? re : ''),
+    repWebsite
+  ];
+
+  var mailto = 'mailto:' + encodeURIComponent(to)
+    + '?subject=' + encodeURIComponent(subject)
+    + '&body=' + encodeURIComponent(bodyLines.join('\n'));
+
+  window.location.href = mailto;
+}
+
 
 // ── Manager panel ─────────────────────────────────────────
 function openManagerPanel() {
@@ -2627,7 +2811,20 @@ function openBadge() {
   var name = repName || 'Unknown Rep';
   document.getElementById('badge-rep-name').textContent = name;
 
-  // Avatar initials
+  
+  // Rep contact info (from memory or setup inputs)
+  var p = repPhone || '';
+  var e = repEmail || '';
+  document.getElementById('badge-rep-phone').textContent = p ? p : '—';
+  document.getElementById('badge-rep-email').textContent = e ? e : '—';
+  document.getElementById('badge-rep-web').textContent   = repWebsite.replace(/^https?:\/\//,'');
+  var phoneLink = document.getElementById('badge-phone-link');
+  var emailLink = document.getElementById('badge-email-link');
+  var webLink   = document.getElementById('badge-web-link');
+  if (phoneLink) phoneLink.href = p ? ('tel:' + p.replace(/[^0-9+]/g,'')) : '#';
+  if (emailLink) emailLink.href = e ? ('mailto:' + e) : '#';
+  if (webLink)   webLink.href   = repWebsite;
+// Avatar initials
   var parts    = name.trim().split(/\s+/);
   var initials = parts.length >= 2
     ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
