@@ -997,7 +997,8 @@ body { font-family: 'Syne', sans-serif; color: var(--text); background: var(--bg
 
     <div class="step">
       <div class="slabel">Step 1 — Your Name</div>
-      <input class="txt-in" type="text" id="rep-name" placeholder="e.g. John Smith">
+      <input class="txt-in" type="text" id="rep-name" placeholder="e.g. John Smith" oninput="validateRepName()">
+      <div id="rep-name-hint" style="font-size:11px;color:var(--muted);margin-top:6px;font-family:'Space Mono',monospace;display:none;">⚠ Please enter your first and last name</div>
     </div>
 
     <div class="step">
@@ -1423,7 +1424,7 @@ document.getElementById('csv-file').addEventListener('change', function() {
       if (addresses.length > 0) {
         el.className = 'dz-status ok';
         el.textContent = '✓ ' + addresses.length + ' addresses loaded';
-        document.getElementById('launch-btn').disabled = false;
+        checkLaunchReady();
       } else {
         el.className = 'dz-status err';
         el.textContent = '✗ No addresses found — check column names (need: address, city, state, zip)';
@@ -1563,7 +1564,7 @@ function fetchAddressesFromSheet() {
       st.className   = 'dz-status ok';
       st.textContent = '✓ ' + addresses.length + ' addresses loaded from sheet';
       document.getElementById('fetch-addr-icon').textContent = '✅';
-      document.getElementById('launch-btn').disabled = false;
+      checkLaunchReady();
     })
     .catch(function(err){
       st.className   = 'dz-status err';
@@ -1571,6 +1572,34 @@ function fetchAddressesFromSheet() {
       document.getElementById('fetch-addr-icon').textContent = '📋';
       btn.disabled = false;
     });
+}
+
+// ──────────────────────────────────────────────────────────
+//  NAME VALIDATION
+// ──────────────────────────────────────────────────────────
+function hasValidName() {
+  var val   = (document.getElementById('rep-name').value || '').trim();
+  var parts = val.split(/\s+/).filter(function(p){ return p.length > 0; });
+  // Must have at least two words (first + last) and not be the default
+  return parts.length >= 2 && val.toLowerCase() !== 'rep';
+}
+
+function validateRepName() {
+  var hint = document.getElementById('rep-name-hint');
+  var val  = (document.getElementById('rep-name').value || '').trim();
+  // Only show hint if they've typed something but it's incomplete
+  if (val.length > 0 && !hasValidName()) {
+    hint.style.display = 'block';
+  } else {
+    hint.style.display = 'none';
+  }
+  checkLaunchReady();
+}
+
+function checkLaunchReady() {
+  // Launch is enabled only when addresses are loaded AND name is valid
+  var hasAddresses = addresses.length > 0;
+  document.getElementById('launch-btn').disabled = !(hasAddresses && hasValidName());
 }
 
 // ──────────────────────────────────────────────────────────
@@ -1602,7 +1631,7 @@ function startPolling() {
 }
 
 function launchApp() {
-  repName = (document.getElementById('rep-name').value || 'Rep').trim();
+  repName = (document.getElementById('rep-name').value || '').trim();
 
   // Show splash
   var splash = document.getElementById('splash');
@@ -2372,7 +2401,9 @@ function initManagerAccess() {
 
 // ── Heartbeat: send current status + live sale counts ──
 function sendHeartbeat(statusOverride) {
-  if (!webhookURL || isManager()) return;
+  // Don't send if no real name is set — blocks the 'Rep' default from appearing in the dashboard
+  var cleanName = (repName || '').trim();
+  if (!webhookURL || isManager() || !cleanName || cleanName.toLowerCase() === 'rep') return;
   var status    = (statusOverride !== undefined) ? statusOverride : (repOnline ? 'online' : 'offline');
   var megaSales = addresses.filter(function(a){ return a.status === 'mega'; }).length;
   var gigSales  = addresses.filter(function(a){ return a.status === 'gig';  }).length;
