@@ -723,189 +723,146 @@ body { font-family: 'Syne', sans-serif; color: var(--text); background: var(--bg
 .badge-close-btn:hover { border-color: var(--accent); color: var(--accent); }
 
 /* ══════════════════════════════════════════
-   SPLASH SCREEN
+   MANAGER DASHBOARD
 ══════════════════════════════════════════ */
-#splash {
-  position: fixed; inset: 0; z-index: 9999;
-  background: #0a0f16;
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  opacity: 1; transition: opacity .7s ease;
+#manager-modal {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,.85); z-index: 3500;
+  align-items: flex-start; justify-content: center;
+  padding: 20px; overflow-y: auto;
 }
-#splash.fade-out { opacity: 0; pointer-events: none; }
-#splash.gone     { display: none; }
+#manager-modal.open { display: flex; }
 
-/* Scrolling grid background */
-.splash-grid {
-  position: absolute; inset: 0; overflow: hidden; pointer-events: none;
-  background-image:
-    linear-gradient(rgba(0,86,150,.07) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0,86,150,.07) 1px, transparent 1px);
-  background-size: 48px 48px;
-  animation: grid-drift 6s linear infinite;
-}
-@keyframes grid-drift {
-  from { background-position: 0 0; }
-  to   { background-position: 48px 48px; }
+.mgr-wrap {
+  width: 100%; max-width: 480px;
+  margin: auto;
+  display: flex; flex-direction: column; gap: 12px;
+  padding: 8px 0;
 }
 
-/* Radial glow */
-.splash-glow {
-  position: absolute; width: 520px; height: 520px; border-radius: 50%;
-  background: radial-gradient(circle, rgba(0,86,150,.2) 0%, transparent 70%);
-  top: 50%; left: 50%; transform: translate(-50%,-50%);
-  animation: glow-breathe 2.8s ease-in-out infinite;
+/* Header card */
+.mgr-header {
+  background: linear-gradient(135deg, #0d1f35, #0a1628);
+  border: 1px solid rgba(0,86,150,.4);
+  border-radius: 18px; padding: 22px 24px;
+  display: flex; align-items: center; justify-content: space-between;
 }
-@keyframes glow-breathe {
-  0%,100% { transform: translate(-50%,-50%) scale(1);    opacity: .5; }
-  50%      { transform: translate(-50%,-50%) scale(1.25); opacity: 1;  }
-}
-
-/* Expanding rings */
-.splash-rings { position: absolute; inset: 0; pointer-events: none; }
-.splash-ring {
-  position: absolute; border-radius: 50%;
-  border: 1px solid rgba(0,86,150,.25);
-  top: 50%; left: 50%;
-  transform: translate(-50%,-50%) scale(0);
-  animation: ring-expand 3.5s ease-out infinite;
-}
-.splash-ring:nth-child(1) { width: 240px; height: 240px; animation-delay: 0s;    }
-.splash-ring:nth-child(2) { width: 440px; height: 440px; animation-delay: .85s;  }
-.splash-ring:nth-child(3) { width: 640px; height: 640px; animation-delay: 1.7s;  }
-.splash-ring:nth-child(4) { width: 840px; height: 840px; animation-delay: 2.55s; }
-@keyframes ring-expand {
-  0%   { transform: translate(-50%,-50%) scale(0);    opacity: .8; }
-  100% { transform: translate(-50%,-50%) scale(1.05); opacity: 0;  }
-}
-
-/* Content stack */
-.splash-body {
-  position: relative; z-index: 2;
-  display: flex; flex-direction: column; align-items: center;
-}
-
-/* Logo */
-.splash-logo {
-  opacity: 0; transform: translateY(28px) scale(.94);
-  animation: s-rise .8s cubic-bezier(.2,.8,.3,1) forwards .4s;
-}
-.splash-logo img {
-  width: 220px; height: auto;
-  filter: drop-shadow(0 0 30px rgba(0,86,150,.6));
-}
-
-/* Animated underline */
-.splash-line {
-  width: 0; height: 2px; margin: 24px 0 22px;
-  background: linear-gradient(90deg, transparent, var(--accent), #0ea5e9, #8b5cf6, transparent);
-  border-radius: 2px;
-  animation: line-grow .65s ease forwards 1.3s;
-}
-@keyframes line-grow { to { width: 200px; } }
-
-/* Tagline */
-.splash-tag {
-  opacity: 0; transform: translateY(10px);
-  font-size: 10px; font-weight: 700; letter-spacing: 4px;
+.mgr-title-wrap {}
+.mgr-eyebrow {
+  font-size: 9px; font-weight: 700; letter-spacing: 3px;
   text-transform: uppercase; color: var(--accent);
+  font-family: 'Space Mono', monospace; margin-bottom: 4px;
+}
+.mgr-title { font-size: 20px; font-weight: 800; color: #fff; }
+.mgr-subtitle { font-size: 11px; color: var(--muted); margin-top: 2px; font-family: 'Space Mono', monospace; }
+
+.mgr-refresh-btn {
+  background: rgba(0,86,150,.15); border: 1px solid rgba(0,86,150,.35);
+  border-radius: 10px; color: var(--accent); cursor: pointer;
+  width: 38px; height: 38px; font-size: 16px;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .2s; flex-shrink: 0;
+}
+.mgr-refresh-btn:hover { background: rgba(0,86,150,.3); }
+.mgr-refresh-btn.spinning { animation: spin-once .5s linear; }
+@keyframes spin-once { to { transform: rotate(360deg); } }
+
+/* Summary pills */
+.mgr-summary {
+  display: grid; grid-template-columns: repeat(3,1fr); gap: 8px;
+}
+.mgr-pill {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: 12px; text-align: center;
+}
+.mgr-pill-val { font-size: 22px; font-weight: 800; font-family: 'Space Mono', monospace; }
+.mgr-pill-val.online-c  { color: #10b981; }
+.mgr-pill-val.offline-c { color: var(--muted); }
+.mgr-pill-val.sales-c   { color: var(--accent); }
+.mgr-pill-lbl { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-top: 3px; font-family: 'Space Mono', monospace; }
+
+/* Rep list */
+.mgr-list-head {
+  font-size: 9px; font-weight: 700; letter-spacing: 2px;
+  text-transform: uppercase; color: var(--muted);
+  font-family: 'Space Mono', monospace; padding: 0 4px;
+}
+
+.mgr-rep-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 14px; padding: 14px 16px;
+  display: flex; align-items: center; gap: 14px;
+  transition: border-color .2s;
+}
+.mgr-rep-card.rep-online  { border-color: rgba(16,185,129,.35); }
+.mgr-rep-card.rep-offline { border-color: var(--border); }
+
+.mgr-rep-avatar {
+  width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0;
+  background: linear-gradient(135deg, var(--surface2), var(--border));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px; font-weight: 800; color: var(--muted);
+  border: 2px solid var(--border);
+}
+.rep-online .mgr-rep-avatar {
+  background: linear-gradient(135deg, rgba(0,86,150,.4), rgba(16,185,129,.2));
+  color: #fff; border-color: rgba(16,185,129,.4);
+}
+
+.mgr-rep-info { flex: 1; min-width: 0; }
+.mgr-rep-name { font-size: 14px; font-weight: 700; color: var(--text); }
+.mgr-rep-meta { font-size: 10px; color: var(--muted); font-family: 'Space Mono', monospace; margin-top: 2px; }
+
+.mgr-rep-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.mgr-status-badge {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 9px; font-weight: 700; letter-spacing: 1px;
+  text-transform: uppercase; font-family: 'Space Mono', monospace;
+  padding: 3px 9px; border-radius: 20px;
+}
+.mgr-status-badge.online  { background: rgba(16,185,129,.15); color: #6ee7b7; border: 1px solid rgba(16,185,129,.3); }
+.mgr-status-badge.offline { background: rgba(255,255,255,.05); color: var(--muted); border: 1px solid var(--border); }
+.mgr-status-dot { width: 6px; height: 6px; border-radius: 50%; }
+.online  .mgr-status-dot { background: #10b981; box-shadow: 0 0 5px #10b981; animation: pulse-online 2s infinite; }
+.offline .mgr-status-dot { background: #6b7280; }
+
+.mgr-rep-sales {
+  font-size: 11px; font-family: 'Space Mono', monospace; font-weight: 700; color: var(--accent);
+}
+
+/* Empty / loading states */
+.mgr-empty {
+  text-align: center; padding: 40px 20px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+}
+.mgr-empty-icon { font-size: 32px; margin-bottom: 10px; }
+.mgr-empty-txt  { font-size: 13px; color: var(--muted); line-height: 1.6; }
+
+.mgr-loading {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  padding: 30px; background: var(--surface); border: 1px solid var(--border);
+  border-radius: 14px; font-size: 12px; color: var(--muted);
   font-family: 'Space Mono', monospace;
-  animation: s-rise .55s ease forwards 1.75s;
+}
+.mgr-spinner {
+  width: 14px; height: 14px; border: 2px solid var(--border);
+  border-top-color: var(--accent); border-radius: 50%;
+  animation: sched-spin .7s linear infinite;
 }
 
-/* Rep name */
-.splash-name {
-  opacity: 0; transform: translateY(10px);
-  font-size: 28px; font-weight: 800; color: #fff;
-  margin-top: 8px; letter-spacing: .4px;
-  animation: s-rise .55s ease forwards 2.15s;
+.mgr-close-btn {
+  width: 100%; background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: 13px; color: var(--text);
+  font-family: 'Syne', sans-serif; font-weight: 700; font-size: 13px;
+  cursor: pointer; transition: all .2s;
 }
+.mgr-close-btn:hover { border-color: var(--accent); color: var(--accent); }
 
-/* Bouncing dots */
-.splash-dots {
-  display: flex; gap: 9px; margin-top: 44px;
-  opacity: 0;
-  animation: s-rise .4s ease forwards 2.6s;
-}
-.splash-dot {
-  width: 8px; height: 8px; border-radius: 50%; background: var(--accent);
-  animation: dot-pump 1s ease-in-out infinite;
-}
-.splash-dot:nth-child(1) { animation-delay: 2.7s; }
-.splash-dot:nth-child(2) { animation-delay: 2.9s; background: #0ea5e9; }
-.splash-dot:nth-child(3) { animation-delay: 3.1s; background: #8b5cf6; }
-@keyframes dot-pump {
-  0%,70%,100% { transform: scale(.6); opacity: .25; }
-  35%          { transform: scale(1.3); opacity: 1;   }
-}
-
-/* Progress bar */
-.splash-prog-wrap {
-  margin-top: 16px; width: 200px;
-  opacity: 0;
-  animation: s-rise .4s ease forwards 2.6s;
-}
-.splash-prog-track {
-  height: 3px; background: rgba(255,255,255,.07); border-radius: 2px; overflow: hidden;
-}
-.splash-prog-fill {
-  height: 100%; width: 0%;
-  background: linear-gradient(90deg, var(--accent), #0ea5e9, #8b5cf6);
-  border-radius: 2px;
-  animation: prog-fill 2s cubic-bezier(.25,.1,.25,1) forwards 2.8s;
-}
-@keyframes prog-fill { to { width: 100%; } }
-.splash-prog-label {
-  margin-top: 10px; text-align: center;
-  font-size: 9px; font-family: 'Space Mono', monospace;
-  color: rgba(255,255,255,.2); letter-spacing: 2px; text-transform: uppercase;
-}
-
-/* Version tag */
-.splash-ver {
-  position: absolute; bottom: 28px;
-  font-size: 9px; color: rgba(255,255,255,.1);
-  font-family: 'Space Mono', monospace; letter-spacing: 2px;
-}
-
-@keyframes s-rise {
-  to { opacity: 1; transform: translateY(0) scale(1); }
-}
+/* Manager topbar button — hidden by default */
+#btn-manager { display: none; }
 </style>
 </head>
 <body>
-
-<!-- ═══════════════════ SPLASH SCREEN ═══════════════════ -->
-<div id="splash" class="gone">
-  <div class="splash-grid"></div>
-  <div class="splash-glow"></div>
-  <div class="splash-rings">
-    <div class="splash-ring"></div>
-    <div class="splash-ring"></div>
-    <div class="splash-ring"></div>
-    <div class="splash-ring"></div>
-  </div>
-  <div class="splash-body">
-    <div class="splash-logo">
-      <img src="https://www.zitomedia.net/wp-content/uploads/2025/03/Untitled-design-6.png" alt="Zito Media">
-    </div>
-    <div class="splash-line"></div>
-    <div class="splash-tag">Fiber Sales</div>
-    <div class="splash-name" id="splash-rep-name"></div>
-    <div class="splash-dots">
-      <div class="splash-dot"></div>
-      <div class="splash-dot"></div>
-      <div class="splash-dot"></div>
-    </div>
-    <div class="splash-prog-wrap">
-      <div class="splash-prog-track">
-        <div class="splash-prog-fill" id="splash-prog-fill"></div>
-      </div>
-      <div class="splash-prog-label">Loading session…</div>
-    </div>
-  </div>
-  <div class="splash-ver">ZITO FIBER v1.0</div>
-</div>
 
 <!-- ═══════════════════ SETUP PAGE ═══════════════════ -->
 <div id="page-setup">
@@ -969,6 +926,7 @@ body { font-family: 'Syne', sans-serif; color: var(--text); background: var(--bg
         <span class="status-dot"></span>
         <span id="tb-status-label">OFFLINE</span>
       </div>
+      <button id="btn-manager" class="tb-btn" onclick="openManagerPanel()" title="Manager view">👥 Team</button>
       <button class="tb-btn" onclick="openBadge()">🪪 My Badge</button>
       <button class="tb-btn" onclick="openModal()">⚙ Setup Guide</button>
     </div>
@@ -1014,6 +972,49 @@ body { font-family: 'Syne', sans-serif; color: var(--text); background: var(--bg
         <div class="badge-toggle-hint">Tap to toggle your availability status</div>
       </div>
       <button class="badge-close-btn" onclick="closeBadge()">Close</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ MANAGER DASHBOARD ═══════════════════ -->
+  <div id="manager-modal" onclick="if(event.target===this)closeManagerPanel()">
+    <div class="mgr-wrap">
+
+      <!-- Header -->
+      <div class="mgr-header">
+        <div class="mgr-title-wrap">
+          <div class="mgr-eyebrow">Manager View</div>
+          <div class="mgr-title">Team Status</div>
+          <div class="mgr-subtitle" id="mgr-last-refresh">—</div>
+        </div>
+        <button class="mgr-refresh-btn" id="mgr-refresh-btn" onclick="refreshManagerPanel()" title="Refresh">↻</button>
+      </div>
+
+      <!-- Summary pills -->
+      <div class="mgr-summary">
+        <div class="mgr-pill">
+          <div class="mgr-pill-val online-c" id="mgr-count-online">—</div>
+          <div class="mgr-pill-lbl">Online</div>
+        </div>
+        <div class="mgr-pill">
+          <div class="mgr-pill-val offline-c" id="mgr-count-offline">—</div>
+          <div class="mgr-pill-lbl">Offline</div>
+        </div>
+        <div class="mgr-pill">
+          <div class="mgr-pill-val sales-c" id="mgr-count-sales">—</div>
+          <div class="mgr-pill-lbl">Total Sales</div>
+        </div>
+      </div>
+
+      <!-- Rep list -->
+      <div class="mgr-list-head">Field Reps</div>
+      <div id="mgr-rep-list">
+        <div class="mgr-loading">
+          <div class="mgr-spinner"></div>
+          Loading rep data…
+        </div>
+      </div>
+
+      <button class="mgr-close-btn" onclick="closeManagerPanel()">Close</button>
     </div>
   </div>
 
@@ -1497,20 +1498,6 @@ function startPolling() {
 
 function launchApp() {
   repName = (document.getElementById('rep-name').value || 'Rep').trim();
-
-  // ── Show splash ──────────────────────────────────────
-  var splash = document.getElementById('splash');
-  document.getElementById('splash-rep-name').textContent = repName;
-
-  // Reset progress bar so it animates fresh every launch
-  var fill = document.getElementById('splash-prog-fill');
-  fill.style.animation = 'none';
-  fill.offsetHeight; // reflow
-  fill.style.animation = '';
-
-  splash.classList.remove('gone', 'fade-out');
-
-  // ── Boot app silently behind splash ──────────────────
   document.getElementById('page-setup').style.display = 'none';
   document.getElementById('page-app').style.display   = 'block';
   updateStats();
@@ -1520,14 +1507,6 @@ function launchApp() {
   startPolling();
   maybeAutoCollapse();
   initBadge();
-
-  // ── Fade out after animations complete (~4.5s) ───────
-  setTimeout(function() {
-    splash.classList.add('fade-out');
-    setTimeout(function() {
-      splash.classList.add('gone');
-    }, 700);
-  }, 4500);
 }
 
 // ──────────────────────────────────────────────────────────
@@ -2254,18 +2233,187 @@ function updateStats() {
 }
 
 // ──────────────────────────────────────────────────────────
+//  MANAGER — Kasey Pelchy only
+// ──────────────────────────────────────────────────────────
+var MANAGER_NAME   = 'kasey pelchy';
+var heartbeatTimer = null;
+var mgrAutoRefresh = null;
+
+function isManager() {
+  return repName.trim().toLowerCase() === MANAGER_NAME;
+}
+
+// Called on launch — show Team button only for Kasey
+function initManagerAccess() {
+  if (isManager()) {
+    document.getElementById('btn-manager').style.display = 'block';
+  }
+}
+
+// ── Heartbeat: reps ping their status every 2 min while online ──
+function sendHeartbeat(statusOverride) {
+  if (!webhookURL || isManager()) return;
+  var status = (statusOverride !== undefined) ? statusOverride : (repOnline ? 'online' : 'offline');
+  var megaSales = addresses.filter(function(a){ return a.status === 'mega'; }).length;
+  var gigSales  = addresses.filter(function(a){ return a.status === 'gig';  }).length;
+  fetch(webhookURL, {
+    method: 'POST',
+    mode: 'no-cors',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      type:       'rep_heartbeat',
+      salesperson: repName,
+      status:      status,
+      megaSales:   megaSales,
+      gigSales:    gigSales,
+      totalSales:  megaSales + gigSales,
+      timestamp:   new Date().toISOString()
+    })
+  }).catch(function(){});
+}
+
+function startHeartbeat() {
+  if (isManager()) return;
+  sendHeartbeat();
+  heartbeatTimer = setInterval(function() {
+    if (repOnline) sendHeartbeat();
+  }, 120000); // every 2 minutes
+}
+
+// Send offline ping when page is closing
+window.addEventListener('beforeunload', function() {
+  if (!isManager()) sendHeartbeat('offline');
+});
+
+// ── Manager panel ─────────────────────────────────────────
+function openManagerPanel() {
+  document.getElementById('manager-modal').classList.add('open');
+  refreshManagerPanel();
+  // Auto-refresh every 30 seconds while panel is open
+  mgrAutoRefresh = setInterval(refreshManagerPanel, 30000);
+}
+
+function closeManagerPanel() {
+  document.getElementById('manager-modal').classList.remove('open');
+  clearInterval(mgrAutoRefresh);
+}
+
+function refreshManagerPanel() {
+  // Spin the refresh button
+  var btn = document.getElementById('mgr-refresh-btn');
+  btn.classList.add('spinning');
+  setTimeout(function(){ btn.classList.remove('spinning'); }, 500);
+
+  // Fetch rep statuses from the webhook (GET)
+  fetch(webhookURL + '?action=repStatus&_t=' + Date.now())
+    .then(function(r){ return r.json(); })
+    .then(function(json){
+      renderRepList(json.reps || []);
+    })
+    .catch(function(){
+      // If the Apps Script doesn't yet support repStatus,
+      // show a helpful message instead of breaking
+      document.getElementById('mgr-rep-list').innerHTML =
+        '<div class="mgr-empty">' +
+          '<div class="mgr-empty-icon">🔌</div>' +
+          '<div class="mgr-empty-txt">Rep status requires a Google Apps Script update.<br>' +
+          'Add a <strong>rep_heartbeat</strong> handler to your script to enable this view.</div>' +
+        '</div>';
+      updateMgrSummary([], [], 0);
+    });
+
+  // Update last refresh time
+  var now = new Date();
+  document.getElementById('mgr-last-refresh').textContent =
+    'Last refresh: ' + now.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+}
+
+function renderRepList(reps) {
+  var list    = document.getElementById('mgr-rep-list');
+  var online  = reps.filter(function(r){ return r.status === 'online'; });
+  var offline = reps.filter(function(r){ return r.status !== 'online'; });
+  var totalSales = reps.reduce(function(s,r){ return s + (r.totalSales||0); }, 0);
+
+  updateMgrSummary(online, offline, totalSales);
+
+  if (reps.length === 0) {
+    list.innerHTML =
+      '<div class="mgr-empty">' +
+        '<div class="mgr-empty-icon">📡</div>' +
+        '<div class="mgr-empty-txt">No reps have checked in yet.<br>Status updates appear here once reps go online.</div>' +
+      '</div>';
+    return;
+  }
+
+  // Sort: online first, then by name
+  var sorted = online.concat(offline).sort(function(a,b){
+    if (a.status === 'online' && b.status !== 'online') return -1;
+    if (a.status !== 'online' && b.status === 'online') return  1;
+    return (a.name||'').localeCompare(b.name||'');
+  });
+
+  list.innerHTML = sorted.map(function(rep) {
+    var isOn    = rep.status === 'online';
+    var parts   = (rep.name||'Rep').trim().split(/\s+/);
+    var initials = parts.length >= 2
+      ? (parts[0][0] + parts[parts.length-1][0]).toUpperCase()
+      : (rep.name||'?').slice(0,2).toUpperCase();
+
+    var lastSeen = rep.lastSeen
+      ? 'Last seen ' + timeAgo(rep.lastSeen)
+      : 'No recent activity';
+
+    var salesStr = (rep.totalSales||0) + ' sale' + ((rep.totalSales||0) === 1 ? '' : 's');
+    if (rep.megaSales || rep.gigSales) {
+      salesStr += ' (' + (rep.megaSales||0) + ' Mega / ' + (rep.gigSales||0) + ' Gig)';
+    }
+
+    return '<div class="mgr-rep-card ' + (isOn ? 'rep-online' : 'rep-offline') + '">' +
+      '<div class="mgr-rep-avatar">' + initials + '</div>' +
+      '<div class="mgr-rep-info">' +
+        '<div class="mgr-rep-name">' + escHtml(rep.name||'Unknown') + '</div>' +
+        '<div class="mgr-rep-meta">' + lastSeen + '</div>' +
+      '</div>' +
+      '<div class="mgr-rep-right">' +
+        '<div class="mgr-status-badge ' + (isOn ? 'online' : 'offline') + '">' +
+          '<span class="mgr-status-dot"></span>' +
+          (isOn ? 'ONLINE' : 'OFFLINE') +
+        '</div>' +
+        '<div class="mgr-rep-sales">' + salesStr + '</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function updateMgrSummary(online, offline, totalSales) {
+  document.getElementById('mgr-count-online').textContent  = online.length;
+  document.getElementById('mgr-count-offline').textContent = offline.length;
+  document.getElementById('mgr-count-sales').textContent   = totalSales;
+}
+
+function timeAgo(isoString) {
+  var diff = Math.floor((Date.now() - new Date(isoString).getTime()) / 1000);
+  if (diff < 60)   return diff + 's ago';
+  if (diff < 3600) return Math.floor(diff/60) + 'm ago';
+  return Math.floor(diff/3600) + 'h ago';
+}
+
+function escHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ──────────────────────────────────────────────────────────
 //  BADGE & ONLINE/OFFLINE STATUS
 // ──────────────────────────────────────────────────────────
 var repOnline = false; // manual toggle state
 
 function initBadge() {
-  // Auto-detect network on load
   repOnline = navigator.onLine;
   applyRepStatus();
-
-  // Listen for real network changes
-  window.addEventListener('online',  function() { repOnline = true;  applyRepStatus(); });
-  window.addEventListener('offline', function() { repOnline = false; applyRepStatus(); });
+  window.addEventListener('online',  function() { repOnline = true;  applyRepStatus(); sendHeartbeat('online');  });
+  window.addEventListener('offline', function() { repOnline = false; applyRepStatus(); sendHeartbeat('offline'); });
+  initManagerAccess();
+  startHeartbeat();
 }
 
 function applyRepStatus() {
@@ -2290,6 +2438,7 @@ function applyRepStatus() {
 function toggleRepStatus() {
   repOnline = !repOnline;
   applyRepStatus();
+  sendHeartbeat(repOnline ? 'online' : 'offline');
 }
 
 function openBadge() {
