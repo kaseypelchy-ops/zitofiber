@@ -1000,12 +1000,6 @@ body { font-family: 'Syne', sans-serif; color: var(--text); background: var(--bg
       <input class="txt-in" type="text" id="rep-name" placeholder="e.g. John Smith" oninput="validateRepName()">
       <div id="rep-name-hint" style="font-size:11px;color:var(--muted);margin-top:6px;font-family:'Space Mono',monospace;display:none;">⚠ Please enter your first and last name</div>
     </div>
-    <div class="step">
-      <div class="slabel">Step 1b — Your PIN</div>
-      <input class="txt-in" type="password" id="rep-pin" placeholder="4-digit PIN" inputmode="numeric" autocomplete="off" oninput="validateRepPin()">
-      <div id="rep-pin-hint" style="font-size:11px;color:var(--muted);margin-top:6px;font-family:'Space Mono',monospace;display:none;">⚠ Enter your PIN</div>
-    </div>
-
 
     <div class="step">
       <div class="slabel">Step 2 — Load Addresses <span style="color:var(--danger)">*Required</span></div>
@@ -1057,7 +1051,6 @@ body { font-family: 'Syne', sans-serif; color: var(--text); background: var(--bg
       </div>
       <button id="btn-manager" class="tb-btn" onclick="openManagerPanel()">👥 Team</button>
       <button class="tb-btn" onclick="openBadge()">🪪 My Badge</button>
-      <button class="tb-btn" onclick="openModal()">⚙ Setup Guide</button>
       <button class="tb-btn" onclick="openSignOutConfirm()" title="Sign out" style="color:#f87171;border-color:rgba(239,68,68,.3);">⏻</button>
     </div>
   </div>
@@ -1299,43 +1292,6 @@ body { font-family: 'Syne', sans-serif; color: var(--text); background: var(--bg
 <div id="toast"></div>
 
 <!-- Guide Modal -->
-<div id="modal" onclick="handleModalClick(event)">
-  <div class="modal-box">
-    <h2>⚙ Google Sheets Setup Guide</h2>
-    <p>Follow these steps to send sale data automatically to a Google Sheet.</p>
-
-    <h3>1 — Create a Google Sheet</h3>
-    <p>Add these headers in Row 1 exactly as shown:</p>
-    <pre>Timestamp | Salesperson | Address | City | State | Zip | First Name | Last Name | Phone | Email | Package | Install Date | Install Time | Notes | Status</pre>
-
-    <h3>2 — Open Apps Script</h3>
-    <p>Go to <strong>Extensions → Apps Script</strong>, delete existing code, and paste this:</p>
-    <pre>function doPost(e) {
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-  var d = JSON.parse(e.postData.contents);
-  sheet.appendRow([
-    new Date(), d.salesperson,
-    d.address, d.city, d.state, d.zip,
-    d.firstName, d.lastName, d.phone, d.email,
-    d.package, d.installDate, d.installTime, d.notes, d.status
-  ]);
-  return ContentService
-    .createTextOutput(JSON.stringify({result:'success'}))
-    .setMimeType(ContentService.MimeType.JSON);
-}</pre>
-
-    <h3>3 — Deploy as Web App</h3>
-    <p>Click <strong>Deploy → New deployment → Web app</strong>. Set <em>Execute as</em>: <strong>Me</strong>, <em>Who has access</em>: <strong>Anyone</strong>. Deploy and authorize.</p>
-
-    <h3>4 — Address CSV Format</h3>
-    <pre>address,city,state,zip
-123 Main St,Burnsville,NC,28714
-456 Oak Ave,Burnsville,NC,28714</pre>
-
-    <button class="modal-close" onclick="closeModal()">Close</button>
-  </div>
-</div>
-
 <script>
 // ──────────────────────────────────────────────────────────
 //  STATE
@@ -1590,75 +1546,6 @@ function hasValidName() {
   return parts.length >= 2 && val.toLowerCase() !== 'rep';
 }
 
-
-// ──────────────────────────────────────────────────────────
-//  PIN VALIDATION + AUTH
-// ──────────────────────────────────────────────────────────
-var repKey = '';   // returned from Apps Script after PIN auth
-var mgrKey = '';   // returned from Apps Script after manager PIN auth
-
-function hasValidPin() {
-  var v = (document.getElementById('rep-pin').value || '').trim();
-  return v.length >= 4;
-}
-
-function validateRepPin() {
-  var hint = document.getElementById('rep-pin-hint');
-  var val  = (document.getElementById('rep-pin').value || '').trim();
-  if (val.length > 0 && !hasValidPin()) hint.style.display = 'block';
-  else hint.style.display = (val.length === 0) ? 'block' : 'none';
-  checkLaunchReady();
-}
-
-function authRepPin() {
-  var pin = (document.getElementById('rep-pin').value || '').trim();
-  var name = (document.getElementById('rep-name').value || '').trim();
-  return fetch(webhookURL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ type: 'auth_rep', repName: name, pin: pin })
-  }).then(function(r){ return r.json().catch(function(){ return {}; }); })
-    .then(function(j){
-      if (j && j.status === 'ok' && j.repKey) {
-        repKey = j.repKey;
-        try { sessionStorage.setItem('repKey', repKey); } catch(e){}
-        return true;
-      }
-      toast((j && j.message) ? j.message : 'PIN login failed', 't-err');
-      return false;
-    }).catch(function(){
-      toast('PIN login failed (network error)', 't-err');
-      return false;
-    });
-}
-
-function ensureManagerAuth() {
-  if (mgrKey) return Promise.resolve(true);
-  var existing = '';
-  try { existing = sessionStorage.getItem('mgrKey') || ''; } catch(e){}
-  if (existing) { mgrKey = existing; return Promise.resolve(true); }
-
-  var pin = prompt('Manager PIN:');
-  if (!pin) return Promise.resolve(false);
-
-  return fetch(webhookURL, {
-    method:'POST',
-    headers:{ 'Content-Type':'application/json' },
-    body: JSON.stringify({ type:'auth_manager', pin: String(pin).trim() })
-  }).then(function(r){ return r.json().catch(function(){ return {}; }); })
-    .then(function(j){
-      if (j && j.status === 'ok' && j.mgrKey) {
-        mgrKey = j.mgrKey;
-        try { sessionStorage.setItem('mgrKey', mgrKey); } catch(e){}
-        return true;
-      }
-      toast((j && j.message) ? j.message : 'Manager auth failed', 't-err');
-      return false;
-    }).catch(function(){
-      toast('Manager auth failed (network error)', 't-err');
-      return false;
-    });
-}
 function validateRepName() {
   var hint = document.getElementById('rep-name-hint');
   var val  = (document.getElementById('rep-name').value || '').trim();
@@ -1674,7 +1561,7 @@ function validateRepName() {
 function checkLaunchReady() {
   // Launch is enabled only when addresses are loaded AND name is valid
   var hasAddresses = addresses.length > 0;
-  document.getElementById('launch-btn').disabled = !((hasAddresses && hasValidName() && hasValidPin()));
+  document.getElementById('launch-btn').disabled = !(hasAddresses && hasValidName());
 }
 
 // ──────────────────────────────────────────────────────────
@@ -1707,16 +1594,7 @@ function startPolling() {
 
 function launchApp() {
   repName = (document.getElementById('rep-name').value || '').trim();
-  // Require PIN auth before entering the app
-  repKey = '';
-  try { repKey = sessionStorage.getItem('repKey') || ''; } catch(e){}
-  var pinNow = (document.getElementById('rep-pin').value || '').trim();
-  if (!repKey) {
-    if (!hasValidPin()) { toast('Enter your PIN to continue', 't-err'); return; }
-    // Fresh auth
-    authRepPin().then(function(ok){ if (ok) launchApp(); });
-    return;
-  }
+
   // Show splash
   var splash = document.getElementById('splash');
   document.getElementById('splash-rep-name').textContent = repName;
@@ -2277,8 +2155,7 @@ function schedBookSlot(date, time, customerName, address) {
     method: 'POST',
     mode: 'no-cors',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ type:'booking',
-      repKey: repKey, date:date, time:time, name:customerName, address:address })
+    body: JSON.stringify({ type:'booking', date:date, time:time, name:customerName, address:address })
   }).catch(function(){});
 
   if (schedData[date] && schedData[date][time]) {
@@ -2410,29 +2287,10 @@ function submitSale(pkgLabel) {
   closeForm();
 }
 
-
-function getObjectionReason(status) {
-  var map = {
-    'Not Interested': ['Too expensive','Happy with current provider','Under contract','Bad experience','Not the decision maker','Landlord issue','Other'],
-    'In Contract': ['Under contract','Needs to review options','Waiting for promo end','Other'],
-    'Brightspeed': ['Already with Brightspeed','Switching cost concern','Other'],
-    'Go Back Later': ['Needs spouse/decision maker','Busy right now','Wants call/text later','Needs more info','Other'],
-    'Business': ['Owner not available','Not interested','Already has service','Other']
-  };
-  if (!map[status]) return '';
-  var hint = map[status].join(' / ');
-  var r = prompt('Reason (' + status + '):\n' + hint);
-  if (r === null) return null; // cancelled
-  return String(r).trim();
-}
-
 function submitStatus() {
   var addr = getAddr();
   if (!addr)      { toast('No address selected', 't-err'); return; }
   if (!selStatus) { toast('⚠ Pick a status first', 't-err'); return; }
-
-  var reason = getObjectionReason(selStatus);
-  if (reason === null) { toast('Status update cancelled', 't-info'); return; }
 
   var notes   = document.getElementById('f-notes').value.trim();
   var payload = {
@@ -2440,8 +2298,7 @@ function submitStatus() {
     address: addr.address, city: addr.city||'', state: addr.state||'', zip: addr.zip||'',
     firstName:'', lastName:'', phone:'', email:'',
     package:'', notes: notes,
-    status: selStatus,
-    reason: reason || ''
+    status: selStatus
   };
 
   sendData(payload);
@@ -2461,8 +2318,7 @@ function updateAddressStatus(addr, status) {
     method: 'POST',
     mode: 'no-cors',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ type:'status_update',
-      repKey: repKey, sheetRow:addr.sheetRow, status:status, salesperson:repName })
+    body: JSON.stringify({ type:'status_update', sheetRow:addr.sheetRow, status:status, salesperson:repName })
   }).catch(function(){});
 }
 
@@ -2518,7 +2374,6 @@ function sendHeartbeat(statusOverride) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       type:        'rep_heartbeat',
-      repKey:      repKey,
       salesperson: repName,
       status:      status,
       megaSales:   megaSales,
@@ -2586,13 +2441,6 @@ function confirmSignOut() {
 
 // ── Manager panel ─────────────────────────────────────────
 function openManagerPanel() {
-  ensureManagerAuth().then(function(ok){
-    if (!ok) return;
-    _openManagerPanel();
-  });
-}
-
-function _openManagerPanel() {
   document.getElementById('manager-modal').classList.add('open');
   refreshManagerPanel();
   mgrAutoRefresh = setInterval(refreshManagerPanel, 30000);
@@ -2606,7 +2454,7 @@ function refreshManagerPanel() {
   btn.classList.add('spinning');
   setTimeout(function(){ btn.classList.remove('spinning'); }, 500);
 
-  fetch(webhookURL + '?action=repStatus&mgrKey=' + encodeURIComponent(mgrKey) + '&_t=' + Date.now())
+  fetch(webhookURL + '?action=repStatus&_t=' + Date.now())
     .then(function(r){ return r.json(); })
     .then(function(json){ renderRepList(json.reps || []); })
     .catch(function(){
@@ -2774,11 +2622,34 @@ function toast(msg, cls) {
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function() {
-    navigator.serviceWorker.register('./sw.js')
-      .then(function(reg) { console.log('SW registered:', reg.scope); })
-      .catch(function(e)  { console.warn('SW failed:', e); });
+    navigator.serviceWorker.register('./sw.js').then(function(reg) {
+      console.log('SW registered:', reg.scope);
+
+      // Proactively check for an updated SW (helps after GitHub deploys)
+      if (reg.update) reg.update();
+
+      // If a new SW is waiting, activate it immediately by reloading once it takes control
+      reg.addEventListener('updatefound', function() {
+        var newWorker = reg.installing;
+        if (!newWorker) return;
+        newWorker.addEventListener('statechange', function() {
+          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            // A new version is ready — reload so the latest UI (e.g., Sign Out) shows up
+            window.location.reload();
+          }
+        });
+      });
+
+      // If control changes (after skipWaiting), reload to ensure we’re on newest assets
+      navigator.serviceWorker.addEventListener('controllerchange', function() {
+        window.location.reload();
+      });
+    }).catch(function(e) {
+      console.warn('SW failed:', e);
+    });
   });
 }
+
 </script>
 </body>
 </html>
