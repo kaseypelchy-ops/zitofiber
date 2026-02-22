@@ -1366,14 +1366,14 @@ body { font-family: 'Syne', sans-serif; color: var(--text); background: var(--bg
           <div class="pkg-icon">⚡</div>
           <div class="pkg-name">Mega Speed</div>
           <div class="pkg-speed">500 Mbps</div>
-          <div class="pkg-price">$39.95/mo</div>
+          <div class="pkg-price">$44.95/mo</div>
         </div>
         <div class="pkg-card gig-card" id="pkg-gig" onclick="pickPkg('gig')">
           <span class="pkg-check">✓</span>
           <div class="pkg-icon">🚀</div>
           <div class="pkg-name">Gig Speed</div>
           <div class="pkg-speed">1,000 Mbps</div>
-          <div class="pkg-price">$49.95/mo</div>
+          <div class="pkg-price">$54.95/mo</div>
         </div>
       </div>
 
@@ -1418,26 +1418,34 @@ body { font-family: 'Syne', sans-serif; color: var(--text); background: var(--bg
         <div class="price-table">
           <div class="price-section-label">Monthly Bill (recurring)</div>
           <div class="price-row"><span>Internet Service</span><span id="pr-internet">—</span></div>
+           <div class="price-row"><span>Modem Fee</span><span>$10.00</span></div>
           <div class="price-row"><span>eero 6+ WiFi Router</span><span>$5.00</span></div>
           <div class="price-row"><span>Payment Processing Fee</span><span>$1.00</span></div>
           <div class="price-row price-total"><span>Monthly Total</span><span id="pr-monthly">—</span></div>
 
-          <div class="price-section-label" style="margin-top:14px">First Month (free internet promo)</div>
+          <div class="price-section-label" style="margin-top:14px">First Month Bill (promo: internet is free)</div>
           <div class="price-row promo-row"><span>Internet Service</span><span class="free-tag">FREE</span></div>
+           <div class="price-row"><span>Modem Fee</span><span>$10.00</span></div>
           <div class="price-row"><span>eero 6+ WiFi Router</span><span>$5.00</span></div>
           <div class="price-row"><span>Payment Processing Fee</span><span>$1.00</span></div>
-          <div class="price-row price-total"><span>First Full Month Bill</span><span>$6.00</span></div>
+          <div class="price-row price-total"><span>First Month Bill (fees only)</span><span id="pr-firstbill-fees">$16.00</span></div>
+           <div class="price-row"><span style="opacity:.85">+ Estimated Proration (below)</span><span style="opacity:.85">—</span></div>
+           <div class="price-row price-total"><span>Estimated First Bill Total</span><span id="pr-firstbill-total">—</span></div>
 
           <div id="proration-section" style="display:none">
-            <div class="price-section-label" style="margin-top:14px">Proration (install → 1st of next month)</div>
+            <div class="price-section-label" style="margin-top:14px">Estimated Proration (install → 1st of next month)</div>
             <div class="price-row"><span id="pr-prorate-label">Internet</span><span id="pr-prorate-internet">—</span></div>
             <div class="price-row"><span id="pr-prorate-eero-label">eero 6+</span><span id="pr-prorate-eero">—</span></div>
             <div class="price-row"><span>Payment Processing Fee</span><span>$1.00</span></div>
-            <div class="price-row price-total"><span>Due at Install</span><span id="pr-prorate-total">—</span></div>
+            <div class="price-row price-total"><span>Estimated Proration Total</span><span id="pr-prorate-total">—</span></div>
+             <div class="price-note" style="margin-top:10px">
+               ✅ <strong>No payment is collected at install.</strong> Estimated proration is added to the first bill.
+             </div>
           </div>
 
           <div class="price-note">
             📅 Bills are generated on the <strong>1st</strong> of each month and due by the <strong>10th</strong>.
+            <br>💡 Promo: First month includes <strong>free internet service</strong>, but standard monthly fees still apply (modem $10, eero $5, processing $1).
           </div>
         </div>
       </div>
@@ -2401,17 +2409,18 @@ function schedBookSlot(date, time, customerName, address) {
 }
 
 var PKG = {
-  mega: { base: 39.95, label: '$39.95' },
-  gig:  { base: 49.95, label: '$49.95' }
+  mega: { base: 29.95, label: '$29.95' },
+  gig:  { base: 39.95, label: '$39.95' }
 };
 var EERO = 5.00;
 var PROC = 1.00;
+var MODEM = 10.00;
 
 function calcPricing() {
   if (!selPkg) return;
   var pkg = PKG[selPkg];
   document.getElementById('pr-internet').textContent = pkg.label;
-  document.getElementById('pr-monthly').textContent  = '$' + (pkg.base + EERO + PROC).toFixed(2);
+  document.getElementById('pr-monthly').textContent  = '$' + (pkg.base + MODEM + EERO + PROC).toFixed(2);
 
   var dateEl = document.getElementById('f-install-date');
   var proSection = document.getElementById('proration-section');
@@ -2423,7 +2432,7 @@ function calcPricing() {
   var daysInMonth = new Date(install.getFullYear(), install.getMonth() + 1, 0).getDate();
   var proratedInternet = (pkg.base / daysInMonth) * diffDays;
   var proratedEero     = (EERO / daysInMonth) * diffDays;
-  var dueAtInstall     = proratedInternet + proratedEero + PROC;
+  var prorateToFirstBill = proratedInternet + proratedEero + PROC;
 
   var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   var day = install.getDate();
@@ -2432,7 +2441,11 @@ function calcPricing() {
   document.getElementById('pr-prorate-internet').textContent   = '$' + proratedInternet.toFixed(2);
   document.getElementById('pr-prorate-eero-label').textContent = 'eero 6+ (' + diffDays + ' days @ $' + (EERO / daysInMonth).toFixed(3) + '/day)';
   document.getElementById('pr-prorate-eero').textContent       = '$' + proratedEero.toFixed(2);
-  document.getElementById('pr-prorate-total').textContent      = '$' + dueAtInstall.toFixed(2);
+  document.getElementById('pr-prorate-total').textContent      = '$' + prorateToFirstBill.toFixed(2);
+  // First bill estimate (promo month: internet is free, fees still apply)
+  var firstBillFeesOnly = MODEM + EERO + PROC;
+  document.getElementById('pr-firstbill-total').textContent   = '$' + (firstBillFeesOnly + prorateToFirstBill).toFixed(2);
+  document.getElementById('pr-firstbill-fees').textContent    = '$' + firstBillFeesOnly.toFixed(2);
   proSection.style.display = 'block';
 }
 
