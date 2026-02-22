@@ -1141,8 +1141,7 @@ body { font-family: 'Syne', sans-serif; color: var(--text); background: var(--bg
       </div>
       <button id="btn-manager" class="tb-btn" onclick="openManagerPanel()">👥 Team</button>
       <button class="tb-btn" onclick="openBadge()">🪪 My Badge</button>
-      <button class="tb-btn" onclick="openModal()">⚙ Setup Guide</button>
-      <button class="tb-btn" onclick="openSignOutConfirm()" title="Sign out" style="color:#f87171;border-color:rgba(239,68,68,.3);">⏻</button>
+      <button class="tb-btn" onclick="openSignOutConfirm()" title="Sign out" style="color:#f87171;border-color:rgba(239,68,68,.3);">Log Out</button>
     </div>
   </div>
 
@@ -1639,7 +1638,7 @@ function fetchAddressesFromSheet() {
   btn.disabled = true;
   document.getElementById('fetch-addr-icon').textContent = '⏳';
   st.className = 'dz-status';
-  st.textContent = 'Loading addresses from sheet…';
+  st.textContent = 'Loading addresses…';
 
   fetch(webhookURL + '?action=addresses&_t=' + Date.now())
     .then(function(r){ return r.json(); })
@@ -1668,7 +1667,7 @@ function fetchAddressesFromSheet() {
         };
       });
       st.className   = 'dz-status ok';
-      st.textContent = '✓ ' + addresses.length + ' addresses loaded from sheet';
+      st.textContent = '✓ ' + addresses.length + ' addresses loaded';
       document.getElementById('fetch-addr-icon').textContent = '✅';
       checkLaunchReady();
     })
