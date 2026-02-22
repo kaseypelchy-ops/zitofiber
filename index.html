@@ -14,10 +14,7 @@
 <link rel="icon" type="image/png" href="https://www.zitomedia.net/wp-content/uploads/2025/03/Untitled-design-6.png">
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js">
-// Restore rep profile on first load (helps after redeploy)
-restoreRepProfile();
-</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
@@ -940,88 +937,6 @@ body { font-family: 'Syne', sans-serif; color: var(--text); background: var(--bg
 .splash-prog-label { margin-top: 10px; text-align: center; font-size: 9px; font-family: 'Space Mono', monospace; color: rgba(255,255,255,.2); letter-spacing: 2px; text-transform: uppercase; }
 .splash-ver { position: absolute; bottom: 28px; font-size: 9px; color: rgba(255,255,255,.1); font-family: 'Space Mono', monospace; letter-spacing: 2px; }
 @keyframes s-rise { to { opacity: 1; transform: translateY(0) scale(1); } }
-
-/* ── Setup: rep contact ── */
-.rep-contact-grid{
-  display:grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  margin-top: 10px;
-}
-.sublabel{
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  color: rgba(255,255,255,.65);
-  font-family: 'Space Mono', monospace;
-  margin: 0 0 6px;
-}
-.rep-contact-note{
-  margin-top: 8px;
-  font-size: 11px;
-  color: var(--muted);
-  line-height: 1.4;
-}
-@media (max-width: 520px){
-  .rep-contact-grid{ grid-template-columns: 1fr; }
-}
-
-/* ── Badge: contact block ── */
-.badge-contact{
-  margin: 12px 20px 0;
-  padding: 12px 12px;
-  border-radius: 14px;
-  background: rgba(255,255,255,.04);
-  border: 1px solid rgba(255,255,255,.08);
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.badge-contact-row{
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-family: 'Space Mono', monospace;
-}
-.badge-ico{
-  width: 26px;
-  height: 26px;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0,86,150,.18);
-  border: 1px solid rgba(0,86,150,.35);
-  color: rgba(255,255,255,.9);
-  flex-shrink: 0;
-  font-size: 13px;
-}
-.badge-contact-meta{ min-width: 0; flex: 1; }
-.badge-contact-lbl{
-  font-size: 8px;
-  letter-spacing: 1.6px;
-  text-transform: uppercase;
-  color: rgba(255,255,255,.38);
-  margin-bottom: 2px;
-}
-.badge-contact-val{
-  font-size: 12px;
-  color: rgba(255,255,255,.88);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.badge-contact-val a{
-  color: rgba(255,255,255,.9);
-  text-decoration: none;
-  border-bottom: 1px dashed rgba(255,255,255,.22);
-}
-.badge-contact-val a:hover{
-  color: var(--accent);
-  border-bottom-color: rgba(0,86,150,.7);
-}
-
 </style>
 </head>
 <body>
@@ -1084,19 +999,13 @@ body { font-family: 'Syne', sans-serif; color: var(--text); background: var(--bg
       <div class="slabel">Step 1 — Your Name</div>
       <input class="txt-in" type="text" id="rep-name" placeholder="e.g. John Smith" oninput="validateRepName()">
       <div id="rep-name-hint" style="font-size:11px;color:var(--muted);margin-top:6px;font-family:'Space Mono',monospace;display:none;">⚠ Please enter your first and last name</div>
-      <div class="rep-contact-grid">
-        <div>
-          <div class="sublabel">Rep Phone</div>
-          <input class="txt-in" type="tel" id="rep-phone" placeholder="e.g. 814-555-1234">
-        </div>
-        <div>
-          <div class="sublabel">Rep Email</div>
-          <input class="txt-in" type="email" id="rep-email" placeholder="e.g. you@zitomedia.com">
-        </div>
-      </div>
-      <div class="rep-contact-note">These show on your badge and are added to the customer email buttons.</div>
-
     </div>
+    <div class="step">
+      <div class="slabel">Step 1b — Your PIN</div>
+      <input class="txt-in" type="password" id="rep-pin" placeholder="4-digit PIN" inputmode="numeric" autocomplete="off" oninput="validateRepPin()">
+      <div id="rep-pin-hint" style="font-size:11px;color:var(--muted);margin-top:6px;font-family:'Space Mono',monospace;display:none;">⚠ Enter your PIN</div>
+    </div>
+
 
     <div class="step">
       <div class="slabel">Step 2 — Load Addresses <span style="color:var(--danger)">*Required</span></div>
@@ -1168,32 +1077,6 @@ body { font-family: 'Syne', sans-serif; color: var(--text); background: var(--bg
         <div class="badge-avatar" id="badge-avatar">?</div>
         <div class="badge-name" id="badge-rep-name">—</div>
         <div class="badge-title">Sales Representative</div>
-        
-        <div class="badge-contact">
-          <div class="badge-contact-row">
-            <div class="badge-ico">☎</div>
-            <div class="badge-contact-meta">
-              <div class="badge-contact-lbl">Phone</div>
-              <div class="badge-contact-val"><a id="badge-phone-link" href="#"><span id="badge-rep-phone">—</span></a></div>
-            </div>
-          </div>
-          <div class="badge-contact-row">
-            <div class="badge-ico">✉</div>
-            <div class="badge-contact-meta">
-              <div class="badge-contact-lbl">Email</div>
-              <div class="badge-contact-val"><a id="badge-email-link" href="#"><span id="badge-rep-email">—</span></a></div>
-            </div>
-          </div>
-          <div class="badge-contact-row">
-            <div class="badge-ico">🌐</div>
-            <div class="badge-contact-meta">
-              <div class="badge-contact-lbl">Website</div>
-              <div class="badge-contact-val"><a id="badge-web-link" href="#" target="_blank" rel="noopener"><span id="badge-rep-web">zitomedia.net</span></a></div>
-            </div>
-          </div>
-        </div>
-
-
         <div class="badge-divider"></div>
         <div class="badge-stats">
           <div class="badge-stat">
@@ -1464,9 +1347,6 @@ var selStatus  = null;
 var selSlot    = null;
 var webhookURL = 'https://script.google.com/macros/s/AKfycbx6BOPtlmk9xoYejGY25wnM7BiPnm-5umIVC83wli9Nynls5hE6nN3wW6LQKUZCaomr/exec';
 var repName    = 'Rep';
-var repPhone   = '';
-var repEmail   = '';
-var repWebsite = 'https://www.zitomedia.net';
 var mapObj     = null;
 var mapMarkers = {};
 var kmlGeoJSON = null;
@@ -1684,7 +1564,6 @@ function fetchAddressesFromSheet() {
           lng:         parseFloat(row.lng)  || null,
           activeCount: ac || status,
           status:      status,
-          salesperson: (row.salesperson || '').trim(),
           sale:        null
         };
       });
@@ -1711,6 +1590,75 @@ function hasValidName() {
   return parts.length >= 2 && val.toLowerCase() !== 'rep';
 }
 
+
+// ──────────────────────────────────────────────────────────
+//  PIN VALIDATION + AUTH
+// ──────────────────────────────────────────────────────────
+var repKey = '';   // returned from Apps Script after PIN auth
+var mgrKey = '';   // returned from Apps Script after manager PIN auth
+
+function hasValidPin() {
+  var v = (document.getElementById('rep-pin').value || '').trim();
+  return v.length >= 4;
+}
+
+function validateRepPin() {
+  var hint = document.getElementById('rep-pin-hint');
+  var val  = (document.getElementById('rep-pin').value || '').trim();
+  if (val.length > 0 && !hasValidPin()) hint.style.display = 'block';
+  else hint.style.display = (val.length === 0) ? 'block' : 'none';
+  checkLaunchReady();
+}
+
+function authRepPin() {
+  var pin = (document.getElementById('rep-pin').value || '').trim();
+  var name = (document.getElementById('rep-name').value || '').trim();
+  return fetch(webhookURL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type: 'auth_rep', repName: name, pin: pin })
+  }).then(function(r){ return r.json().catch(function(){ return {}; }); })
+    .then(function(j){
+      if (j && j.status === 'ok' && j.repKey) {
+        repKey = j.repKey;
+        try { sessionStorage.setItem('repKey', repKey); } catch(e){}
+        return true;
+      }
+      toast((j && j.message) ? j.message : 'PIN login failed', 't-err');
+      return false;
+    }).catch(function(){
+      toast('PIN login failed (network error)', 't-err');
+      return false;
+    });
+}
+
+function ensureManagerAuth() {
+  if (mgrKey) return Promise.resolve(true);
+  var existing = '';
+  try { existing = sessionStorage.getItem('mgrKey') || ''; } catch(e){}
+  if (existing) { mgrKey = existing; return Promise.resolve(true); }
+
+  var pin = prompt('Manager PIN:');
+  if (!pin) return Promise.resolve(false);
+
+  return fetch(webhookURL, {
+    method:'POST',
+    headers:{ 'Content-Type':'application/json' },
+    body: JSON.stringify({ type:'auth_manager', pin: String(pin).trim() })
+  }).then(function(r){ return r.json().catch(function(){ return {}; }); })
+    .then(function(j){
+      if (j && j.status === 'ok' && j.mgrKey) {
+        mgrKey = j.mgrKey;
+        try { sessionStorage.setItem('mgrKey', mgrKey); } catch(e){}
+        return true;
+      }
+      toast((j && j.message) ? j.message : 'Manager auth failed', 't-err');
+      return false;
+    }).catch(function(){
+      toast('Manager auth failed (network error)', 't-err');
+      return false;
+    });
+}
 function validateRepName() {
   var hint = document.getElementById('rep-name-hint');
   var val  = (document.getElementById('rep-name').value || '').trim();
@@ -1726,7 +1674,7 @@ function validateRepName() {
 function checkLaunchReady() {
   // Launch is enabled only when addresses are loaded AND name is valid
   var hasAddresses = addresses.length > 0;
-  document.getElementById('launch-btn').disabled = !(hasAddresses && hasValidName());
+  document.getElementById('launch-btn').disabled = !((hasAddresses && hasValidName() && hasValidPin()));
 }
 
 // ──────────────────────────────────────────────────────────
@@ -1759,18 +1707,17 @@ function startPolling() {
 
 function launchApp() {
   repName = (document.getElementById('rep-name').value || '').trim();
-
-  
-  repPhone = (document.getElementById('rep-phone') ? (document.getElementById('rep-phone').value || '').trim() : '');
-  repEmail = (document.getElementById('rep-email') ? (document.getElementById('rep-email').value || '').trim() : '');
-
-  // Persist profile so it survives refresh / PWA cache
-  try {
-    localStorage.setItem('zito_rep_name', repName);
-    localStorage.setItem('zito_rep_phone', repPhone);
-    localStorage.setItem('zito_rep_email', repEmail);
-  } catch(e) {}
-// Show splash
+  // Require PIN auth before entering the app
+  repKey = '';
+  try { repKey = sessionStorage.getItem('repKey') || ''; } catch(e){}
+  var pinNow = (document.getElementById('rep-pin').value || '').trim();
+  if (!repKey) {
+    if (!hasValidPin()) { toast('Enter your PIN to continue', 't-err'); return; }
+    // Fresh auth
+    authRepPin().then(function(ok){ if (ok) launchApp(); });
+    return;
+  }
+  // Show splash
   var splash = document.getElementById('splash');
   document.getElementById('splash-rep-name').textContent = repName;
   var fill = document.getElementById('splash-prog-fill');
@@ -2330,7 +2277,8 @@ function schedBookSlot(date, time, customerName, address) {
     method: 'POST',
     mode: 'no-cors',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ type:'booking', date:date, time:time, name:customerName, address:address })
+    body: JSON.stringify({ type:'booking',
+      repKey: repKey, date:date, time:time, name:customerName, address:address })
   }).catch(function(){});
 
   if (schedData[date] && schedData[date][time]) {
@@ -2453,7 +2401,6 @@ function submitSale(pkgLabel) {
   }
 
   addr.status = (selPkg === 'mega') ? 'mega' : 'gig';
-  addr.salesperson = repName; // credit this sale to the rep locally (and in sheet via status_update)
   addr.sale   = { firstName: first, lastName: last, phone: phone, email: email, notes: notes };
   updateAddressStatus(addr, addr.status);
   if (addr.lat && addr.lng) placeMarker(addr);
@@ -2463,10 +2410,29 @@ function submitSale(pkgLabel) {
   closeForm();
 }
 
+
+function getObjectionReason(status) {
+  var map = {
+    'Not Interested': ['Too expensive','Happy with current provider','Under contract','Bad experience','Not the decision maker','Landlord issue','Other'],
+    'In Contract': ['Under contract','Needs to review options','Waiting for promo end','Other'],
+    'Brightspeed': ['Already with Brightspeed','Switching cost concern','Other'],
+    'Go Back Later': ['Needs spouse/decision maker','Busy right now','Wants call/text later','Needs more info','Other'],
+    'Business': ['Owner not available','Not interested','Already has service','Other']
+  };
+  if (!map[status]) return '';
+  var hint = map[status].join(' / ');
+  var r = prompt('Reason (' + status + '):\n' + hint);
+  if (r === null) return null; // cancelled
+  return String(r).trim();
+}
+
 function submitStatus() {
   var addr = getAddr();
   if (!addr)      { toast('No address selected', 't-err'); return; }
   if (!selStatus) { toast('⚠ Pick a status first', 't-err'); return; }
+
+  var reason = getObjectionReason(selStatus);
+  if (reason === null) { toast('Status update cancelled', 't-info'); return; }
 
   var notes   = document.getElementById('f-notes').value.trim();
   var payload = {
@@ -2474,14 +2440,14 @@ function submitStatus() {
     address: addr.address, city: addr.city||'', state: addr.state||'', zip: addr.zip||'',
     firstName:'', lastName:'', phone:'', email:'',
     package:'', notes: notes,
-    status: selStatus
+    status: selStatus,
+    reason: reason || ''
   };
 
   sendData(payload);
 
   var smap = { 'Not Home':'nothome','Brightspeed':'brightspeed','In Contract':'incontract','Not Interested':'notinterested','Go Back Later':'goback','Vacant':'vacant','Business':'business' };
   addr.status = smap[selStatus] || 'nocontact';
-  addr.salesperson = repName; // keep ownership consistent for rep-based counting
   updateAddressStatus(addr, addr.status);
   if (addr.lat && addr.lng) placeMarker(addr);
   updateStats();
@@ -2495,7 +2461,8 @@ function updateAddressStatus(addr, status) {
     method: 'POST',
     mode: 'no-cors',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ type:'status_update', sheetRow:addr.sheetRow, status:status, salesperson:repName })
+    body: JSON.stringify({ type:'status_update',
+      repKey: repKey, sheetRow:addr.sheetRow, status:status, salesperson:repName })
   }).catch(function(){});
 }
 
@@ -2544,19 +2511,14 @@ function sendHeartbeat(statusOverride) {
   var cleanName = (repName || '').trim();
   if (!webhookURL || isManager() || !cleanName || cleanName.toLowerCase() === 'rep') return;
   var status    = (statusOverride !== undefined) ? statusOverride : (repOnline ? 'online' : 'offline');
-  // Only count sales that belong to THIS rep (prevents every rep showing the same totals)
-  var rn = cleanName.toLowerCase();
-  var megaSales = addresses.filter(function(a){
-    return a.status === 'mega' && ((a.salesperson || '').toLowerCase() === rn);
-  }).length;
-  var gigSales  = addresses.filter(function(a){
-    return a.status === 'gig'  && ((a.salesperson || '').toLowerCase() === rn);
-  }).length;
+  var megaSales = addresses.filter(function(a){ return a.status === 'mega'; }).length;
+  var gigSales  = addresses.filter(function(a){ return a.status === 'gig';  }).length;
   fetch(webhookURL, {
     method: 'POST', mode: 'no-cors',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       type:        'rep_heartbeat',
+      repKey:      repKey,
       salesperson: repName,
       status:      status,
       megaSales:   megaSales,
@@ -2614,9 +2576,6 @@ function confirmSignOut() {
     document.getElementById('page-app').style.display   = 'none';
     document.getElementById('page-setup').style.display = 'flex';
     document.getElementById('rep-name').value = '';
-    if (document.getElementById('rep-phone')) document.getElementById('rep-phone').value = '';
-    if (document.getElementById('rep-email')) document.getElementById('rep-email').value = '';
-    try { localStorage.removeItem('zito_rep_name'); localStorage.removeItem('zito_rep_phone'); localStorage.removeItem('zito_rep_email'); } catch(e) {}
     document.getElementById('launch-btn').disabled = true;
     document.getElementById('fetch-addr-status').textContent = '';
     document.getElementById('btn-manager').style.display = 'none';
@@ -2624,21 +2583,16 @@ function confirmSignOut() {
     toast('👋 Signed out successfully', 't-info');
   }, 400);
 }
-// ── Rep profile restore (PWA cache safe) ───────────────────
-function restoreRepProfile() {
-  try {
-    var n = localStorage.getItem('zito_rep_name')  || '';
-    var p = localStorage.getItem('zito_rep_phone') || '';
-    var e = localStorage.getItem('zito_rep_email') || '';
-    if (n && document.getElementById('rep-name'))  document.getElementById('rep-name').value  = n;
-    if (document.getElementById('rep-phone')) document.getElementById('rep-phone').value = p;
-    if (document.getElementById('rep-email')) document.getElementById('rep-email').value = e;
-  } catch(err) {}
-}
-
 
 // ── Manager panel ─────────────────────────────────────────
 function openManagerPanel() {
+  ensureManagerAuth().then(function(ok){
+    if (!ok) return;
+    _openManagerPanel();
+  });
+}
+
+function _openManagerPanel() {
   document.getElementById('manager-modal').classList.add('open');
   refreshManagerPanel();
   mgrAutoRefresh = setInterval(refreshManagerPanel, 30000);
@@ -2652,7 +2606,7 @@ function refreshManagerPanel() {
   btn.classList.add('spinning');
   setTimeout(function(){ btn.classList.remove('spinning'); }, 500);
 
-  fetch(webhookURL + '?action=repStatus&_t=' + Date.now())
+  fetch(webhookURL + '?action=repStatus&mgrKey=' + encodeURIComponent(mgrKey) + '&_t=' + Date.now())
     .then(function(r){ return r.json(); })
     .then(function(json){ renderRepList(json.reps || []); })
     .catch(function(){
@@ -2778,20 +2732,7 @@ function openBadge() {
   var name = repName || 'Unknown Rep';
   document.getElementById('badge-rep-name').textContent = name;
 
-  
-  // Rep contact info (from memory or setup inputs)
-  var p = repPhone || '';
-  var e = repEmail || '';
-  document.getElementById('badge-rep-phone').textContent = p ? p : '—';
-  document.getElementById('badge-rep-email').textContent = e ? e : '—';
-  document.getElementById('badge-rep-web').textContent   = repWebsite.replace(/^https?:\/\//,'');
-  var phoneLink = document.getElementById('badge-phone-link');
-  var emailLink = document.getElementById('badge-email-link');
-  var webLink   = document.getElementById('badge-web-link');
-  if (phoneLink) phoneLink.href = p ? ('tel:' + p.replace(/[^0-9+]/g,'')) : '#';
-  if (emailLink) emailLink.href = e ? ('mailto:' + e) : '#';
-  if (webLink)   webLink.href   = repWebsite;
-// Avatar initials
+  // Avatar initials
   var parts    = name.trim().split(/\s+/);
   var initials = parts.length >= 2
     ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
