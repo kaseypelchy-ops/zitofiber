@@ -150,6 +150,23 @@ body { font-family: 'Syne', sans-serif; color: var(--text); background: var(--bg
 }
 .tb-btn:hover { border-color: var(--accent); color: var(--accent); }
 
+/* More visible Sign Out button */
+.tb-btn.tb-danger {
+  background: rgba(239,68,68,.12);
+  border-color: rgba(239,68,68,.45);
+  color: #fca5a5;
+  font-weight: 800;
+}
+.tb-btn.tb-danger:hover {
+  border-color: #ef4444;
+  color: #fff;
+  background: rgba(239,68,68,.22);
+}
+@media (max-width: 420px) {
+  .tb-btn.tb-danger .so-label { display: none; }
+}
+
+
 /* ── SIDEBAR TOGGLE BUTTON ── */
 #sidebar-toggle {
   position: absolute;
@@ -1052,7 +1069,7 @@ body { font-family: 'Syne', sans-serif; color: var(--text); background: var(--bg
       <button id="btn-manager" class="tb-btn" onclick="openManagerPanel()">👥 Team</button>
       <button class="tb-btn" onclick="openBadge()">🪪 My Badge</button>
       <button class="tb-btn" onclick="openModal()">⚙ Setup Guide</button>
-      <button class="tb-btn" onclick="openSignOutConfirm()" title="Sign out" style="color:#f87171;border-color:rgba(239,68,68,.3);">⏻</button>
+      <button class="tb-btn tb-danger" id="btn-signout" onclick="openSignOutConfirm()" title="Sign out"><span class="so-icon">⏻</span> <span class="so-label">Sign Out</span></button>
     </div>
   </div>
 
