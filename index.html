@@ -2496,7 +2496,7 @@ function submitSale(pkgLabel) {
 
   var pkg = PKG[selPkg];
   var monthlyTotal = (pkg.base + EERO + PROC).toFixed(2);
-  var pricingSummary = pkgLabel + ' | Monthly: $' + monthlyTotal + ' | First Month: $6.00 (internet free)';
+  var pricingSummary = pkgLabel + ' | Monthly: $' + monthlyTotal + ' | First Month: $16.00 (internet free)';
   if (install) {
     var installDate      = new Date(install + 'T12:00:00');
     var daysInMonth      = new Date(installDate.getFullYear(), installDate.getMonth() + 1, 0).getDate();
@@ -2505,7 +2505,7 @@ function submitSale(pkgLabel) {
     var proratedInternet = (pkg.base / daysInMonth) * diffDays;
     var proratedEero     = (EERO / daysInMonth) * diffDays;
     var dueAtInstall     = (proratedInternet + proratedEero + PROC).toFixed(2);
-    pricingSummary += ' | Due at Install: $' + dueAtInstall + ' (' + diffDays + ' day proration)';
+    pricingSummary += ' | Estimated Proration: $' + dueAtInstall + ' (' + diffDays + ' day proration)';
   }
 
   var payload = {
