@@ -1,5 +1,5 @@
-// Zito Fiber Sales — Service Worker
-const CACHE = 'zito-fiber-v3';
+// Zito FieldOS — Service Worker
+const CACHE = 'fieldos-v1.0.3';
 
 // Core assets to cache on install
 const PRECACHE = [
@@ -45,9 +45,19 @@ self.addEventListener('fetch', function(e) {
   if (url.includes('script.google.com') || url.includes('nominatim.openstreetmap.org')) {
     e.respondWith(
       fetch(e.request).catch(function() {
-        return new Response(JSON.stringify({ error: 'Offline — no network available' }), {
+        return new Response(JSON.stringify({ error: 'Offline — network unavailable' }), {
           headers: { 'Content-Type': 'application/json' }
         });
+      })
+    );
+    return;
+  }
+
+  // If it's a navigation request, try network first then fall back to cached app shell
+  if (e.request.mode === 'navigate') {
+    e.respondWith(
+      fetch(e.request).catch(function() {
+        return caches.match('./index.html');
       })
     );
     return;

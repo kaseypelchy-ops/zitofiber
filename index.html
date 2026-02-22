@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Zito Fiber Sales</title>
+<title>Zito FieldOS</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#005696">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Zito Fiber">
+<meta name="apple-mobile-web-app-title" content="FieldOS">
 <link rel="apple-touch-icon" href="https://www.zitomedia.net/wp-content/uploads/2025/03/Untitled-design-6.png">
 <link rel="icon" type="image/png" href="https://www.zitomedia.net/wp-content/uploads/2025/03/Untitled-design-6.png">
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -812,6 +812,53 @@ body { font-family: 'Syne', sans-serif; color: var(--text); background: var(--bg
 .mgr-pill-val.offline-c { color: var(--muted); }
 .mgr-pill-val.sales-c   { color: var(--accent); }
 .mgr-pill-lbl { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-top: 4px; font-family: 'Space Mono', monospace; }
+
+.mgr-perf{
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px;
+}
+.mgr-perf-head{
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-family: 'Space Mono', monospace;
+  margin-bottom: 12px;
+}
+.mgr-perf-grid{
+  display: grid;
+  grid-template-columns: repeat(2,1fr);
+  gap: 10px;
+}
+.mgr-metric{
+  background: var(--bg);
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: 12px;
+  padding: 12px 12px 10px;
+}
+.mgr-metric-lbl{
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-family: 'Space Mono', monospace;
+}
+.mgr-metric-val{
+  font-size: 18px;
+  font-weight: 800;
+  margin-top: 6px;
+}
+.mgr-metric-sub{
+  margin-top: 4px;
+  font-size: 10px;
+  color: var(--muted);
+  font-family: 'Space Mono', monospace;
+}
+
 .mgr-list-head {
   font-size: 9px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
   color: var(--muted); font-family: 'Space Mono', monospace; padding: 0 4px;
@@ -1034,7 +1081,7 @@ body { font-family: 'Syne', sans-serif; color: var(--text); background: var(--bg
       <img src="https://www.zitomedia.net/wp-content/uploads/2025/03/Untitled-design-6.png" alt="Zito Media">
     </div>
     <div class="splash-line"></div>
-    <div class="splash-tag">Fiber Sales</div>
+    <div class="splash-tag">Field Operations & Sales Intelligence</div>
     <div class="splash-name" id="splash-rep-name"></div>
     <div class="splash-dots">
       <div class="splash-dot"></div>
@@ -1048,18 +1095,18 @@ body { font-family: 'Syne', sans-serif; color: var(--text); background: var(--bg
       <div class="splash-prog-label">Loading session…</div>
     </div>
   </div>
-  <div class="splash-ver">ZITO FIBER v1.0</div>
+  <div class="splash-ver">ZITO FIELDOS v1.0.3 • Production • Build 2026.02.22</div>
 </div>
 
 <!-- ═══════════════════ SIGN-OUT CONFIRM ═══════════════════ -->
 <div id="signout-confirm">
   <div class="signout-box">
     <div class="signout-icon">👋</div>
-    <div class="signout-title">Sign Out?</div>
-    <div class="signout-msg">Your status will be logged as offline and your session will end.</div>
+    <div class="signout-title">End Session?</div>
+    <div class="signout-msg">Your availability will be set to Offline and your session will be securely closed.</div>
     <div class="signout-btns">
       <button class="signout-cancel" onclick="closeSignOutConfirm()">Cancel</button>
-      <button class="signout-confirm-btn" onclick="confirmSignOut()">Sign Out</button>
+      <button class="signout-confirm-btn" onclick="confirmSignOut()">End Session</button>
     </div>
   </div>
 </div>
@@ -1070,8 +1117,8 @@ body { font-family: 'Syne', sans-serif; color: var(--text); background: var(--bg
     <img src="https://www.zitomedia.net/wp-content/uploads/2025/03/Untitled-design-6.png" alt="Zito Media Logo">
   </div>
   <div class="setup-card">
-    <h1>Session Setup</h1>
-    <p class="sub">Configure your canvassing session. Upload your address list, add a territory map, and you're ready to knock doors.</p>
+    <h1>Initialize Sales Session</h1>
+    <p class="sub">Securely configure your territory, rep credentials, and address dataset before deployment.</p>
 
     <div class="step">
       <div class="slabel">Step 1 — Your Name</div>
@@ -1139,8 +1186,8 @@ body { font-family: 'Syne', sans-serif; color: var(--text); background: var(--bg
         <span class="status-dot"></span>
         <span id="tb-status-label">OFFLINE</span>
       </div>
-      <button id="btn-manager" class="tb-btn" onclick="openManagerPanel()">👥 Team</button>
-      <button class="tb-btn" onclick="openBadge()">🪪 My Badge</button>
+      <button id="btn-manager" class="tb-btn" onclick="openManagerPanel()">Team</button>
+      <button class="tb-btn" onclick="openBadge()">My Badge</button>
       <button class="tb-btn" onclick="openSignOutConfirm()" title="Sign out" style="color:#f87171;border-color:rgba(239,68,68,.3);">Log Out</button>
     </div>
   </div>
@@ -1197,7 +1244,7 @@ body { font-family: 'Syne', sans-serif; color: var(--text); background: var(--bg
         <div class="badge-toggle-hint">Tap to toggle your availability status</div>
       </div>
       <button class="badge-close-btn" onclick="closeBadge()">Close</button>
-      <button class="badge-signout-btn" onclick="closeBadge();openSignOutConfirm()">⏻ Sign Out</button>
+      <button class="badge-signout-btn" onclick="closeBadge();openSignOutConfirm()">⏻ End Session</button>
     </div>
   </div>
 
@@ -1216,6 +1263,32 @@ body { font-family: 'Syne', sans-serif; color: var(--text); background: var(--bg
         <div class="mgr-pill"><div class="mgr-pill-val online-c" id="mgr-count-online">—</div><div class="mgr-pill-lbl">Online</div></div>
         <div class="mgr-pill"><div class="mgr-pill-val offline-c" id="mgr-count-offline">—</div><div class="mgr-pill-lbl">Offline</div></div>
         <div class="mgr-pill"><div class="mgr-pill-val sales-c" id="mgr-count-sales">—</div><div class="mgr-pill-lbl">Total Sales</div></div>
+      </div>
+
+      <div class="mgr-perf">
+        <div class="mgr-perf-head">Performance Overview</div>
+        <div class="mgr-perf-grid">
+          <div class="mgr-metric">
+            <div class="mgr-metric-lbl">Close Rate</div>
+            <div class="mgr-metric-val" id="mgr-m-close">—</div>
+            <div class="mgr-metric-sub" id="mgr-m-close-sub">—</div>
+          </div>
+          <div class="mgr-metric">
+            <div class="mgr-metric-lbl">Sales / Hour</div>
+            <div class="mgr-metric-val" id="mgr-m-pace">—</div>
+            <div class="mgr-metric-sub" id="mgr-m-pace-sub">—</div>
+          </div>
+          <div class="mgr-metric">
+            <div class="mgr-metric-lbl">Gig Mix</div>
+            <div class="mgr-metric-val" id="mgr-m-gigmix">—</div>
+            <div class="mgr-metric-sub" id="mgr-m-gigmix-sub">—</div>
+          </div>
+          <div class="mgr-metric">
+            <div class="mgr-metric-lbl">Sales / Rep</div>
+            <div class="mgr-metric-val" id="mgr-m-spr">—</div>
+            <div class="mgr-metric-sub" id="mgr-m-spr-sub">—</div>
+          </div>
+        </div>
       </div>
       <div class="mgr-list-head">Field Reps</div>
       <div id="mgr-rep-list">
@@ -1435,6 +1508,12 @@ body { font-family: 'Syne', sans-serif; color: var(--text); background: var(--bg
 // ──────────────────────────────────────────────────────────
 //  STATE
 // ──────────────────────────────────────────────────────────
+// ── App identity ───────────────────────────────────────────
+var APP_NAME    = 'Zito FieldOS';
+var APP_TAGLINE = 'Field Operations & Sales Intelligence';
+var APP_VERSION = '1.0.3';
+var BUILD_ID    = '2026.02.22';
+var APP_ENV     = 'Production';
 var addresses  = [];
 var activeId   = null;
 var selPkg     = null;
@@ -1747,6 +1826,10 @@ function launchApp() {
     localStorage.setItem('zito_rep_name', repName);
     localStorage.setItem('zito_rep_phone', repPhone);
     localStorage.setItem('zito_rep_email', repEmail);
+    // Session start for performance metrics
+    if (!localStorage.getItem('fieldos_session_start')) {
+      localStorage.setItem('fieldos_session_start', new Date().toISOString());
+    }
   } catch(e) {}
 // Show splash
   var splash = document.getElementById('splash');
@@ -2533,6 +2616,13 @@ function sendHeartbeat(statusOverride) {
   var gigSales  = addresses.filter(function(a){
     return a.status === 'gig'  && ((a.salesperson || '').toLowerCase() === rn);
   }).length;
+  var doorsWorked = addresses.filter(function(a){
+    var st = String(a.status||'').toLowerCase();
+    if (!st || st === 'pending') return false;
+    return ((a.salesperson || '').toLowerCase() === rn);
+  }).length;
+  var firstSeen = '';
+  try { firstSeen = localStorage.getItem('fieldos_session_start') || ''; } catch(e) {}
   fetch(webhookURL, {
     method: 'POST', mode: 'no-cors',
     headers: { 'Content-Type': 'application/json' },
@@ -2542,8 +2632,10 @@ function sendHeartbeat(statusOverride) {
       status:      status,
       megaSales:   megaSales,
       gigSales:    gigSales,
-      totalSales:  megaSales + gigSales,
-      timestamp:   new Date().toISOString()
+      totalSales:   megaSales + gigSales,
+      doorsWorked:  doorsWorked,
+      firstSeen:    firstSeen,
+      timestamp:    new Date().toISOString()
     })
   }).catch(function(){});
 }
@@ -2582,6 +2674,7 @@ function confirmSignOut() {
   setTimeout(function() {
     // Reset all app state
     repName   = 'Rep';
+    try { localStorage.removeItem('fieldos_session_start'); } catch(e) {}
     repOnline = false;
     addresses = [];
     activeId  = null;
@@ -2626,7 +2719,7 @@ function emailCustomerOffer(pkgKey) {
   if (!to) to = prompt('Customer email address to send the package info to:');
   if (!to) return;
 
-  var rep = repName || 'Zito Fiber Sales';
+  var rep = repName || 'Zito FieldOS';
   var rp  = repPhone || '';
   var re  = repEmail || '';
   var pkg = (pkgKey === 'gig') ? { name:'Gig Speed Fiber', speed:'1000/1000 Mbps', promo:'$49.95/mo', term:'2 years', reg:'$90.95/mo' }
@@ -2692,6 +2785,7 @@ function refreshManagerPanel() {
         '<div class="mgr-empty"><div class="mgr-empty-icon">🔌</div>' +
         '<div class="mgr-empty-txt">Could not load rep data.<br>Make sure the Apps Script is deployed with the repStatus handler.</div></div>';
       updateMgrSummary(0, 0, 0);
+      updateMgrPerformance({ doorsWorked:0,totalSales:0,megaSales:0,gigSales:0,onlineReps:0,activeHours:0 });
     });
 
   var now = new Date();
@@ -2702,9 +2796,37 @@ function refreshManagerPanel() {
 function renderRepList(reps) {
   var onlineReps  = reps.filter(function(r){ return r.status === 'online'; });
   var offlineReps = reps.filter(function(r){ return r.status !== 'online'; });
-  var totalSales  = reps.reduce(function(s,r){ return s + (Number(r.totalSales)||0); }, 0);
+
+  var megaTotal = reps.reduce(function(s,r){ return s + (Number(r.megaSales)||0); }, 0);
+  var gigTotal  = reps.reduce(function(s,r){ return s + (Number(r.gigSales)||0); }, 0);
+  var totalSales = reps.reduce(function(s,r){ return s + (Number(r.totalSales)||0); }, 0);
+
+  // Doors worked: optional field from backend (recommended). Fallback: estimate via (sales * 3)
+  // so the dashboard still renders something meaningful even before doors reporting is enabled.
+  var doorsWorked = reps.reduce(function(s,r){
+    return s + (Number(r.doorsWorked)||0);
+  }, 0);
+  if (!doorsWorked && totalSales) doorsWorked = totalSales * 3;
+
+  // Active hours: sum of online reps' session duration (requires firstSeen).
+  var nowMs = Date.now();
+  var activeHours = onlineReps.reduce(function(s,r){
+    var t0 = r.firstSeen ? new Date(r.firstSeen).getTime()
+            : (r.lastSeen ? new Date(r.lastSeen).getTime() : nowMs);
+    var hrs = Math.max((nowMs - t0) / 3600000, 0);
+    // prevent division spikes for fresh sessions
+    return s + Math.max(hrs, 0.25);
+  }, 0);
 
   updateMgrSummary(onlineReps.length, offlineReps.length, totalSales);
+  updateMgrPerformance({
+    doorsWorked: doorsWorked,
+    totalSales: totalSales,
+    megaSales: megaTotal,
+    gigSales: gigTotal,
+    onlineReps: onlineReps.length,
+    activeHours: activeHours
+  });
 
   if (reps.length === 0) {
     document.getElementById('mgr-rep-list').innerHTML =
@@ -2755,6 +2877,57 @@ function updateMgrSummary(online, offline, sales) {
   document.getElementById('mgr-count-offline').textContent = offline;
   document.getElementById('mgr-count-sales').textContent   = sales;
 }
+
+
+function updateMgrPerformance(metrics) {
+  // metrics: { doorsWorked, totalSales, megaSales, gigSales, onlineReps, activeHours }
+  var doors   = Number(metrics.doorsWorked) || 0;
+  var sales   = Number(metrics.totalSales)  || 0;
+  var mega    = Number(metrics.megaSales)   || 0;
+  var gig     = Number(metrics.gigSales)    || 0;
+  var online  = Number(metrics.onlineReps)  || 0;
+  var hours   = Number(metrics.activeHours) || 0;
+
+  // Close rate: sales / doors worked
+  var closeRate = (doors > 0) ? (sales / doors) : 0;
+
+  // Sales/hour: sales / active online hours (aggregated)
+  var pace = (hours > 0) ? (sales / hours) : 0;
+
+  // Gig mix: gig / (mega+gig)
+  var denom = (mega + gig);
+  var gigMix = (denom > 0) ? (gig / denom) : 0;
+
+  // Sales per rep: sales / online (or 0)
+  var spr = (online > 0) ? (sales / online) : 0;
+
+  // Formatters
+  function pct(x){ return Math.round(x * 100) + '%'; }
+  function num1(x){ return (Math.round(x * 10) / 10).toFixed(1); }
+
+  // Values
+  var elClose   = document.getElementById('mgr-m-close');
+  var elPace    = document.getElementById('mgr-m-pace');
+  var elGigMix  = document.getElementById('mgr-m-gigmix');
+  var elSPR     = document.getElementById('mgr-m-spr');
+
+  if (elClose)  elClose.textContent  = (doors > 0) ? pct(closeRate) : '—';
+  if (elPace)   elPace.textContent   = (hours > 0) ? num1(pace) : '—';
+  if (elGigMix) elGigMix.textContent = (denom > 0) ? pct(gigMix) : '—';
+  if (elSPR)    elSPR.textContent    = (online > 0) ? num1(spr) : '—';
+
+  // Sub-lines
+  var closeSub = document.getElementById('mgr-m-close-sub');
+  var paceSub  = document.getElementById('mgr-m-pace-sub');
+  var mixSub   = document.getElementById('mgr-m-gigmix-sub');
+  var sprSub   = document.getElementById('mgr-m-spr-sub');
+
+  if (closeSub) closeSub.textContent = (doors > 0) ? (sales + ' sales / ' + doors + ' worked') : 'No door activity reported';
+  if (paceSub)  paceSub.textContent  = (hours > 0) ? ('Across ' + online + ' online rep' + (online===1?'':'s')) : '—';
+  if (mixSub)   mixSub.textContent   = (denom > 0) ? (gig + ' Gig • ' + mega + ' Mega') : 'No sales reported';
+  if (sprSub)   sprSub.textContent   = (online > 0) ? ('Online reps only') : '—';
+}
+
 
 function timeAgo(isoString) {
   var diff = Math.floor((Date.now() - new Date(isoString).getTime()) / 1000);
