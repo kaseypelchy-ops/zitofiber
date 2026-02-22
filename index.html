@@ -150,23 +150,6 @@ body { font-family: 'Syne', sans-serif; color: var(--text); background: var(--bg
 }
 .tb-btn:hover { border-color: var(--accent); color: var(--accent); }
 
-/* More visible Sign Out button */
-.tb-btn.tb-danger {
-  background: rgba(239,68,68,.12);
-  border-color: rgba(239,68,68,.45);
-  color: #fca5a5;
-  font-weight: 800;
-}
-.tb-btn.tb-danger:hover {
-  border-color: #ef4444;
-  color: #fff;
-  background: rgba(239,68,68,.22);
-}
-@media (max-width: 420px) {
-  .tb-btn.tb-danger .so-label { display: none; }
-}
-
-
 /* ── SIDEBAR TOGGLE BUTTON ── */
 #sidebar-toggle {
   position: absolute;
@@ -1069,7 +1052,7 @@ body { font-family: 'Syne', sans-serif; color: var(--text); background: var(--bg
       <button id="btn-manager" class="tb-btn" onclick="openManagerPanel()">👥 Team</button>
       <button class="tb-btn" onclick="openBadge()">🪪 My Badge</button>
       <button class="tb-btn" onclick="openModal()">⚙ Setup Guide</button>
-      <button class="tb-btn tb-danger" id="btn-signout" onclick="openSignOutConfirm()" title="Sign out"><span class="so-icon">⏻</span> <span class="so-label">Sign Out</span></button>
+      <button class="tb-btn" onclick="openSignOutConfirm()" title="Sign out" style="color:#f87171;border-color:rgba(239,68,68,.3);">⏻</button>
     </div>
   </div>
 
@@ -1575,6 +1558,7 @@ function fetchAddressesFromSheet() {
           lng:         parseFloat(row.lng)  || null,
           activeCount: ac || status,
           status:      status,
+          salesperson: (row.salesperson || '').trim(),
           sale:        null
         };
       });
@@ -2333,6 +2317,7 @@ function submitSale(pkgLabel) {
   }
 
   addr.status = (selPkg === 'mega') ? 'mega' : 'gig';
+  addr.salesperson = repName; // credit this sale to the rep locally (and in sheet via status_update)
   addr.sale   = { firstName: first, lastName: last, phone: phone, email: email, notes: notes };
   updateAddressStatus(addr, addr.status);
   if (addr.lat && addr.lng) placeMarker(addr);
@@ -2360,6 +2345,7 @@ function submitStatus() {
 
   var smap = { 'Not Home':'nothome','Brightspeed':'brightspeed','In Contract':'incontract','Not Interested':'notinterested','Go Back Later':'goback','Vacant':'vacant','Business':'business' };
   addr.status = smap[selStatus] || 'nocontact';
+  addr.salesperson = repName; // keep ownership consistent for rep-based counting
   updateAddressStatus(addr, addr.status);
   if (addr.lat && addr.lng) placeMarker(addr);
   updateStats();
@@ -2422,8 +2408,14 @@ function sendHeartbeat(statusOverride) {
   var cleanName = (repName || '').trim();
   if (!webhookURL || isManager() || !cleanName || cleanName.toLowerCase() === 'rep') return;
   var status    = (statusOverride !== undefined) ? statusOverride : (repOnline ? 'online' : 'offline');
-  var megaSales = addresses.filter(function(a){ return a.status === 'mega'; }).length;
-  var gigSales  = addresses.filter(function(a){ return a.status === 'gig';  }).length;
+  // Only count sales that belong to THIS rep (prevents every rep showing the same totals)
+  var rn = cleanName.toLowerCase();
+  var megaSales = addresses.filter(function(a){
+    return a.status === 'mega' && ((a.salesperson || '').toLowerCase() === rn);
+  }).length;
+  var gigSales  = addresses.filter(function(a){
+    return a.status === 'gig'  && ((a.salesperson || '').toLowerCase() === rn);
+  }).length;
   fetch(webhookURL, {
     method: 'POST', mode: 'no-cors',
     headers: { 'Content-Type': 'application/json' },
