@@ -1464,6 +1464,10 @@ body { font-family: 'Syne', sans-serif; color: var(--text); background: var(--bg
         <button class="stbtn" id="sbt-vac" onclick="pickStatus('Vacant')">🏚️ Vacant</button>
         <button class="stbtn" id="sbt-biz" onclick="pickStatus('Business')">🏢 Business</button>
       </div>
+      <div id="nosale-note-wrap" style="display:none; margin-bottom:12px;">
+        <label class="fl" for="f-nosale-note">Disposition Note <span style="color: var(--muted);">(optional)</span></label>
+        <textarea class="fi" id="f-nosale-note" rows="3" placeholder="Quick note (optional)…" style="resize:vertical;"></textarea>
+      </div>
       <button class="btn-log" onclick="submitStatus()">Log Status (no sale)</button>
 
       </div><!-- end sales-form-body -->
@@ -2172,6 +2176,8 @@ function openForm(id) {
 
   selPkg    = null;
   selStatus = null;
+  toggleNoSaleNote();
+  toggleNoSaleNote();
   document.getElementById('pkg-mega').className = 'pkg-card mega-card';
   document.getElementById('pkg-gig').className  = 'pkg-card gig-card';
   document.getElementById('btn-mega').disabled  = true;
@@ -2449,6 +2455,16 @@ function calcPricing() {
   proSection.style.display = 'block';
 }
 
+function toggleNoSaleNote() {
+  var wrap = document.getElementById('nosale-note-wrap');
+  var ta   = document.getElementById('f-nosale-note');
+  if (!wrap || !ta) return;
+
+  var needs = (selStatus === 'Not Interested' || selStatus === 'Not Home' || selStatus === 'Go Back Later');
+  wrap.style.display = needs ? 'block' : 'none';
+  if (!needs) ta.value = '';
+}
+
 function pickStatus(s) {
   selStatus = s;
   var map = {
@@ -2462,6 +2478,7 @@ function pickStatus(s) {
   };
   ['sbt-nh','sbt-bs','sbt-ic','sbt-ni','sbt-gbl','sbt-vac','sbt-biz'].forEach(function(sid) { document.getElementById(sid).className = 'stbtn'; });
   if (map[s]) document.getElementById(map[s].id).className = 'stbtn ' + map[s].cls;
+  toggleNoSaleNote();
 }
 
 function fmtPhone(inp) {
@@ -2544,13 +2561,18 @@ function submitStatus() {
   var addr = getAddr();
   if (!addr)      { toast('No address selected', 't-err'); return; }
   if (!selStatus) { toast('⚠ Pick a status first', 't-err'); return; }
+  var notes = document.getElementById('f-notes').value.trim();
+  // Optional disposition note (shown for Not Home / Not Interested / Go Back Later)
+  var nsEl   = document.getElementById('f-nosale-note');
+  var nsNote = nsEl ? nsEl.value.trim() : '';
 
-  var notes   = document.getElementById('f-notes').value.trim();
+  // If a disposition note is provided, prefer it; otherwise fall back to the main notes box.
+  var finalNotes = nsNote || notes;
   var payload = {
     salesperson: repName,
     address: addr.address, city: addr.city||'', state: addr.state||'', zip: addr.zip||'',
     firstName:'', lastName:'', phone:'', email:'',
-    package:'', notes: notes,
+    package:'', notes: finalNotes,
     status: selStatus
   };
 
@@ -2568,11 +2590,21 @@ function submitStatus() {
 
 function updateAddressStatus(addr, status) {
   if (!addr.sheetRow) return;
+
+  var noteEl = document.getElementById('no-sale-note');
+  var note   = noteEl ? (noteEl.value || '').trim() : '';
+
   fetch(webhookURL, {
     method: 'POST',
     mode: 'no-cors',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ type:'status_update', sheetRow:addr.sheetRow, status:status, salesperson:repName })
+    body: JSON.stringify({
+      type: 'status_update',
+      sheetRow: addr.sheetRow,
+      status: status,
+      salesperson: repName,
+      dispositionNote: note
+    })
   }).catch(function(){});
 }
 
