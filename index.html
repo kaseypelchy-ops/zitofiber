@@ -14,10 +14,7 @@
 <link rel="icon" type="image/png" href="https://www.zitomedia.net/wp-content/uploads/2025/03/Untitled-design-6.png">
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js">
-// Restore rep profile on first load (helps after redeploy)
-restoreRepProfile();
-</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
@@ -285,7 +282,8 @@ body { font-family: 'Syne', sans-serif; color: var(--text); background: var(--bg
 #panel-form {
   position: absolute; top: 52px; right: 0; width: 360px; bottom: 0;
   background: var(--surface); border-left: 1px solid var(--border);
-  display: flex; flex-direction: column; z-index: 200;
+  /* Keep sales form above map overlays (weather pill/radar/temp) */
+  display: flex; flex-direction: column; z-index: 1200;
   transform: translateX(100%); transition: transform .25s ease;
 }
 #panel-form.open { transform: translateX(0); }
@@ -310,6 +308,16 @@ body { font-family: 'Syne', sans-serif; color: var(--text); background: var(--bg
   transition: all .15s;
 }
 .pf-close:hover { border-color: var(--danger); color: var(--danger); }
+
+
+.pf-collapse{
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 6px; color: var(--muted); cursor: pointer;
+  width: 30px; height: 30px; font-size: 16px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .15s;
+}
+.pf-collapse:hover { border-color: var(--brand); color: var(--brand); }
 
 .pf-body { flex: 1; overflow-y: auto; padding: 14px 20px 28px; }
 .pf-body::-webkit-scrollbar { width: 3px; }
@@ -1062,6 +1070,223 @@ body { font-family: 'Syne', sans-serif; color: var(--text); background: var(--bg
   .badge-email-actions{ grid-template-columns: 1fr; }
 }
 
+
+/* ──────────────────────────────────────────────────────────
+   WEATHER PILL (MAP OVERLAY)
+   ────────────────────────────────────────────────────────── */
+.wx-pill{
+  position:absolute;
+  top:64px;
+  right:16px;
+  z-index:999;
+  display:flex;
+  gap:10px;
+  align-items:center;
+  pointer-events:auto;
+}
+
+@media (min-width: 641px){
+  /* When the sales form panel is open, keep the weather pill visible (not underneath the panel). */
+  body.form-open .wx-pill{ right: calc(16px + 360px); }
+}
+@media (max-width: 640px){
+  /* On mobile, the form is full width; keep the pill at the top but not hidden. */
+  body.form-open .wx-pill{ right:16px; }
+}
+
+.wx-chip{
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
+  padding:10px 12px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,.18);
+  background:rgba(6,9,19,.72);
+  color:#eaf0ff;
+  box-shadow:0 10px 28px rgba(0,0,0,.35);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  font-family: Syne, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  font-weight:700;
+  font-size:12px;
+  letter-spacing:.2px;
+}
+.wx-chip:active{ transform: translateY(1px); }
+.wx-toggle{
+  cursor:pointer;
+  user-select:none;
+}
+.wx-label{ opacity:.95; }
+.wx-switch{
+  width:44px;
+  height:24px;
+  border-radius:999px;
+  background:rgba(255,255,255,.12);
+  border:1px solid rgba(255,255,255,.18);
+  position:relative;
+}
+.wx-knob{
+  width:20px;
+  height:20px;
+  border-radius:999px;
+  position:absolute;
+  top:1px;
+  left:1px;
+  background:rgba(255,255,255,.92);
+  transition: left .18s ease, background .18s ease, box-shadow .18s ease;
+  box-shadow:0 6px 16px rgba(0,0,0,.25);
+}
+.wx-toggle.on .wx-switch{
+  background:rgba(70,187,164,.28);
+  border-color: rgba(70,187,164,.55);
+}
+.wx-toggle.on .wx-knob{
+  left:21px;
+  background:rgba(70,187,164,.95);
+  box-shadow:0 10px 20px rgba(70,187,164,.25);
+}
+.wx-temp{
+  min-width:68px;
+  justify-content:center;
+  font-family: "Space Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-weight:800;
+}
+@media (max-width: 640px){
+  .wx-pill{ right:12px; top:60px; gap:8px; }
+  .wx-chip{ padding:9px 11px; font-size:11px; }
+  .wx-temp{ min-width:62px; }
+}
+
+/* ── ADD ADDRESS BUTTON (sidebar footer) ── */
+.pl-footer {
+  padding: 10px 14px;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.btn-add-addr {
+  width: 100%;
+  padding: 10px;
+  background: rgba(0,86,150,.12);
+  border: 1px dashed rgba(0,86,150,.5);
+  border-radius: 9px;
+  color: var(--accent);
+  font-family: 'Syne', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+.btn-add-addr:hover {
+  background: rgba(0,86,150,.22);
+  border-color: var(--accent);
+}
+
+/* ── ADD ADDRESS MODAL ── */
+#add-addr-modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.8);
+  z-index: 3000;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+#add-addr-modal.open { display: flex; }
+.add-addr-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 28px 24px 24px;
+  max-width: 400px;
+  width: 100%;
+}
+.add-addr-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.add-addr-title {
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--text);
+}
+.add-addr-close {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--muted);
+  cursor: pointer;
+  width: 30px;
+  height: 30px;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all .15s;
+}
+.add-addr-close:hover { border-color: var(--danger); color: var(--danger); }
+.add-addr-sub {
+  font-size: 11px;
+  color: var(--muted);
+  font-family: 'Space Mono', monospace;
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+.add-addr-note {
+  margin-top: 12px;
+  font-size: 11px;
+  color: var(--muted);
+  background: rgba(0,86,150,.07);
+  border: 1px solid rgba(0,86,150,.2);
+  border-radius: 7px;
+  padding: 9px 11px;
+  line-height: 1.5;
+}
+.btn-add-addr-submit {
+  width: 100%;
+  margin-top: 16px;
+  padding: 13px;
+  background: var(--accent);
+  color: var(--bg);
+  border: none;
+  border-radius: 10px;
+  font-family: 'Syne', sans-serif;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all .2s;
+}
+.btn-add-addr-submit:hover:not(:disabled) {
+  background: #33deff;
+  transform: translateY(-1px);
+  box-shadow: 0 5px 20px rgba(0,212,255,.3);
+}
+.btn-add-addr-submit:disabled { opacity: .4; cursor: not-allowed; }
+#add-addr-sending {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--muted);
+  font-family: 'Space Mono', monospace;
+  margin-top: 10px;
+}
+.add-addr-spinner {
+  width: 13px; height: 13px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: sched-spin .7s linear infinite;
+  flex-shrink: 0;
+}
+
 </style>
 </head>
 <body>
@@ -1304,9 +1529,60 @@ body { font-family: 'Syne', sans-serif; color: var(--text); background: var(--bg
       <input class="search-in" id="addr-search" placeholder="🔍 Search addresses…" oninput="filterList(this.value)">
     </div>
     <div id="addr-items"></div>
+    <div class="pl-footer">
+      <button class="btn-add-addr" onclick="openAddAddrModal()">&#43; Add Address</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ ADD ADDRESS MODAL ═══════════════════ -->
+  <div id="add-addr-modal" onclick="if(event.target===this)closeAddAddrModal()">
+    <div class="add-addr-box">
+      <div class="add-addr-header">
+        <div class="add-addr-title">Add New Address</div>
+        <button class="add-addr-close" onclick="closeAddAddrModal()">&#10005;</button>
+      </div>
+      <div class="add-addr-sub">Enter a home not in the current list. It will be added to your session and saved to the Addresses tab in Google Sheets.</div>
+
+      <div class="fg">
+        <label class="fl">Street Address <span style="color:var(--danger)">*</span></label>
+        <input class="fi" type="text" id="new-addr-street" placeholder="e.g. 123 Oak St" oninput="checkNewAddrReady()">
+      </div>
+      <div class="fg-row">
+        <div>
+          <label class="fl">City <span style="color:var(--danger)">*</span></label>
+          <input class="fi" type="text" id="new-addr-city" placeholder="e.g. Burnsville" oninput="checkNewAddrReady()">
+        </div>
+        <div>
+          <label class="fl">State</label>
+          <input class="fi" type="text" id="new-addr-state" placeholder="e.g. NC" maxlength="2">
+        </div>
+      </div>
+      <div class="fg">
+        <label class="fl">ZIP Code</label>
+        <input class="fi" type="text" id="new-addr-zip" placeholder="e.g. 28714" maxlength="10">
+      </div>
+
+      <div class="add-addr-note">
+        &#128203; This address will also be written to the <strong>Addresses</strong> tab of your Google Sheet so it persists for future sessions.
+      </div>
+
+      <button class="btn-add-addr-submit" id="btn-new-addr-submit" onclick="submitNewAddress()" disabled>Add Address</button>
+      <div id="add-addr-sending">
+        <div class="add-addr-spinner"></div> Saving to Google Sheet&hellip;
+      </div>
+    </div>
   </div>
 
   <div id="map"></div>
+
+  <!-- Weather Overlay Pill -->
+  <div id="wx-pill" class="wx-pill" aria-label="Weather controls">
+    <button id="wx-radar-toggle" class="wx-chip wx-toggle" type="button" onclick="wxToggleRadar()" aria-pressed="false">
+      <span class="wx-label">Radar</span>
+      <span class="wx-switch" aria-hidden="true"><span class="wx-knob"></span></span>
+    </button>
+    <div id="wx-temp" class="wx-chip wx-temp" title="Current temperature">—°F</div>
+  </div>
 
   <!-- Geocoding progress bar -->
   <div id="geocode-bar" style="display:none;position:absolute;bottom:20px;left:50%;transform:translateX(-50%);
@@ -1325,6 +1601,7 @@ body { font-family: 'Syne', sans-serif; color: var(--text); background: var(--bg
         <div class="pf-addr" id="pf-addr-line"></div>
         <div class="pf-sub"  id="pf-addr-sub"></div>
       </div>
+      <button class="pf-collapse" id="pf-collapse-btn" onclick="toggleFormCollapse()" title="Collapse / expand form">▾</button>
       <button class="pf-close" onclick="closeForm()">✕</button>
     </div>
     <div class="pf-body">
@@ -1464,11 +1741,14 @@ body { font-family: 'Syne', sans-serif; color: var(--text); background: var(--bg
         <button class="stbtn" id="sbt-vac" onclick="pickStatus('Vacant')">🏚️ Vacant</button>
         <button class="stbtn" id="sbt-biz" onclick="pickStatus('Business')">🏢 Business</button>
       </div>
-      <div id="nosale-note-wrap" style="display:none; margin-bottom:12px;">
-        <label class="fl" for="f-nosale-note">Disposition Note <span style="color: var(--muted);">(optional)</span></label>
-        <textarea class="fi" id="f-nosale-note" rows="3" placeholder="Quick note (optional)…" style="resize:vertical;"></textarea>
+      
+      <!-- No Sale Disposition Note (only for Not Home / Not Interested / Go Back Later) -->
+      <div class="fg" id="ns-note-wrap" style="display:none;">
+        <label class="fl" for="ns-note">Disposition Note</label>
+        <textarea class="fi" id="ns-note" rows="3" placeholder="Quick note (optional)"></textarea>
       </div>
-      <button class="btn-log" onclick="submitStatus()">Log Status (no sale)</button>
+
+<button class="btn-log" onclick="submitStatus()">Log Status (no sale)</button>
 
       </div><!-- end sales-form-body -->
     </div>
@@ -1526,6 +1806,10 @@ var APP_TAGLINE = 'Field Operations & Sales Intelligence';
 var APP_VERSION = '1.0.3';
 var BUILD_ID    = '2026.02.22';
 var APP_ENV     = 'Production';
+
+// ✅ Color constants (used by markers/tags/overlays)
+
+
 var addresses  = [];
 var activeId   = null;
 var selPkg     = null;
@@ -1541,6 +1825,35 @@ var mapMarkers = {};
 var kmlGeoJSON = null;
 var toastTimer = null;
 var sidebarOpen = true;
+
+// ──────────────────────────────────────────────────────────
+//  COLORS (fix: ensure both `COLORS` and `colors` exist)
+// ──────────────────────────────────────────────────────────
+var COLORS = {
+  pending:       '#6b7280',
+  mega:          '#8b5cf6',
+  gig:           '#10b981',
+  nothome:       '#d97706',
+  brightspeed:   '#ef4444',
+  incontract:    '#818cf8',
+  notinterested: '#dc2626',
+  goback:        '#06b6d4',
+  vacant:        '#ca8a04',
+  business:      '#6366f1'
+};
+var COLOR_ACTIVE = '#facc15';
+var COLOR_PASSED = '#6b7280';
+
+// Optional theme palette used by some UI bits
+var colors = {
+  accent: '#005696',
+  mega:   '#8b5cf6',
+  gig:    '#10b981',
+  warn:   '#d97706',
+  danger: '#ef4444',
+  muted:  '#8b949e'
+};
+
 
 // ──────────────────────────────────────────────────────────
 //  SIDEBAR TOGGLE
@@ -1828,8 +2141,6 @@ function startPolling() {
 
 function launchApp() {
   repName = (document.getElementById('rep-name').value || '').trim();
-
-  
   repPhone = (document.getElementById('rep-phone') ? (document.getElementById('rep-phone').value || '').trim() : '');
   repEmail = (document.getElementById('rep-email') ? (document.getElementById('rep-email').value || '').trim() : '');
 
@@ -1843,43 +2154,197 @@ function launchApp() {
       localStorage.setItem('fieldos_session_start', new Date().toISOString());
     }
   } catch(e) {}
-// Show splash
+
+  // Show splash immediately
   var splash = document.getElementById('splash');
   document.getElementById('splash-rep-name').textContent = repName;
   var fill = document.getElementById('splash-prog-fill');
-  fill.style.animation = 'none'; fill.offsetHeight; fill.style.animation = '';
-  splash.classList.remove('gone', 'fade-out');
+  if (fill) { fill.style.animation = 'none'; fill.offsetHeight; fill.style.animation = ''; }
+  if (splash) splash.classList.remove('gone', 'fade-out');
 
-  // Boot app behind splash
-  document.getElementById('page-setup').style.display = 'none';
-  document.getElementById('page-app').style.display   = 'block';
-  updateStats();
-  buildList();
-  initMap();
-  geocodeAll();
-  startPolling();
-  maybeAutoCollapse();
-  initBadge();
-
-  // Fade splash out after ~4.5s
-  setTimeout(function() {
+  // IMPORTANT: schedule splash fade-out up front so we don't get stuck if something errors
+  var fadeTimer = setTimeout(function() {
+    if (!splash) return;
     splash.classList.add('fade-out');
     setTimeout(function() { splash.classList.add('gone'); }, 700);
   }, 4500);
+
+  // Boot app behind splash
+  try {
+    document.getElementById('page-setup').style.display = 'none';
+    document.getElementById('page-app').style.display   = 'block';
+
+    updateStats();
+    buildList();
+    initMap();
+    geocodeAll();
+    startPolling();
+    maybeAutoCollapse();
+    initBadge();
+  } catch (err) {
+    // If anything fails, don't trap the user on splash
+    try { clearTimeout(fadeTimer); } catch(e) {}
+    if (splash) { splash.classList.add('fade-out'); setTimeout(function(){ splash.classList.add('gone'); }, 300); }
+    console.error(err);
+    toast('App error: ' + String(err), 't-err');
+  }
 }
 
 // ──────────────────────────────────────────────────────────
 //  MAP
 // ──────────────────────────────────────────────────────────
+  // ──────────────────────────────────────────────────────────
+  //  WEATHER (RADAR + TEMPERATURE)
+  // ──────────────────────────────────────────────────────────
+  var wxRadarLayer = null;
+  var wxRadarMeta  = null;
+  var wxRadarOn    = false;
+  var wxRadarRefreshTimer = null;
+
+  var wxLastTempFetch = 0;
+  var wxTempTimer = null;
+
+  function wxSetRadarUI_(on) {
+    wxRadarOn = !!on;
+    var btn = document.getElementById('wx-radar-toggle');
+    if (!btn) return;
+    btn.classList.toggle('on', wxRadarOn);
+    btn.setAttribute('aria-pressed', wxRadarOn ? 'true' : 'false');
+  }
+
+  // Toggle from the pill
+  function wxToggleRadar() {
+    if (!mapObj) return;
+    if (!wxRadarLayer) {
+      // If user toggles before radar metadata loads, try to init now
+      wxSetRadarUI_(true);
+      wxInitRadarOverlay_();
+      return;
+    }
+    if (mapObj.hasLayer(wxRadarLayer)) {
+      mapObj.removeLayer(wxRadarLayer);
+      wxSetRadarUI_(false);
+    } else {
+      wxRadarLayer.addTo(mapObj);
+      wxSetRadarUI_(true);
+    }
+  }
+
+  // Load / refresh radar tiles (RainViewer public API)
+  function wxInitRadarOverlay_() {
+    if (!mapObj) return;
+
+    fetch('https://api.rainviewer.com/public/weather-maps.json')
+      .then(function(r){ return r.json(); })
+      .then(function(meta){
+        wxRadarMeta = meta;
+        var past = meta && meta.radar && meta.radar.past ? meta.radar.past : [];
+        if (!past.length) return;
+
+        // Most recent past frame
+        var frame = past[past.length - 1];
+        var host  = meta.host;
+        var path  = frame.path;
+
+        // {host}{path}/256/{z}/{x}/{y}/{color}/{options}.png
+        var tileUrl = host + path + '/256/{z}/{x}/{y}/2/1_1.png';
+
+        var wasOn = wxRadarLayer && mapObj.hasLayer(wxRadarLayer);
+
+        if (wxRadarLayer) {
+          try { mapObj.removeLayer(wxRadarLayer); } catch(e) {}
+        }
+
+        wxRadarLayer = L.tileLayer(tileUrl, {
+          opacity: 0.55,
+          zIndex: 500,
+          maxNativeZoom: 7,
+          maxZoom: 19
+        });
+
+        // Keep state: if user had it ON (or pill is ON), re-add after refresh
+        if (wasOn || wxRadarOn) {
+          wxRadarLayer.addTo(mapObj);
+          wxSetRadarUI_(true);
+        }
+      })
+      .catch(function(){ /* optional feature; fail silently */ });
+  }
+
+  // Temperature (Open-Meteo: no API key)
+  function wxFetchTemp_(lat, lng) {
+    var now = Date.now();
+    if (now - wxLastTempFetch < 60 * 1000) return; // throttle
+    wxLastTempFetch = now;
+
+    var url =
+      'https://api.open-meteo.com/v1/forecast' +
+      '?latitude=' + encodeURIComponent(lat) +
+      '&longitude=' + encodeURIComponent(lng) +
+      '&current_weather=true' +
+      '&temperature_unit=fahrenheit';
+
+    fetch(url)
+      .then(function(r){ return r.json(); })
+      .then(function(json){
+        var el = document.getElementById('wx-temp');
+        if (!el) return;
+
+        var t = (json && json.current_weather && typeof json.current_weather.temperature === 'number')
+          ? json.current_weather.temperature
+          : null;
+
+        if (t === null) { el.textContent = '—°F'; return; }
+        el.textContent = Math.round(t) + '°F';
+      })
+      .catch(function(){
+        var el = document.getElementById('wx-temp');
+        if (el) el.textContent = '—°F';
+      });
+  }
+
+  function wxUpdateTempFromMap_() {
+    if (!mapObj) return;
+    var c = mapObj.getCenter();
+    wxFetchTemp_(c.lat, c.lng);
+  }
+
+  function wxInitTemperature_() {
+    // Prefer device GPS if available (better than map default US center)
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(function(pos){
+        wxFetchTemp_(pos.coords.latitude, pos.coords.longitude);
+      }, function(){
+        wxUpdateTempFromMap_();
+      }, { enableHighAccuracy: false, timeout: 5000, maximumAge: 600000 });
+    } else {
+      wxUpdateTempFromMap_();
+    }
+
+    // Update on pan/zoom (debounced)
+    var t;
+    mapObj.on('moveend', function(){
+      clearTimeout(t);
+      t = setTimeout(wxUpdateTempFromMap_, 700);
+    });
+
+    // Periodic refresh
+    if (wxTempTimer) clearInterval(wxTempTimer);
+    wxTempTimer = setInterval(wxUpdateTempFromMap_, 10 * 60 * 1000);
+  }
+
 function initMap() {
   mapObj = L.map('map');
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+
+  // Base map
+  var base = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     maxZoom: 19
   }).addTo(mapObj);
 
   mapObj.setView([39.5, -98.35], 5);
 
+  // Territories
   if (kmlGeoJSON && kmlGeoJSON.features.length > 0) {
     var palette = [
       { stroke:'#2563eb', fill:'#3b82f6' },
@@ -1905,24 +2370,20 @@ function initMap() {
     }
   }
 
+  // Markers
   addresses.forEach(function(a) {
     if (a.lat && a.lng) { placeMarker(a); }
   });
-}
 
-var COLORS = {
-  pending:       '#6b7280',
-  mega:          '#7c3aed',
-  gig:           '#059669',
-  nothome:       '#d97706',
-  brightspeed:   '#ef4444',
-  incontract:    '#818cf8',
-  notinterested: '#dc2626',
-  goback:        '#06b6d4',
-  vacant:        '#ca8a04',
-  business:      '#6366f1'
-};var COLOR_ACTIVE  = '#facc15';
-var COLOR_PASSED  = '#6b7280';
+  // Weather: initialize radar metadata, but keep OFF by default
+  wxSetRadarUI_(false);
+  wxInitRadarOverlay_();
+  if (wxRadarRefreshTimer) clearInterval(wxRadarRefreshTimer);
+  wxRadarRefreshTimer = setInterval(wxInitRadarOverlay_, 10 * 60 * 1000);
+
+  // Temperature
+  wxInitTemperature_();
+}
 
 function getMarkerColor(addr) {
   var s = (addr.status || '').toLowerCase().trim();
@@ -2148,13 +2609,18 @@ function openForm(id) {
   for (var i = 0; i < addresses.length; i++) { if (addresses[i].id === id) { addr = addresses[i]; break; } }
   if (!addr) return;
 
-  if (getMarkerShape(addr) === 'bolt') {
+  
+
+  // Always open expanded
+  setFormCollapsed(false);
+if (getMarkerShape(addr) === 'bolt') {
     activeId = id;
     document.getElementById('pf-addr-line').textContent = addr.address;
     document.getElementById('pf-addr-sub').textContent  = [addr.city, addr.state, addr.zip].filter(Boolean).join(', ');
     document.getElementById('active-notice').style.display = 'block';
     document.getElementById('sales-form-body').style.display = 'none';
     document.getElementById('panel-form').classList.add('open');
+  document.body.classList.add('form-open');
     buildList();
     return;
   }
@@ -2176,8 +2642,6 @@ function openForm(id) {
 
   selPkg    = null;
   selStatus = null;
-  toggleNoSaleNote();
-  toggleNoSaleNote();
   document.getElementById('pkg-mega').className = 'pkg-card mega-card';
   document.getElementById('pkg-gig').className  = 'pkg-card gig-card';
   document.getElementById('btn-mega').disabled  = true;
@@ -2199,6 +2663,7 @@ function openForm(id) {
   });
 
   document.getElementById('panel-form').classList.add('open');
+  document.body.classList.add('form-open');
 
   if (addr.lat && addr.lng && mapObj) {
     mapObj.panTo([addr.lat, addr.lng], { animate: true });
@@ -2209,10 +2674,30 @@ function openForm(id) {
 
 function closeForm() {
   document.getElementById('panel-form').classList.remove('open');
+  document.body.classList.remove('form-open');
   activeId  = null;
   selPkg    = null;
   selStatus = null;
   buildList();
+}
+
+// ──────────────────────────────────────────────────────────
+//  SALES FORM COLLAPSE / EXPAND
+// ──────────────────────────────────────────────────────────
+var formCollapsed = false;
+
+function setFormCollapsed(collapsed) {
+  formCollapsed = !!collapsed;
+  var body = document.querySelector('#panel-form .pf-body');
+  var btn  = document.getElementById('pf-collapse-btn');
+  if (!body || !btn) return;
+  body.style.display = formCollapsed ? 'none' : 'block';
+  btn.textContent = formCollapsed ? '▸' : '▾';
+  btn.setAttribute('aria-expanded', String(!formCollapsed));
+}
+
+function toggleFormCollapse() {
+  setFormCollapsed(!formCollapsed);
 }
 
 function pickPkg(p) {
@@ -2455,16 +2940,6 @@ function calcPricing() {
   proSection.style.display = 'block';
 }
 
-function toggleNoSaleNote() {
-  var wrap = document.getElementById('nosale-note-wrap');
-  var ta   = document.getElementById('f-nosale-note');
-  if (!wrap || !ta) return;
-
-  var needs = (selStatus === 'Not Interested' || selStatus === 'Not Home' || selStatus === 'Go Back Later');
-  wrap.style.display = needs ? 'block' : 'none';
-  if (!needs) ta.value = '';
-}
-
 function pickStatus(s) {
   selStatus = s;
   var map = {
@@ -2478,13 +2953,48 @@ function pickStatus(s) {
   };
   ['sbt-nh','sbt-bs','sbt-ic','sbt-ni','sbt-gbl','sbt-vac','sbt-biz'].forEach(function(sid) { document.getElementById(sid).className = 'stbtn'; });
   if (map[s]) document.getElementById(map[s].id).className = 'stbtn ' + map[s].cls;
-  toggleNoSaleNote();
+
+  // ── Show Disposition Note only for specific No Sale outcomes ──
+  var needsNote = (s === 'Not Home' || s === 'Not Interested' || s === 'Go Back Later');
+  var wrap = document.getElementById('ns-note-wrap');
+  var note = document.getElementById('ns-note');
+  if (wrap && note) {
+    wrap.style.display = needsNote ? 'block' : 'none';
+    if (!needsNote) note.value = '';
+    if (needsNote) {
+      note.placeholder =
+        (s === 'Not Home') ? 'Example: will return after 5pm / left flyer' :
+        (s === 'Go Back Later') ? 'Example: customer asked to come back Friday' :
+        'Example: not interested — already has provider';
+    }
+  }
+
 }
 
 function fmtPhone(inp) {
   var v = inp.value.replace(/\D/g, '');
   if (v.length >= 10) v = '(' + v.slice(0,3) + ') ' + v.slice(3,6) + '-' + v.slice(6,10);
   inp.value = v;
+}
+
+// If this address was manually added by the rep, write it to the
+// Addresses tab now that there's an outcome (sale or no-sale).
+function maybeWriteNewAddrToSheet(addr) {
+  if (!addr._manuallyAdded) return;
+  fetch(webhookURL, {
+    method: 'POST',
+    mode: 'no-cors',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      type:      'add_address',
+      address:   addr.address,
+      city:      addr.city  || '',
+      state:     addr.state || '',
+      zip:       addr.zip   || '',
+      addedBy:   repName,
+      timestamp: new Date().toISOString()
+    })
+  }).catch(function(){});
 }
 
 // ──────────────────────────────────────────────────────────
@@ -2540,6 +3050,7 @@ function submitSale(pkgLabel) {
   };
 
   sendData(payload);
+  maybeWriteNewAddrToSheet(addr);
 
   if (selSlot) {
     var fullAddress = addr.address + (addr.city ? ', ' + addr.city : '') + (addr.state ? ', ' + addr.state : '');
@@ -2561,50 +3072,42 @@ function submitStatus() {
   var addr = getAddr();
   if (!addr)      { toast('No address selected', 't-err'); return; }
   if (!selStatus) { toast('⚠ Pick a status first', 't-err'); return; }
-  var notes = document.getElementById('f-notes').value.trim();
-  // Optional disposition note (shown for Not Home / Not Interested / Go Back Later)
-  var nsEl   = document.getElementById('f-nosale-note');
-  var nsNote = nsEl ? nsEl.value.trim() : '';
 
-  // If a disposition note is provided, prefer it; otherwise fall back to the main notes box.
-  var finalNotes = nsNote || notes;
+  var nsWrap  = document.getElementById('ns-note-wrap');
+  var nsNote  = document.getElementById('ns-note');
+  var notes   = (nsWrap && nsWrap.style.display !== 'none' && nsNote)
+    ? (nsNote.value || '').trim()
+    : '';
   var payload = {
     salesperson: repName,
     address: addr.address, city: addr.city||'', state: addr.state||'', zip: addr.zip||'',
     firstName:'', lastName:'', phone:'', email:'',
-    package:'', notes: finalNotes,
+    package:'', notes: notes,
     status: selStatus
   };
 
   sendData(payload);
+  maybeWriteNewAddrToSheet(addr);
 
   var smap = { 'Not Home':'nothome','Brightspeed':'brightspeed','In Contract':'incontract','Not Interested':'notinterested','Go Back Later':'goback','Vacant':'vacant','Business':'business' };
   addr.status = smap[selStatus] || 'nocontact';
   addr.salesperson = repName; // keep ownership consistent for rep-based counting
-  updateAddressStatus(addr, addr.status);
+  updateAddressStatus(addr, addr.status, notes);
   if (addr.lat && addr.lng) placeMarker(addr);
   updateStats();
   toast('📋 "' + selStatus + '" logged', 't-info');
+  var nsNoteEl = document.getElementById('ns-note');
+  if (nsNoteEl) nsNoteEl.value = '';
   closeForm();
 }
 
-function updateAddressStatus(addr, status) {
+function updateAddressStatus(addr, status, note) {
   if (!addr.sheetRow) return;
-
-  var noteEl = document.getElementById('no-sale-note');
-  var note   = noteEl ? (noteEl.value || '').trim() : '';
-
   fetch(webhookURL, {
     method: 'POST',
     mode: 'no-cors',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      type: 'status_update',
-      sheetRow: addr.sheetRow,
-      status: status,
-      salesperson: repName,
-      dispositionNote: note
-    })
+    body: JSON.stringify({ type:'status_update', sheetRow:addr.sheetRow, status:status, salesperson:repName, note:(note||'') })
   }).catch(function(){});
 }
 
@@ -2754,6 +3257,9 @@ function restoreRepProfile() {
     if (document.getElementById('rep-email')) document.getElementById('rep-email').value = e;
   } catch(err) {}
 }
+
+// Run profile restore after functions are defined
+window.addEventListener('load', function(){ try { restoreRepProfile(); } catch(e) {} });
 
 // ── Customer email buttons (opens device email client) ─────
 function emailCustomerOffer(pkgKey) {
@@ -3069,6 +3575,100 @@ function closeBadge() {
 }
 
 // ──────────────────────────────────────────────────────────
+//  ADD ADDRESS MODAL
+// ──────────────────────────────────────────────────────────
+function openAddAddrModal() {
+  // Reset fields
+  ['new-addr-street','new-addr-city','new-addr-state','new-addr-zip'].forEach(function(id) {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('btn-new-addr-submit').disabled = true;
+  document.getElementById('add-addr-sending').style.display = 'none';
+  document.getElementById('add-addr-modal').classList.add('open');
+  setTimeout(function(){ document.getElementById('new-addr-street').focus(); }, 80);
+}
+
+function closeAddAddrModal() {
+  document.getElementById('add-addr-modal').classList.remove('open');
+}
+
+function checkNewAddrReady() {
+  var street = (document.getElementById('new-addr-street').value || '').trim();
+  var city   = (document.getElementById('new-addr-city').value   || '').trim();
+  document.getElementById('btn-new-addr-submit').disabled = !(street && city);
+}
+
+function submitNewAddress() {
+  var street = (document.getElementById('new-addr-street').value || '').trim();
+  var city   = (document.getElementById('new-addr-city').value   || '').trim();
+  var state  = (document.getElementById('new-addr-state').value  || '').trim().toUpperCase();
+  var zip    = (document.getElementById('new-addr-zip').value    || '').trim();
+
+  if (!street || !city) {
+    toast('⚠ Street address and city are required', 't-err');
+    return;
+  }
+
+  // Prevent duplicates
+  var dup = addresses.find(function(a) {
+    return a.address.toLowerCase() === street.toLowerCase() &&
+           a.city.toLowerCase()    === city.toLowerCase();
+  });
+  if (dup) {
+    toast('⚠ That address is already in the list', 't-err');
+    return;
+  }
+
+  // Add to local list
+  var newId = addresses.length > 0
+    ? Math.max.apply(null, addresses.map(function(a){ return a.id; })) + 1
+    : 0;
+
+  var newAddr = {
+    id:          newId,
+    sheetRow:    null, // will be assigned by the sheet
+    address:     street,
+    city:        city,
+    state:       state,
+    zip:         zip,
+    lat:         null,
+    lng:         null,
+    activeCount: '',
+    status:      'pending',
+    salesperson: repName,
+    sale:        null,
+    _manuallyAdded: true
+  };
+
+  addresses.push(newAddr);
+  updateStats();
+  buildList();
+
+  // Close modal and open the sales form right away
+  closeAddAddrModal();
+  openForm(newId);
+
+  // Geocode the new address so it appears on the map
+  var geocodeQuery = [street, city, state, zip].filter(Boolean).join(', ');
+  var geocodeUrl = 'https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=us&q=' + encodeURIComponent(geocodeQuery);
+  fetch(geocodeUrl, { headers: { 'Accept': 'application/json', 'User-Agent': 'FieldSalesApp/1.0' } })
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      if (data && data.length > 0) {
+        newAddr.lat = parseFloat(data[0].lat);
+        newAddr.lng = parseFloat(data[0].lon);
+        if (mapObj) {
+          placeMarker(newAddr);
+          mapObj.panTo([newAddr.lat, newAddr.lng], { animate: true });
+        }
+      }
+    })
+    .catch(function(){});
+
+  toast('📍 Address added — open the form to log a sale or no-sale', 't-info');
+}
+
+// ──────────────────────────────────────────────────────────
 //  TOAST
 // ──────────────────────────────────────────────────────────
 function toast(msg, cls) {
@@ -3080,14 +3680,6 @@ function toast(msg, cls) {
 }
 </script>
 
-<script>
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', function() {
-    navigator.serviceWorker.register('./sw.js')
-      .then(function(reg) { console.log('SW registered:', reg.scope); })
-      .catch(function(e)  { console.warn('SW failed:', e); });
-  });
-}
-</script>
+
 </body>
 </html>
