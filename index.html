@@ -1800,15 +1800,11 @@ body { font-family: 'Syne', sans-serif; color: var(--text); background: var(--bg
 // ──────────────────────────────────────────────────────────
 //  STATE
 // ──────────────────────────────────────────────────────────
-// ── App identity ───────────────────────────────────────────
 var APP_NAME    = 'Zito FieldOS';
 var APP_TAGLINE = 'Field Operations & Sales Intelligence';
 var APP_VERSION = '1.0.3';
 var BUILD_ID    = '2026.02.22';
 var APP_ENV     = 'Production';
-
-// ✅ Color constants (used by markers/tags/overlays)
-
 
 var addresses  = [];
 var activeId   = null;
@@ -1827,7 +1823,7 @@ var toastTimer = null;
 var sidebarOpen = true;
 
 // ──────────────────────────────────────────────────────────
-//  COLORS (fix: ensure both `COLORS` and `colors` exist)
+//  COLORS
 // ──────────────────────────────────────────────────────────
 var COLORS = {
   pending:       '#6b7280',
@@ -1844,7 +1840,6 @@ var COLORS = {
 var COLOR_ACTIVE = '#facc15';
 var COLOR_PASSED = '#6b7280';
 
-// Optional theme palette used by some UI bits
 var colors = {
   accent: '#005696',
   mega:   '#8b5cf6',
@@ -1864,23 +1859,21 @@ function toggleSidebar() {
   var btn = document.getElementById('sidebar-toggle');
   if (sidebarOpen) {
     app.classList.remove('sidebar-collapsed');
-    btn.innerHTML = '&#8249;'; // ‹ close arrow
+    btn.innerHTML = '&#8249;';
     btn.title = 'Hide address list';
   } else {
     app.classList.add('sidebar-collapsed');
-    btn.innerHTML = '&#8250;'; // › open arrow
+    btn.innerHTML = '&#8250;';
     btn.title = 'Show address list';
   }
-  // Let Leaflet know the map size changed
   if (mapObj) {
     setTimeout(function() { mapObj.invalidateSize(); }, 260);
   }
 }
 
-// On mobile, auto-collapse sidebar on launch
 function maybeAutoCollapse() {
   if (window.innerWidth <= 640) {
-    sidebarOpen = true; // toggleSidebar will flip it
+    sidebarOpen = true;
     toggleSidebar();
   }
 }
@@ -2089,14 +2082,12 @@ function fetchAddressesFromSheet() {
 function hasValidName() {
   var val   = (document.getElementById('rep-name').value || '').trim();
   var parts = val.split(/\s+/).filter(function(p){ return p.length > 0; });
-  // Must have at least two words (first + last) and not be the default
   return parts.length >= 2 && val.toLowerCase() !== 'rep';
 }
 
 function validateRepName() {
   var hint = document.getElementById('rep-name-hint');
   var val  = (document.getElementById('rep-name').value || '').trim();
-  // Only show hint if they've typed something but it's incomplete
   if (val.length > 0 && !hasValidName()) {
     hint.style.display = 'block';
   } else {
@@ -2106,7 +2097,6 @@ function validateRepName() {
 }
 
 function checkLaunchReady() {
-  // Launch is enabled only when addresses are loaded AND name is valid
   var hasAddresses = addresses.length > 0;
   document.getElementById('launch-btn').disabled = !(hasAddresses && hasValidName());
 }
@@ -2144,32 +2134,27 @@ function launchApp() {
   repPhone = (document.getElementById('rep-phone') ? (document.getElementById('rep-phone').value || '').trim() : '');
   repEmail = (document.getElementById('rep-email') ? (document.getElementById('rep-email').value || '').trim() : '');
 
-  // Persist profile so it survives refresh / PWA cache
   try {
     localStorage.setItem('zito_rep_name', repName);
     localStorage.setItem('zito_rep_phone', repPhone);
     localStorage.setItem('zito_rep_email', repEmail);
-    // Session start for performance metrics
     if (!localStorage.getItem('fieldos_session_start')) {
       localStorage.setItem('fieldos_session_start', new Date().toISOString());
     }
   } catch(e) {}
 
-  // Show splash immediately
   var splash = document.getElementById('splash');
   document.getElementById('splash-rep-name').textContent = repName;
   var fill = document.getElementById('splash-prog-fill');
   if (fill) { fill.style.animation = 'none'; fill.offsetHeight; fill.style.animation = ''; }
   if (splash) splash.classList.remove('gone', 'fade-out');
 
-  // IMPORTANT: schedule splash fade-out up front so we don't get stuck if something errors
   var fadeTimer = setTimeout(function() {
     if (!splash) return;
     splash.classList.add('fade-out');
     setTimeout(function() { splash.classList.add('gone'); }, 700);
   }, 4500);
 
-  // Boot app behind splash
   try {
     document.getElementById('page-setup').style.display = 'none';
     document.getElementById('page-app').style.display   = 'block';
@@ -2182,7 +2167,6 @@ function launchApp() {
     maybeAutoCollapse();
     initBadge();
   } catch (err) {
-    // If anything fails, don't trap the user on splash
     try { clearTimeout(fadeTimer); } catch(e) {}
     if (splash) { splash.classList.add('fade-out'); setTimeout(function(){ splash.classList.add('gone'); }, 300); }
     console.error(err);
@@ -2193,9 +2177,6 @@ function launchApp() {
 // ──────────────────────────────────────────────────────────
 //  MAP
 // ──────────────────────────────────────────────────────────
-  // ──────────────────────────────────────────────────────────
-  //  WEATHER (RADAR + TEMPERATURE)
-  // ──────────────────────────────────────────────────────────
   var wxRadarLayer = null;
   var wxRadarMeta  = null;
   var wxRadarOn    = false;
@@ -2212,11 +2193,9 @@ function launchApp() {
     btn.setAttribute('aria-pressed', wxRadarOn ? 'true' : 'false');
   }
 
-  // Toggle from the pill
   function wxToggleRadar() {
     if (!mapObj) return;
     if (!wxRadarLayer) {
-      // If user toggles before radar metadata loads, try to init now
       wxSetRadarUI_(true);
       wxInitRadarOverlay_();
       return;
@@ -2230,7 +2209,6 @@ function launchApp() {
     }
   }
 
-  // Load / refresh radar tiles (RainViewer public API)
   function wxInitRadarOverlay_() {
     if (!mapObj) return;
 
@@ -2241,12 +2219,10 @@ function launchApp() {
         var past = meta && meta.radar && meta.radar.past ? meta.radar.past : [];
         if (!past.length) return;
 
-        // Most recent past frame
         var frame = past[past.length - 1];
         var host  = meta.host;
         var path  = frame.path;
 
-        // {host}{path}/256/{z}/{x}/{y}/{color}/{options}.png
         var tileUrl = host + path + '/256/{z}/{x}/{y}/2/1_1.png';
 
         var wasOn = wxRadarLayer && mapObj.hasLayer(wxRadarLayer);
@@ -2262,19 +2238,17 @@ function launchApp() {
           maxZoom: 19
         });
 
-        // Keep state: if user had it ON (or pill is ON), re-add after refresh
         if (wasOn || wxRadarOn) {
           wxRadarLayer.addTo(mapObj);
           wxSetRadarUI_(true);
         }
       })
-      .catch(function(){ /* optional feature; fail silently */ });
+      .catch(function(){});
   }
 
-  // Temperature (Open-Meteo: no API key)
   function wxFetchTemp_(lat, lng) {
     var now = Date.now();
-    if (now - wxLastTempFetch < 60 * 1000) return; // throttle
+    if (now - wxLastTempFetch < 60 * 1000) return;
     wxLastTempFetch = now;
 
     var url =
@@ -2310,7 +2284,6 @@ function launchApp() {
   }
 
   function wxInitTemperature_() {
-    // Prefer device GPS if available (better than map default US center)
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(function(pos){
         wxFetchTemp_(pos.coords.latitude, pos.coords.longitude);
@@ -2321,14 +2294,12 @@ function launchApp() {
       wxUpdateTempFromMap_();
     }
 
-    // Update on pan/zoom (debounced)
     var t;
     mapObj.on('moveend', function(){
       clearTimeout(t);
       t = setTimeout(wxUpdateTempFromMap_, 700);
     });
 
-    // Periodic refresh
     if (wxTempTimer) clearInterval(wxTempTimer);
     wxTempTimer = setInterval(wxUpdateTempFromMap_, 10 * 60 * 1000);
   }
@@ -2336,7 +2307,6 @@ function launchApp() {
 function initMap() {
   mapObj = L.map('map');
 
-  // Base map
   var base = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     maxZoom: 19
@@ -2344,7 +2314,6 @@ function initMap() {
 
   mapObj.setView([39.5, -98.35], 5);
 
-  // Territories
   if (kmlGeoJSON && kmlGeoJSON.features.length > 0) {
     var palette = [
       { stroke:'#2563eb', fill:'#3b82f6' },
@@ -2370,18 +2339,15 @@ function initMap() {
     }
   }
 
-  // Markers
   addresses.forEach(function(a) {
     if (a.lat && a.lng) { placeMarker(a); }
   });
 
-  // Weather: initialize radar metadata, but keep OFF by default
   wxSetRadarUI_(false);
   wxInitRadarOverlay_();
   if (wxRadarRefreshTimer) clearInterval(wxRadarRefreshTimer);
   wxRadarRefreshTimer = setInterval(wxInitRadarOverlay_, 10 * 60 * 1000);
 
-  // Temperature
   wxInitTemperature_();
 }
 
@@ -2404,10 +2370,23 @@ function markerHTML(color, shape) {
   return '<div style="width:16px;height:16px;border-radius:50%;background:' + color + ';border:2.5px solid #fff;box-shadow:0 2px 5px rgba(0,0,0,0.5)"></div>';
 }
 
+// ── FIX: Rep-logged no-sale statuses are always 'dot', never 'bolt' ──────────
 function getMarkerShape(addr) {
   var s  = (addr.status      || '').toLowerCase().trim();
   var ac = (addr.activeCount || '').toLowerCase().trim();
+
+  // Sales outcomes always use explicit shapes regardless of activeCount
   if (s === 'mega' || s === 'gig') return 'house';
+
+  // Rep-logged no-sale statuses: always a dot — NEVER treat as active customer.
+  // Without this guard, any address with a non-empty activeCount field would
+  // fall through to the `if (ac && ac !== '') return 'bolt'` catch-all below,
+  // incorrectly showing "Active Customer" after Go Back Later / Not Interested /
+  // Brightspeed etc. are submitted.
+  var REP_LOGGED = ['nothome','brightspeed','incontract','notinterested','goback','vacant','business'];
+  if (REP_LOGGED.indexOf(s) >= 0) return 'dot';
+
+  // Sheet-driven status / activeCount checks (untouched addresses only)
   if (s === 'active') return 'bolt';
   if (s.indexOf('home') >= 0 || s.indexOf('passed') >= 0) return 'house';
   if (ac === 'active' || ac === 'existing' || ac === 'customer') return 'bolt';
@@ -2445,10 +2424,6 @@ function placeMarker(addr) {
 
 window.openFormFromMap = function(id) {
   if (mapObj) mapObj.closePopup();
-  // On mobile, re-open sidebar when form is opened from map
-  if (window.innerWidth <= 640 && !sidebarOpen) {
-    // keep collapsed — form opens as overlay on right
-  }
   openForm(id);
 };
 
@@ -2589,7 +2564,6 @@ function buildList(filter) {
     row.addEventListener('click', function() {
       var id = parseInt(this.getAttribute('data-id'), 10);
       openForm(id);
-      // On mobile, collapse sidebar when an address is tapped
       if (window.innerWidth <= 640 && sidebarOpen) toggleSidebar();
     });
   });
@@ -2609,18 +2583,16 @@ function openForm(id) {
   for (var i = 0; i < addresses.length; i++) { if (addresses[i].id === id) { addr = addresses[i]; break; } }
   if (!addr) return;
 
-  
-
-  // Always open expanded
   setFormCollapsed(false);
-if (getMarkerShape(addr) === 'bolt') {
+
+  if (getMarkerShape(addr) === 'bolt') {
     activeId = id;
     document.getElementById('pf-addr-line').textContent = addr.address;
     document.getElementById('pf-addr-sub').textContent  = [addr.city, addr.state, addr.zip].filter(Boolean).join(', ');
     document.getElementById('active-notice').style.display = 'block';
     document.getElementById('sales-form-body').style.display = 'none';
     document.getElementById('panel-form').classList.add('open');
-  document.body.classList.add('form-open');
+    document.body.classList.add('form-open');
     buildList();
     return;
   }
@@ -2933,7 +2905,6 @@ function calcPricing() {
   document.getElementById('pr-prorate-eero-label').textContent = 'eero 6+ (' + diffDays + ' days @ $' + (EERO / daysInMonth).toFixed(3) + '/day)';
   document.getElementById('pr-prorate-eero').textContent       = '$' + proratedEero.toFixed(2);
   document.getElementById('pr-prorate-total').textContent      = '$' + prorateToFirstBill.toFixed(2);
-  // First bill estimate (promo month: internet is free, fees still apply)
   var firstBillFeesOnly = MODEM + EERO + PROC;
   document.getElementById('pr-firstbill-total').textContent   = '$' + (firstBillFeesOnly + prorateToFirstBill).toFixed(2);
   document.getElementById('pr-firstbill-fees').textContent    = '$' + firstBillFeesOnly.toFixed(2);
@@ -2954,7 +2925,6 @@ function pickStatus(s) {
   ['sbt-nh','sbt-bs','sbt-ic','sbt-ni','sbt-gbl','sbt-vac','sbt-biz'].forEach(function(sid) { document.getElementById(sid).className = 'stbtn'; });
   if (map[s]) document.getElementById(map[s].id).className = 'stbtn ' + map[s].cls;
 
-  // ── Show Disposition Note only for specific No Sale outcomes ──
   var needsNote = (s === 'Not Home' || s === 'Not Interested' || s === 'Go Back Later');
   var wrap = document.getElementById('ns-note-wrap');
   var note = document.getElementById('ns-note');
@@ -2968,7 +2938,6 @@ function pickStatus(s) {
         'Example: not interested — already has provider';
     }
   }
-
 }
 
 function fmtPhone(inp) {
@@ -2977,8 +2946,6 @@ function fmtPhone(inp) {
   inp.value = v;
 }
 
-// If this address was manually added by the rep, write it to the
-// Addresses tab now that there's an outcome (sale or no-sale).
 function maybeWriteNewAddrToSheet(addr) {
   if (!addr._manuallyAdded) return;
   fetch(webhookURL, {
@@ -3058,12 +3025,12 @@ function submitSale(pkgLabel) {
   }
 
   addr.status = (selPkg === 'mega') ? 'mega' : 'gig';
-  addr.salesperson = repName; // credit this sale to the rep locally (and in sheet via status_update)
+  addr.salesperson = repName;
   addr.sale   = { firstName: first, lastName: last, phone: phone, email: email, notes: notes };
   updateAddressStatus(addr, addr.status);
   if (addr.lat && addr.lng) placeMarker(addr);
   updateStats();
-  sendHeartbeat(); // ← immediately push updated sale count to RepStatus sheet
+  sendHeartbeat();
   toast('✅ ' + pkgLabel + ' sold to ' + first + ' ' + last + '!', 't-ok');
   closeForm();
 }
@@ -3091,7 +3058,7 @@ function submitStatus() {
 
   var smap = { 'Not Home':'nothome','Brightspeed':'brightspeed','In Contract':'incontract','Not Interested':'notinterested','Go Back Later':'goback','Vacant':'vacant','Business':'business' };
   addr.status = smap[selStatus] || 'nocontact';
-  addr.salesperson = repName; // keep ownership consistent for rep-based counting
+  addr.salesperson = repName;
   updateAddressStatus(addr, addr.status, notes);
   if (addr.lat && addr.lng) placeMarker(addr);
   updateStats();
@@ -3150,13 +3117,10 @@ function initManagerAccess() {
   }
 }
 
-// ── Heartbeat: send current status + live sale counts ──
 function sendHeartbeat(statusOverride) {
-  // Don't send if no real name is set — blocks the 'Rep' default from appearing in the dashboard
   var cleanName = (repName || '').trim();
   if (!webhookURL || isManager() || !cleanName || cleanName.toLowerCase() === 'rep') return;
   var status    = (statusOverride !== undefined) ? statusOverride : (repOnline ? 'online' : 'offline');
-  // Only count sales that belong to THIS rep (prevents every rep showing the same totals)
   var rn = cleanName.toLowerCase();
   var megaSales = addresses.filter(function(a){
     return a.status === 'mega' && ((a.salesperson || '').toLowerCase() === rn);
@@ -3190,10 +3154,10 @@ function sendHeartbeat(statusOverride) {
 
 function startHeartbeat() {
   if (isManager()) return;
-  sendHeartbeat(); // send immediately on login
+  sendHeartbeat();
   heartbeatTimer = setInterval(function() {
     if (repOnline) sendHeartbeat();
-  }, 120000); // every 2 minutes
+  }, 120000);
 }
 
 function stopHeartbeat() {
@@ -3201,12 +3165,10 @@ function stopHeartbeat() {
   heartbeatTimer = null;
 }
 
-// Send offline on page close
 window.addEventListener('beforeunload', function() {
   if (!isManager()) sendHeartbeat('offline');
 });
 
-// ── Sign out ──────────────────────────────────────────────
 function openSignOutConfirm() {
   document.getElementById('signout-confirm').classList.add('open');
 }
@@ -3215,12 +3177,9 @@ function closeSignOutConfirm() {
 }
 function confirmSignOut() {
   closeSignOutConfirm();
-  // Record sign-out as offline with current sale counts
   sendHeartbeat('offline');
   stopHeartbeat();
-  // Small delay so the fetch fires before we reset
   setTimeout(function() {
-    // Reset all app state
     repName   = 'Rep';
     try { localStorage.removeItem('fieldos_session_start'); } catch(e) {}
     repOnline = false;
@@ -3232,7 +3191,6 @@ function confirmSignOut() {
     clearInterval(pollTimer);
     if (mapObj) { mapObj.remove(); mapObj = null; }
 
-    // Return to setup screen
     document.getElementById('page-app').style.display   = 'none';
     document.getElementById('page-setup').style.display = 'flex';
     document.getElementById('rep-name').value = '';
@@ -3246,7 +3204,7 @@ function confirmSignOut() {
     toast('👋 Signed out successfully', 't-info');
   }, 400);
 }
-// ── Rep profile restore (PWA cache safe) ───────────────────
+
 function restoreRepProfile() {
   try {
     var n = localStorage.getItem('zito_rep_name')  || '';
@@ -3258,12 +3216,9 @@ function restoreRepProfile() {
   } catch(err) {}
 }
 
-// Run profile restore after functions are defined
 window.addEventListener('load', function(){ try { restoreRepProfile(); } catch(e) {} });
 
-// ── Customer email buttons (opens device email client) ─────
 function emailCustomerOffer(pkgKey) {
-  // Try to pull customer email from the sales form (if it exists / is open)
   var to = '';
   var custEmailEl = document.getElementById('f-email');
   if (custEmailEl) to = (custEmailEl.value || '').trim();
@@ -3313,7 +3268,6 @@ function emailCustomerOffer(pkgKey) {
 }
 
 
-// ── Manager panel ─────────────────────────────────────────
 function openManagerPanel() {
   document.getElementById('manager-modal').classList.add('open');
   refreshManagerPanel();
@@ -3352,20 +3306,16 @@ function renderRepList(reps) {
   var gigTotal  = reps.reduce(function(s,r){ return s + (Number(r.gigSales)||0); }, 0);
   var totalSales = reps.reduce(function(s,r){ return s + (Number(r.totalSales)||0); }, 0);
 
-  // Doors worked: optional field from backend (recommended). Fallback: estimate via (sales * 3)
-  // so the dashboard still renders something meaningful even before doors reporting is enabled.
   var doorsWorked = reps.reduce(function(s,r){
     return s + (Number(r.doorsWorked)||0);
   }, 0);
   if (!doorsWorked && totalSales) doorsWorked = totalSales * 3;
 
-  // Active hours: sum of online reps' session duration (requires firstSeen).
   var nowMs = Date.now();
   var activeHours = onlineReps.reduce(function(s,r){
     var t0 = r.firstSeen ? new Date(r.firstSeen).getTime()
             : (r.lastSeen ? new Date(r.lastSeen).getTime() : nowMs);
     var hrs = Math.max((nowMs - t0) / 3600000, 0);
-    // prevent division spikes for fresh sessions
     return s + Math.max(hrs, 0.25);
   }, 0);
 
@@ -3386,7 +3336,6 @@ function renderRepList(reps) {
     return;
   }
 
-  // Online first, then alphabetical
   var sorted = onlineReps.concat(offlineReps).sort(function(a,b){
     if (a.status==='online' && b.status!=='online') return -1;
     if (a.status!=='online' && b.status==='online') return  1;
@@ -3429,9 +3378,7 @@ function updateMgrSummary(online, offline, sales) {
   document.getElementById('mgr-count-sales').textContent   = sales;
 }
 
-
 function updateMgrPerformance(metrics) {
-  // metrics: { doorsWorked, totalSales, megaSales, gigSales, onlineReps, activeHours }
   var doors   = Number(metrics.doorsWorked) || 0;
   var sales   = Number(metrics.totalSales)  || 0;
   var mega    = Number(metrics.megaSales)   || 0;
@@ -3439,24 +3386,15 @@ function updateMgrPerformance(metrics) {
   var online  = Number(metrics.onlineReps)  || 0;
   var hours   = Number(metrics.activeHours) || 0;
 
-  // Close rate: sales / doors worked
   var closeRate = (doors > 0) ? (sales / doors) : 0;
-
-  // Sales/hour: sales / active online hours (aggregated)
   var pace = (hours > 0) ? (sales / hours) : 0;
-
-  // Gig mix: gig / (mega+gig)
   var denom = (mega + gig);
   var gigMix = (denom > 0) ? (gig / denom) : 0;
-
-  // Sales per rep: sales / online (or 0)
   var spr = (online > 0) ? (sales / online) : 0;
 
-  // Formatters
   function pct(x){ return Math.round(x * 100) + '%'; }
   function num1(x){ return (Math.round(x * 10) / 10).toFixed(1); }
 
-  // Values
   var elClose   = document.getElementById('mgr-m-close');
   var elPace    = document.getElementById('mgr-m-pace');
   var elGigMix  = document.getElementById('mgr-m-gigmix');
@@ -3467,7 +3405,6 @@ function updateMgrPerformance(metrics) {
   if (elGigMix) elGigMix.textContent = (denom > 0) ? pct(gigMix) : '—';
   if (elSPR)    elSPR.textContent    = (online > 0) ? num1(spr) : '—';
 
-  // Sub-lines
   var closeSub = document.getElementById('mgr-m-close-sub');
   var paceSub  = document.getElementById('mgr-m-pace-sub');
   var mixSub   = document.getElementById('mgr-m-gigmix-sub');
@@ -3478,7 +3415,6 @@ function updateMgrPerformance(metrics) {
   if (mixSub)   mixSub.textContent   = (denom > 0) ? (gig + ' Gig • ' + mega + ' Mega') : 'No sales reported';
   if (sprSub)   sprSub.textContent   = (online > 0) ? ('Online reps only') : '—';
 }
-
 
 function timeAgo(isoString) {
   var diff = Math.floor((Date.now() - new Date(isoString).getTime()) / 1000);
@@ -3530,12 +3466,9 @@ function toggleRepStatus() {
 }
 
 function openBadge() {
-  // Populate badge with current rep info
   var name = repName || 'Unknown Rep';
   document.getElementById('badge-rep-name').textContent = name;
 
-  
-  // Rep contact info (from memory or setup inputs)
   var p = repPhone || '';
   var e = repEmail || '';
   document.getElementById('badge-rep-phone').textContent = p ? p : '—';
@@ -3547,19 +3480,17 @@ function openBadge() {
   if (phoneLink) phoneLink.href = p ? ('tel:' + p.replace(/[^0-9+]/g,'')) : '#';
   if (emailLink) emailLink.href = e ? ('mailto:' + e) : '#';
   if (webLink)   webLink.href   = repWebsite;
-// Avatar initials
+
   var parts    = name.trim().split(/\s+/);
   var initials = parts.length >= 2
     ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
     : name.slice(0, 2).toUpperCase();
   document.getElementById('badge-avatar').textContent = initials;
 
-  // Badge ID from name
   var idNum = 0;
   for (var i = 0; i < name.length; i++) { idNum += name.charCodeAt(i); }
   document.getElementById('badge-id-num').textContent = 'REP-' + String(idNum).padStart(3, '0');
 
-  // Sales stats
   var megaSales = addresses.filter(function(a){ return a.status === 'mega'; }).length;
   var gigSales  = addresses.filter(function(a){ return a.status === 'gig';  }).length;
   document.getElementById('badge-mega').textContent  = megaSales;
@@ -3578,7 +3509,6 @@ function closeBadge() {
 //  ADD ADDRESS MODAL
 // ──────────────────────────────────────────────────────────
 function openAddAddrModal() {
-  // Reset fields
   ['new-addr-street','new-addr-city','new-addr-state','new-addr-zip'].forEach(function(id) {
     document.getElementById(id).value = '';
   });
@@ -3609,7 +3539,6 @@ function submitNewAddress() {
     return;
   }
 
-  // Prevent duplicates
   var dup = addresses.find(function(a) {
     return a.address.toLowerCase() === street.toLowerCase() &&
            a.city.toLowerCase()    === city.toLowerCase();
@@ -3619,14 +3548,13 @@ function submitNewAddress() {
     return;
   }
 
-  // Add to local list
   var newId = addresses.length > 0
     ? Math.max.apply(null, addresses.map(function(a){ return a.id; })) + 1
     : 0;
 
   var newAddr = {
     id:          newId,
-    sheetRow:    null, // will be assigned by the sheet
+    sheetRow:    null,
     address:     street,
     city:        city,
     state:       state,
@@ -3644,11 +3572,9 @@ function submitNewAddress() {
   updateStats();
   buildList();
 
-  // Close modal and open the sales form right away
   closeAddAddrModal();
   openForm(newId);
 
-  // Geocode the new address so it appears on the map
   var geocodeQuery = [street, city, state, zip].filter(Boolean).join(', ');
   var geocodeUrl = 'https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=us&q=' + encodeURIComponent(geocodeQuery);
   fetch(geocodeUrl, { headers: { 'Accept': 'application/json', 'User-Agent': 'FieldSalesApp/1.0' } })
