@@ -1320,7 +1320,7 @@ body { font-family: 'Syne', sans-serif; color: var(--text); background: var(--bg
       <div class="splash-prog-label">Loading session…</div>
     </div>
   </div>
-  <div class="splash-ver">ZITO FIELDOS v1.0.3 • Production • Build 2026.02.22</div>
+  <div class="splash-ver">ZITO FIELDOS v1.0.4 • Production • Build 2026.02.24</div>
 </div>
 
 <!-- ═══════════════════ SIGN-OUT CONFIRM ═══════════════════ -->
@@ -1802,8 +1802,8 @@ body { font-family: 'Syne', sans-serif; color: var(--text); background: var(--bg
 // ──────────────────────────────────────────────────────────
 var APP_NAME    = 'Zito FieldOS';
 var APP_TAGLINE = 'Field Operations & Sales Intelligence';
-var APP_VERSION = '1.0.3';
-var BUILD_ID    = '2026.02.22';
+var APP_VERSION = '1.0.4';
+var BUILD_ID    = '2026.02.24';
 var APP_ENV     = 'Production';
 
 var addresses  = [];
@@ -1816,6 +1816,7 @@ var repName    = 'Rep';
 var repPhone   = '';
 var repEmail   = '';
 var repWebsite = 'https://www.zitomedia.net';
+var activeTerritory = '';
 var mapObj     = null;
 var mapMarkers = {};
 var kmlGeoJSON = null;
@@ -2032,49 +2033,84 @@ function rebuildKmlGeoJSON() {
 function fetchAddressesFromSheet() {
   var btn = document.getElementById('btn-fetch-addr');
   var st  = document.getElementById('fetch-addr-status');
+  var repInput = (document.getElementById('rep-name') ? (document.getElementById('rep-name').value || '').trim() : '');
+  if (!repInput || repInput.split(/\s+/).filter(function(p){ return p.length > 0; }).length < 2) {
+    st.className = 'dz-status err';
+    st.textContent = '✗ Enter your full name first (First Last).';
+    return;
+  }
+
   btn.disabled = true;
   document.getElementById('fetch-addr-icon').textContent = '⏳';
   st.className = 'dz-status';
   st.textContent = 'Loading addresses…';
 
-  fetch(webhookURL + '?action=addresses&_t=' + Date.now())
+  fetch(webhookURL + '?action=addresses&repName=' + encodeURIComponent(repInput) + '&_t=' + Date.now())
     .then(function(r){ return r.json(); })
     .then(function(json){
-      if (!json || !json.rows || !json.rows.length) {
-        throw new Error(json.error || 'No addresses found in Addresses tab');
-      }
-      addresses = json.rows.map(function(row, i) {
-        var ac     = (row.activeCount || '').toLowerCase().trim();
-        var status = (row.status || '').toLowerCase().trim();
-        if (!status || status === 'homes passed') status = 'homes passed';
-        if (status === 'active') status = 'active';
-        return {
-          id:          i,
-          sheetRow:    row.sheetRow,
-          address:     row.address,
-          city:        row.city    || '',
-          state:       row.state   || '',
-          zip:         row.zip     || '',
-          lat:         parseFloat(row.lat)  || null,
-          lng:         parseFloat(row.lng)  || null,
-          activeCount: ac || status,
-          status:      status,
-          salesperson: (row.salesperson || '').trim(),
-          sale:        null
-        };
-      });
+      if (!json || !json.rows) throw new Error('Bad response from server');
+      if (json.status === 'error') throw new Error(json.message || 'Server error');
+
+  activeTerritory = (json.territory || '').trim();
+
+addresses = json.rows.map(function(row, i) {
+  var lat = (row.lat !== '' && row.lat != null) ? parseFloat(row.lat) : null;
+  var lng = (row.lng !== '' && row.lng != null) ? parseFloat(row.lng) : null;
+
+  return {
+    id:           i, // ✅ REQUIRED for sidebar clicks + marker keys
+    sheetRow:     row.sheetRow,
+    territory:    (row.territory || activeTerritory || '').trim(),
+    address:      (row.address || '').trim(),
+    city:         (row.city || '').trim(),
+    state:        (row.state || '').trim(),
+    zip:          (row.zip || '').trim(),
+    lat:          (isFinite(lat) ? lat : null),
+    lng:          (isFinite(lng) ? lng : null),
+    activeCount:  (row.activeCount || row.active_count || row.type || '').toString().trim(),
+    status:       (row.status || 'pending').toLowerCase(),
+    salesperson:  (row.salesperson || '').trim(),
+    sale:         null
+  };
+});
+
+// ✅ These are the missing pieces that make sidebar + map update immediately
+updateStats();
+buildList();
+refreshMapMarkers(); // if you have this helper; otherwise use the fallback below
+
+// Fallback if you DO NOT have refreshMapMarkers():
+// if (mapObj) {
+//   // clear old markers if you track them
+//   if (mapMarkers) {
+//     Object.keys(mapMarkers).forEach(function(k){
+//       try { mapObj.removeLayer(mapMarkers[k]); } catch(e) {}
+//     });
+//     mapMarkers = {};
+//   }
+//   addresses.forEach(function(a){ if (a.lat != null && a.lng != null) placeMarker(a); });
+// }
+
+st.className   = 'dz-status ok';
+st.textContent = '✓ ' + addresses.length + ' addresses loaded' + (activeTerritory ? (' • ' + activeTerritory) : '');
+document.getElementById('fetch-addr-icon').textContent = '✅';
+btn.disabled = false;
+checkLaunchReady();
+
       st.className   = 'dz-status ok';
-      st.textContent = '✓ ' + addresses.length + ' addresses loaded';
+      st.textContent = '✓ ' + addresses.length + ' addresses loaded' + (activeTerritory ? (' • ' + activeTerritory) : '');
       document.getElementById('fetch-addr-icon').textContent = '✅';
+      btn.disabled = false;
       checkLaunchReady();
     })
     .catch(function(err){
       st.className   = 'dz-status err';
-      st.textContent = '✗ ' + err.message;
+      st.textContent = '✗ ' + (err && err.message ? err.message : 'Unable to load addresses');
       document.getElementById('fetch-addr-icon').textContent = '📋';
       btn.disabled = false;
     });
 }
+
 
 // ──────────────────────────────────────────────────────────
 //  NAME VALIDATION
@@ -2107,8 +2143,9 @@ function checkLaunchReady() {
 var pollTimer = null;
 
 function startPolling() {
+  if (!activeTerritory) return;
   pollTimer = setInterval(function() {
-    fetch(webhookURL + '?action=addresses&_t=' + Date.now())
+    fetch(webhookURL + '?action=addresses&territory=' + encodeURIComponent(activeTerritory || '') + '&_t=' + Date.now())
       .then(function(r){ return r.json(); })
       .then(function(json){
         if (!json || !json.rows) return;
@@ -3003,6 +3040,7 @@ function submitSale(pkgLabel) {
   }
 
   var payload = {
+    territory: (activeTerritory || ''),
     salesperson: repName,
     repPhone: repPhone,
     repEmail: repEmail,
@@ -3074,7 +3112,7 @@ function updateAddressStatus(addr, status, note) {
     method: 'POST',
     mode: 'no-cors',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ type:'status_update', sheetRow:addr.sheetRow, status:status, salesperson:repName, note:(note||'') })
+    body: JSON.stringify({ type:'status_update', territory:(addr.territory||activeTerritory||''), sheetRow:addr.sheetRow, status:status, salesperson:repName, note:(note||'') })
   }).catch(function(){});
 }
 
@@ -3103,7 +3141,7 @@ function updateStats() {
 // ──────────────────────────────────────────────────────────
 //  MANAGER — Kasey Pelchy only
 // ──────────────────────────────────────────────────────────
-var MANAGER_NAME   = 'kasey pelchy';
+var MANAGER_NAME   = 'kasey pelchy'; 'chris ruding'; 'james rigas';
 var heartbeatTimer = null;
 var mgrAutoRefresh = null;
 
@@ -3267,6 +3305,24 @@ function emailCustomerOffer(pkgKey) {
   window.location.href = mailto;
 }
 
+function refreshMapMarkers() {
+  if (!mapObj) return;
+
+  // Clear existing markers (if any)
+  if (window.mapMarkers) {
+    Object.keys(mapMarkers).forEach(function(k){
+      try { mapObj.removeLayer(mapMarkers[k]); } catch(e) {}
+    });
+  }
+  window.mapMarkers = {};
+
+  // Re-add markers for current addresses
+  (addresses || []).forEach(function(a){
+    if (a && a.lat != null && a.lng != null) {
+      placeMarker(a);
+    }
+  });
+}
 
 function openManagerPanel() {
   document.getElementById('manager-modal').classList.add('open');
