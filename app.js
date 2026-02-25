@@ -696,7 +696,31 @@ function initMap() {
     handleMapPinDrop(e.latlng);
   });
 
-  // (Map Drop Pin control removed — use top bar button)
+  // ── Leaflet custom control: Drop Pin button ───────────────
+  var PinDropControl = L.Control.extend({
+    options: { position: 'bottomleft' },
+    onAdd: function() {
+      var container = L.DomUtil.create('div', 'leaflet-bar leaflet-control pin-drop-control');
+      var btn = L.DomUtil.create('a', 'pin-drop-btn', container);
+      btn.id          = 'btn-pin-drop';
+      btn.href        = '#';
+      btn.title       = 'Drop a pin to add a home';
+      btn.innerHTML   = '<span class="pin-drop-icon">📍</span><span class="pin-drop-label">Drop Pin</span>';
+      btn.setAttribute('role', 'button');
+      btn.setAttribute('aria-label', 'Drop pin to add address');
+
+      L.DomEvent.on(btn, 'click', function(e) {
+        L.DomEvent.stopPropagation(e);
+        L.DomEvent.preventDefault(e);
+        togglePinDropMode();
+      });
+      // Prevent map drag from starting on this control
+      L.DomEvent.disableClickPropagation(container);
+      L.DomEvent.disableScrollPropagation(container);
+      return container;
+    }
+  });
+  new PinDropControl().addTo(mapObj);
 
   // ── Map style switcher control ────────────────────────────
     // (Map switcher removed: Voyager is the only base map)
@@ -2444,9 +2468,9 @@ function toast(msg, cls) {
 // Top Bar Drop Pin Hook
 document.addEventListener('DOMContentLoaded', function() {
   var topDropBtn = document.getElementById('btn-drop-pin-top');
-  if (!topDropBtn) return;
-  topDropBtn.addEventListener('click', function(e) {
-    e.preventDefault();
-    if (typeof togglePinDropMode === 'function') togglePinDropMode();
-  });
+  if (topDropBtn && typeof enableDropMode === 'function') {
+    topDropBtn.addEventListener('click', function() {
+      enableDropMode();
+    });
+  }
 });
