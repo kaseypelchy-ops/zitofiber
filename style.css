@@ -1488,3 +1488,21 @@ body { font-family: 'Syne', sans-serif; color: var(--text); background: var(--bg
   text-overflow: ellipsis;
   max-width: 220px;
 }
+
+
+/* Top Bar Drop Pin Button */
+.topbar-btn {
+  background: #46bba4;
+  color: #000;
+  font-weight: 700;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 25px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: 0.2s ease;
+}
+
+.topbar-btn:hover {
+  background: #ffd700;
+}

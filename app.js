@@ -2464,3 +2464,13 @@ function toast(msg, cls) {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(function() { el.classList.remove('show'); }, 3200);
 }
+
+// Top Bar Drop Pin Hook
+document.addEventListener('DOMContentLoaded', function() {
+  var topDropBtn = document.getElementById('btn-drop-pin-top');
+  if (topDropBtn && typeof enableDropMode === 'function') {
+    topDropBtn.addEventListener('click', function() {
+      enableDropMode();
+    });
+  }
+});
