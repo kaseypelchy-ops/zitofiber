@@ -696,31 +696,7 @@ function initMap() {
     handleMapPinDrop(e.latlng);
   });
 
-  // ── Leaflet custom control: Drop Pin button ───────────────
-  var PinDropControl = L.Control.extend({
-    options: { position: 'bottomleft' },
-    onAdd: function() {
-      var container = L.DomUtil.create('div', 'leaflet-bar leaflet-control pin-drop-control');
-      var btn = L.DomUtil.create('a', 'pin-drop-btn', container);
-      btn.id          = 'btn-pin-drop';
-      btn.href        = '#';
-      btn.title       = 'Drop a pin to add a home';
-      btn.innerHTML   = '<span class="pin-drop-icon">📍</span><span class="pin-drop-label">Drop Pin</span>';
-      btn.setAttribute('role', 'button');
-      btn.setAttribute('aria-label', 'Drop pin to add address');
-
-      L.DomEvent.on(btn, 'click', function(e) {
-        L.DomEvent.stopPropagation(e);
-        L.DomEvent.preventDefault(e);
-        togglePinDropMode();
-      });
-      // Prevent map drag from starting on this control
-      L.DomEvent.disableClickPropagation(container);
-      L.DomEvent.disableScrollPropagation(container);
-      return container;
-    }
-  });
-  new PinDropControl().addTo(mapObj);
+  // (Drop Pin control removed: Drop Pin lives in the top bar)
 
   // ── Map style switcher control ────────────────────────────
     // (Map switcher removed: Voyager is the only base map)
@@ -2303,7 +2279,7 @@ function submitNewAddress() {
 
 function togglePinDropMode() {
   pinDropMode = !pinDropMode;
-  var btn    = document.getElementById('btn-pin-drop');
+  var btn    = document.getElementById('btn-drop-pin-top') || document.getElementById('btn-pin-drop');
   var banner = document.getElementById('pin-drop-banner');
   var mapEl  = document.getElementById('map');
 
@@ -2322,7 +2298,7 @@ function togglePinDropMode() {
 
 function cancelPinDropMode() {
   pinDropMode = false;
-  var btn    = document.getElementById('btn-pin-drop');
+  var btn    = document.getElementById('btn-drop-pin-top') || document.getElementById('btn-pin-drop');
   var banner = document.getElementById('pin-drop-banner');
   var mapEl  = document.getElementById('map');
   if (btn)    { btn.classList.remove('active'); btn.textContent = '📍 Drop Pin'; }
@@ -2465,12 +2441,17 @@ function toast(msg, cls) {
   toastTimer = setTimeout(function() { el.classList.remove('show'); }, 3200);
 }
 
-// Top Bar Drop Pin Hook
+  }
+});
+
+
+// Top Bar Drop Pin Hook (single source of truth)
 document.addEventListener('DOMContentLoaded', function() {
   var topDropBtn = document.getElementById('btn-drop-pin-top');
-  if (topDropBtn && typeof enableDropMode === 'function') {
-    topDropBtn.addEventListener('click', function() {
-      enableDropMode();
-    });
-  }
+  if (!topDropBtn) return;
+
+  topDropBtn.addEventListener('click', function(e) {
+    e.preventDefault();
+    if (typeof togglePinDropMode === 'function') togglePinDropMode();
+  });
 });
