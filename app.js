@@ -696,7 +696,7 @@ function initMap() {
     handleMapPinDrop(e.latlng);
   });
 
-  // (Drop Pin control removed: Drop Pin lives in the top bar)
+  // (Map Drop Pin control removed — use top bar button)
 
   // ── Map style switcher control ────────────────────────────
     // (Map switcher removed: Voyager is the only base map)
@@ -2279,7 +2279,7 @@ function submitNewAddress() {
 
 function togglePinDropMode() {
   pinDropMode = !pinDropMode;
-  var btn    = document.getElementById('btn-drop-pin-top') || document.getElementById('btn-pin-drop');
+  var btn    = document.getElementById('btn-pin-drop');
   var banner = document.getElementById('pin-drop-banner');
   var mapEl  = document.getElementById('map');
 
@@ -2298,7 +2298,7 @@ function togglePinDropMode() {
 
 function cancelPinDropMode() {
   pinDropMode = false;
-  var btn    = document.getElementById('btn-drop-pin-top') || document.getElementById('btn-pin-drop');
+  var btn    = document.getElementById('btn-pin-drop');
   var banner = document.getElementById('pin-drop-banner');
   var mapEl  = document.getElementById('map');
   if (btn)    { btn.classList.remove('active'); btn.textContent = '📍 Drop Pin'; }
@@ -2441,15 +2441,10 @@ function toast(msg, cls) {
   toastTimer = setTimeout(function() { el.classList.remove('show'); }, 3200);
 }
 
-  }
-});
-
-
-// Top Bar Drop Pin Hook (single source of truth)
+// Top Bar Drop Pin Hook
 document.addEventListener('DOMContentLoaded', function() {
   var topDropBtn = document.getElementById('btn-drop-pin-top');
   if (!topDropBtn) return;
-
   topDropBtn.addEventListener('click', function(e) {
     e.preventDefault();
     if (typeof togglePinDropMode === 'function') togglePinDropMode();
