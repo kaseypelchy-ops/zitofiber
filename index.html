@@ -25,8 +25,10 @@
 <!-- Fonts: display=swap means text shows in fallback font immediately, custom font swaps in when ready -->
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.min.css"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.min.css"/>
 <!-- App styles — bump ?v= whenever you update style.css so browsers fetch fresh -->
-<link rel="stylesheet" href="style.css?v=1.0.4">
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
 
@@ -146,6 +148,7 @@
     <div class="tb-stat" style="color:#059669">✅ Scheduled: <strong id="st-sched">0</strong></div>
     <div class="tb-stat">Pending: <strong id="st-pend">0</strong></div>
     <div class="ml-auto" style="display:flex;align-items:center;gap:8px;">
+      <button id="btn-drop-pin-top" class="tb-btn" title="Drop a pin / add an address">📍 Drop Pin</button>
       <div id="tb-status-pill" class="is-offline" onclick="openBadge()" title="View my badge">
         <span class="status-dot"></span>
         <span id="tb-status-label">OFFLINE</span>
@@ -215,49 +218,150 @@
   <!-- ═══════════════════ MANAGER DASHBOARD ═══════════════════ -->
   <div id="manager-modal" onclick="if(event.target===this)closeManagerPanel()">
     <div class="mgr-wrap">
+
+      <!-- Header -->
       <div class="mgr-header">
         <div>
           <div class="mgr-eyebrow">Manager View</div>
-          <div class="mgr-title">Team Status</div>
+          <div class="mgr-title">Field Intelligence</div>
           <div class="mgr-subtitle" id="mgr-last-refresh">—</div>
         </div>
         <button class="mgr-refresh-btn" id="mgr-refresh-btn" onclick="refreshManagerPanel()">↻</button>
       </div>
+
+      <!-- Top KPI pills -->
       <div class="mgr-summary">
         <div class="mgr-pill"><div class="mgr-pill-val online-c" id="mgr-count-online">—</div><div class="mgr-pill-lbl">Online</div></div>
         <div class="mgr-pill"><div class="mgr-pill-val offline-c" id="mgr-count-offline">—</div><div class="mgr-pill-lbl">Offline</div></div>
-        <div class="mgr-pill"><div class="mgr-pill-val sales-c" id="mgr-count-sales">—</div><div class="mgr-pill-lbl">Total Sales</div></div>
+        <div class="mgr-pill"><div class="mgr-pill-val sales-c" id="mgr-count-sales">—</div><div class="mgr-pill-lbl">Sales Today</div></div>
       </div>
 
-      <div class="mgr-perf">
-        <div class="mgr-perf-head">Performance Overview</div>
-        <div class="mgr-perf-grid">
-          <div class="mgr-metric">
-            <div class="mgr-metric-lbl">Close Rate</div>
-            <div class="mgr-metric-val" id="mgr-m-close">—</div>
-            <div class="mgr-metric-sub" id="mgr-m-close-sub">—</div>
-          </div>
-          <div class="mgr-metric">
-            <div class="mgr-metric-lbl">Sales / Hour</div>
-            <div class="mgr-metric-val" id="mgr-m-pace">—</div>
-            <div class="mgr-metric-sub" id="mgr-m-pace-sub">—</div>
-          </div>
-          <div class="mgr-metric">
-            <div class="mgr-metric-lbl">Gig Mix</div>
-            <div class="mgr-metric-val" id="mgr-m-gigmix">—</div>
-            <div class="mgr-metric-sub" id="mgr-m-gigmix-sub">—</div>
-          </div>
-          <div class="mgr-metric">
-            <div class="mgr-metric-lbl">Sales / Rep</div>
-            <div class="mgr-metric-val" id="mgr-m-spr">—</div>
-            <div class="mgr-metric-sub" id="mgr-m-spr-sub">—</div>
+      <!-- Tab nav -->
+      <div class="mgr-tabs">
+        <button class="mgr-tab active" onclick="switchMgrTab('team',this)">👥 Team</button>
+        <button class="mgr-tab" onclick="switchMgrTab('analytics',this)">📊 Analytics</button>
+        <button class="mgr-tab" onclick="switchMgrTab('coverage',this)">🗺 Coverage</button>
+        <button class="mgr-tab" onclick="switchMgrTab('forecast',this)">💰 Forecast</button>
+      </div>
+
+      <!-- ── TAB: TEAM ── -->
+      <div id="mgr-tab-team" class="mgr-tab-panel active">
+        <div class="mgr-perf">
+          <div class="mgr-perf-head">Live Performance</div>
+          <div class="mgr-perf-grid">
+            <div class="mgr-metric">
+              <div class="mgr-metric-lbl">Close Rate</div>
+              <div class="mgr-metric-val" id="mgr-m-close">—</div>
+              <div class="mgr-metric-sub" id="mgr-m-close-sub">—</div>
+            </div>
+            <div class="mgr-metric">
+              <div class="mgr-metric-lbl">Sales / Hour</div>
+              <div class="mgr-metric-val" id="mgr-m-pace">—</div>
+              <div class="mgr-metric-sub" id="mgr-m-pace-sub">—</div>
+            </div>
+            <div class="mgr-metric">
+              <div class="mgr-metric-lbl">Gig Mix</div>
+              <div class="mgr-metric-val" id="mgr-m-gigmix">—</div>
+              <div class="mgr-metric-sub" id="mgr-m-gigmix-sub">—</div>
+            </div>
+            <div class="mgr-metric">
+              <div class="mgr-metric-lbl">Sales / Rep</div>
+              <div class="mgr-metric-val" id="mgr-m-spr">—</div>
+              <div class="mgr-metric-sub" id="mgr-m-spr-sub">—</div>
+            </div>
           </div>
         </div>
+        <div class="mgr-list-head">Field Reps</div>
+        <div id="mgr-rep-list">
+          <div class="mgr-loading"><div class="mgr-spinner"></div>Loading rep data…</div>
+        </div>
       </div>
-      <div class="mgr-list-head">Field Reps</div>
-      <div id="mgr-rep-list">
-        <div class="mgr-loading"><div class="mgr-spinner"></div>Loading rep data…</div>
+
+      <!-- ── TAB: ANALYTICS ── -->
+      <div id="mgr-tab-analytics" class="mgr-tab-panel">
+
+        <div class="ana-card">
+          <div class="ana-card-head">🕐 Best Hours to Knock</div>
+          <div class="ana-card-sub">Close rate by hour of day — based on all recorded door knocks</div>
+          <div id="ana-tod-chart" class="tod-chart"></div>
+          <div class="tod-x-labels" id="ana-tod-labels"></div>
+        </div>
+
+        <div class="ana-card">
+          <div class="ana-card-head">📶 Status Breakdown</div>
+          <div class="ana-card-sub">Disposition of all worked doors this session</div>
+          <div id="ana-status-bars" class="status-bars"></div>
+        </div>
+
+        <div class="ana-card">
+          <div class="ana-card-head">🆚 Competitor Landscape</div>
+          <div class="ana-card-sub">What service do prospects already have?</div>
+          <div id="ana-competitor" class="competitor-grid"></div>
+        </div>
+
+        <div class="ana-card">
+          <div class="ana-card-head">👤 Rep Leaderboard</div>
+          <div class="ana-card-sub">Ranked by close rate — minimum 5 doors worked</div>
+          <div id="ana-leaderboard" class="leaderboard-list"></div>
+        </div>
+
       </div>
+
+      <!-- ── TAB: COVERAGE ── -->
+      <div id="mgr-tab-coverage" class="mgr-tab-panel">
+
+        <div class="ana-card">
+          <div class="ana-card-head" style="display:flex;align-items:center;justify-content:space-between;">
+            <span>Territory Coverage</span>
+            <button class="heat-btn" id="btn-heat-map" onclick="toggleHeatMap()">🌡 Coverage Map</button>
+          </div>
+          <div class="ana-card-sub">% of addresses knocked per territory</div>
+          <div id="cov-territory-bars"></div>
+        </div>
+
+        <div class="ana-card">
+          <div class="ana-card-head">📍 Coverage Legend</div>
+          <div class="cov-legend">
+            <div class="cov-leg-row"><span class="cov-swatch" style="background:#8b5cf6"></span>Mega Sale</div>
+            <div class="cov-leg-row"><span class="cov-swatch" style="background:#10b981"></span>Gig Sale</div>
+            <div class="cov-leg-row"><span class="cov-swatch" style="background:#d97706"></span>Not Home</div>
+            <div class="cov-leg-row"><span class="cov-swatch" style="background:#ef4444"></span>Brightspeed</div>
+            <div class="cov-leg-row"><span class="cov-swatch" style="background:#818cf8"></span>In Contract</div>
+            <div class="cov-leg-row"><span class="cov-swatch" style="background:#dc2626"></span>Not Interested</div>
+            <div class="cov-leg-row"><span class="cov-swatch" style="background:#06b6d4"></span>Go Back Later</div>
+            <div class="cov-leg-row"><span class="cov-swatch" style="background:#6b7280"></span>Pending / Untouched</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ── TAB: FORECAST ── -->
+      <div id="mgr-tab-forecast" class="mgr-tab-panel">
+
+        <div class="ana-card forecast-hero">
+          <div class="ana-card-head">📡 Revenue Projection</div>
+          <div class="ana-card-sub">Based on current close rate applied to remaining pending homes</div>
+          <div class="forecast-mrr" id="fc-mrr">—</div>
+          <div class="forecast-mrr-label">Projected Monthly Recurring Revenue</div>
+        </div>
+
+        <div class="ana-card">
+          <div class="ana-card-head">Projection Inputs</div>
+          <div class="fc-inputs-grid" id="fc-inputs-grid"></div>
+        </div>
+
+        <div class="ana-card">
+          <div class="ana-card-head">Territory Breakdown</div>
+          <div id="fc-territory-table"></div>
+        </div>
+
+        <div class="ana-card">
+          <div class="ana-card-head">Package Revenue Split</div>
+          <div class="fc-pkg-split" id="fc-pkg-split"></div>
+        </div>
+
+      </div>
+
       <button class="mgr-close-btn" onclick="closeManagerPanel()">Close</button>
     </div>
   </div>
@@ -314,6 +418,11 @@
 
   <!-- Pin Drop banner — visible while pin mode is active -->
   <div id="pin-drop-banner">📍 Tap a home on the map to add it</div>
+
+  <!-- Drop Pin FAB — mobile only, replaces the topbar button which overflows on small screens -->
+  <button id="btn-drop-pin-fab" onclick="togglePinDropMode()" title="Drop a pin / add an address">
+    📍 Drop Pin
+  </button>
 
   <div id="map"></div>
 
@@ -549,15 +658,16 @@
 </div>
 <!-- Third-party libraries -->
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.min.js"></script>
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <!-- App logic — bump ?v= whenever you push a new version of app.js -->
-<script defer src="app.js?v=1.0.4"></script>
+<script defer src="app.js"></script>
 <!-- Service worker: caches app shell + tiles so the app loads fast on weak signal -->
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', function() {
-      navigator.serviceWorker.register('/sw.js').catch(function(){});
+      navigator.serviceWorker.register('sw.js').catch(function(){});
     });
   }
 </script>

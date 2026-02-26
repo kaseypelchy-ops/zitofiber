@@ -25,6 +25,7 @@ var repWebsite = 'https://www.zitomedia.net';
 var activeTerritory = '';
 var mapObj     = null;
 var mapMarkers = {};
+var clusterGroup = null; // Leaflet.markercluster group — holds all address pins
 var kmlGeoJSON = null;
 var toastTimer = null;
 var sidebarOpen  = true;
@@ -392,32 +393,27 @@ function startPolling() {
         if (!json || !json.rows) return;
 
         var changed = false;
+        var markersToRefresh = [];
 
+        // First pass: update all data — no DOM touches yet
         json.rows.forEach(function(row) {
           var addr = addresses.find(function(a){ return a.sheetRow === row.sheetRow; });
           if (!addr) return;
 
-          // Status update
           var newStatus = (row.status || 'pending').toString().toLowerCase().trim();
-          if (addr.status !== newStatus) {
+          var newNote   = (row.note || row.dispositionNote || row.disposition_note || '').toString().trim();
+
+          if (addr.status !== newStatus || addr.note !== newNote) {
             addr.status = newStatus;
+            addr.note   = newNote;
             changed = true;
-          }
-
-          // Note update (independent of status)
-          var newNote = (row.note || row.dispositionNote || row.disposition_note || '').toString().trim();
-          if (addr.note !== newNote) {
-            addr.note = newNote;
-            changed = true;
-          }
-
-          // If anything changed, refresh this marker
-          if (changed && addr.lat && addr.lng) {
-            placeMarker(addr);
+            if (addr.lat && addr.lng) markersToRefresh.push(addr);
           }
         });
 
+        // Second pass: update markers all at once after data is settled
         if (changed) {
+          markersToRefresh.forEach(function(addr) { placeMarker(addr); });
           buildList();
           updateStats();
         }
@@ -458,6 +454,7 @@ function launchApp() {
     updateStats();
     buildList();
     initMap();
+    prefetchTiles();
     geocodeAll();
     startPolling();
     maybeAutoCollapse();
@@ -607,6 +604,65 @@ function launchApp() {
 // Track the active base layer and label overlay globally
 var activeBaseLayer   = null;
 var activeLabelLayer  = null;
+var heatMapLayer      = null;  // Coverage heat map — manager only
+var heatMapOn         = false;
+
+// Status-to-heat-color mapping (warm = worked, cool = pending)
+var HEAT_COLORS = {
+  mega:          { fill: '#8b5cf6', opacity: 0.55 },
+  gig:           { fill: '#10b981', opacity: 0.55 },
+  nothome:       { fill: '#d97706', opacity: 0.40 },
+  brightspeed:   { fill: '#ef4444', opacity: 0.45 },
+  incontract:    { fill: '#818cf8', opacity: 0.40 },
+  notinterested: { fill: '#dc2626', opacity: 0.45 },
+  goback:        { fill: '#06b6d4', opacity: 0.40 },
+  vacant:        { fill: '#ca8a04', opacity: 0.35 },
+  business:      { fill: '#6366f1', opacity: 0.40 },
+  pending:       { fill: '#6b7280', opacity: 0.20 }
+};
+
+function toggleHeatMap() {
+  if (!mapObj) return;
+  heatMapOn = !heatMapOn;
+
+  var btn = document.getElementById('btn-heat-map');
+  if (btn) {
+    btn.textContent = heatMapOn ? '🌡 Hide Map' : '🌡 Coverage Map';
+    btn.classList.toggle('active', heatMapOn);
+  }
+
+  if (!heatMapOn) {
+    if (heatMapLayer) { mapObj.removeLayer(heatMapLayer); heatMapLayer = null; }
+    return;
+  }
+
+  renderHeatMap();
+}
+
+function renderHeatMap() {
+  if (!mapObj) return;
+  if (heatMapLayer) { mapObj.removeLayer(heatMapLayer); heatMapLayer = null; }
+
+  var circles = [];
+  addresses.forEach(function(a) {
+    if (!a.lat || !a.lng) return;
+    var s = (a.status || 'pending').toLowerCase();
+    var style = HEAT_COLORS[s] || HEAT_COLORS.pending;
+    var circle = L.circleMarker([a.lat, a.lng], {
+      radius:      14,
+      fillColor:   style.fill,
+      fillOpacity: style.opacity,
+      color:       style.fill,
+      opacity:     0.15,
+      weight:      1,
+      interactive: false   // don't intercept map clicks
+    });
+    circles.push(circle);
+  });
+
+  heatMapLayer = L.layerGroup(circles);
+  heatMapLayer.addTo(mapObj);
+}
 
 // Satellite imagery (ONLY base map option) + labels overlay
 var SATELLITE_LAYER = {
@@ -643,10 +699,19 @@ function initMap() {
   mapObj = L.map('map');
 
   // Default to satellite — best for pin dropping on houses
-  // Base map (Satellite imagery only)
   setSatelliteBaseLayer();
 
-  mapObj.setView([39.5, -98.35], 5);
+  // Start at the centroid of already-geocoded addresses so tiles load at the
+  // right zoom level immediately. Avoids the jarring US-overview → territory
+  // snap that forces a full tile reload. Fall back to US overview if no pins yet.
+  var pinned = addresses.filter(function(a) { return a.lat && a.lng; });
+  if (pinned.length > 0) {
+    var avgLat = pinned.reduce(function(s,a){ return s+a.lat; }, 0) / pinned.length;
+    var avgLng = pinned.reduce(function(s,a){ return s+a.lng; }, 0) / pinned.length;
+    mapObj.setView([avgLat, avgLng], 14);
+  } else {
+    mapObj.setView([39.5, -98.35], 5);
+  }
 
   if (kmlGeoJSON && kmlGeoJSON.features.length > 0) {
     var palette = [
@@ -673,6 +738,27 @@ function initMap() {
     }
   }
 
+  // ── Marker cluster setup ─────────────────────────────────
+  // Groups nearby pins into a single cluster circle at low zoom.
+  // Dramatically reduces DOM nodes on the map — 200 individual markers
+  // becomes 1-5 cluster circles until you zoom in close.
+  clusterGroup = L.markerClusterGroup({
+    maxClusterRadius: 50,          // tighter clusters — shows individual pins sooner on zoom
+    showCoverageOnHover: false,    // don't draw the polygon when hovering a cluster
+    spiderfyOnMaxZoom: true,       // fan out overlapping pins at max zoom
+    disableClusteringAtZoom: 17,   // at street level show every pin individually
+    iconCreateFunction: function(cluster) {
+      var count = cluster.getChildCount();
+      var size  = count < 10 ? 'small' : count < 50 ? 'medium' : 'large';
+      return L.divIcon({
+        html: '<div class="cluster-inner">' + count + '</div>',
+        className: 'marker-cluster marker-cluster-' + size,
+        iconSize: L.point(40, 40)
+      });
+    }
+  });
+  clusterGroup.addTo(mapObj);
+
   addresses.forEach(function(a) {
     if (a.lat && a.lng) { placeMarker(a); }
   });
@@ -696,31 +782,7 @@ function initMap() {
     handleMapPinDrop(e.latlng);
   });
 
-  // ── Leaflet custom control: Drop Pin button ───────────────
-  var PinDropControl = L.Control.extend({
-    options: { position: 'bottomleft' },
-    onAdd: function() {
-      var container = L.DomUtil.create('div', 'leaflet-bar leaflet-control pin-drop-control');
-      var btn = L.DomUtil.create('a', 'pin-drop-btn', container);
-      btn.id          = 'btn-pin-drop';
-      btn.href        = '#';
-      btn.title       = 'Drop a pin to add a home';
-      btn.innerHTML   = '<span class="pin-drop-icon">📍</span><span class="pin-drop-label">Drop Pin</span>';
-      btn.setAttribute('role', 'button');
-      btn.setAttribute('aria-label', 'Drop pin to add address');
-
-      L.DomEvent.on(btn, 'click', function(e) {
-        L.DomEvent.stopPropagation(e);
-        L.DomEvent.preventDefault(e);
-        togglePinDropMode();
-      });
-      // Prevent map drag from starting on this control
-      L.DomEvent.disableClickPropagation(container);
-      L.DomEvent.disableScrollPropagation(container);
-      return container;
-    }
-  });
-  new PinDropControl().addTo(mapObj);
+  // (Map Drop Pin control removed — use top bar button)
 
   // ── Map style switcher control ────────────────────────────
     // (Map switcher removed: Voyager is the only base map)
@@ -772,36 +834,36 @@ function getMarkerShape(addr) {
 }
 
 function placeMarker(addr) {
-  if (mapMarkers[addr.id]) { mapMarkers[addr.id].remove(); delete mapMarkers[addr.id]; }
+  // Remove existing marker from cluster group and tracking object
+  if (mapMarkers[addr.id]) {
+    if (clusterGroup) clusterGroup.removeLayer(mapMarkers[addr.id]);
+    else mapMarkers[addr.id].remove();
+    delete mapMarkers[addr.id];
+  }
 
-  var color = getMarkerColor(addr);
-  var shape = getMarkerShape(addr);
-  var html  = markerHTML(color, shape);
+  var color  = getMarkerColor(addr);
+  var shape  = getMarkerShape(addr);
+  var html   = markerHTML(color, shape);
   var size   = shape === 'house' ? [26,26] : shape === 'bolt' ? [20,28] : [16,16];
   var anchor = shape === 'house' ? [13,26] : shape === 'bolt' ? [10,28] : [8,8];
-  var icon  = L.divIcon({ className:'', html: html, iconSize: size, iconAnchor: anchor });
-  var m     = L.marker([addr.lat, addr.lng], { icon: icon }).addTo(mapObj);
+  var icon   = L.divIcon({ className:'', html: html, iconSize: size, iconAnchor: anchor });
+  var m      = L.marker([addr.lat, addr.lng], { icon: icon });
 
-  var sub = [addr.city, addr.state, addr.zip].filter(Boolean).join(', ');
-  var typeLabel = shape === 'bolt' ? '⚡ Active Customer' : (shape === 'house' ? '🏠 Homes Passed' : '');
+  // Lazy popup — build HTML only when the user actually taps the pin.
+  // Previously all 200 popup strings were built and stored in memory at launch.
   var pid = addr.id;
+  m.bindPopup(function() {
+    var shape2  = getMarkerShape(addr);
+    var btnHTML = shape2 === 'bolt'
+      ? '<button class="pop-open-btn pop-active-btn" onclick="openFormFromMap(' + pid + ')">⚡ View Address</button>'
+      : '<button class="pop-open-btn" onclick="openFormFromMap(' + pid + ')">Open Sales Form</button>';
+    return '<div style="font-family:Syne,sans-serif;min-width:160px">' +
+      popupHtmlForAddr(addr) + btnHTML + '</div>';
+  }, { minWidth: 180 });
 
-  var btnHTML = shape === 'bolt'
-    ? '<button class="pop-open-btn pop-active-btn" onclick="openFormFromMap(' + pid + ')">⚡ View Address</button>'
-    : '<button class="pop-open-btn" onclick="openFormFromMap(' + pid + ')">Open Sales Form</button>';
-
-  // ✅ NEW
-  var noteHTML = (addr.note && addr.note.trim())
-    ? '<div style="margin-top:6px;padding:6px 8px;border:1px solid #e5e7eb;border-radius:10px;background:#f9fafb;font-size:11px;color:#111;"><b>Note:</b> ' + escHtml(addr.note) + '</div>'
-    : '';
-
-m.bindPopup(
-  '<div style="font-family:Syne,sans-serif;min-width:160px">' +
-    popupHtmlForAddr(addr) +
-    btnHTML +
-  '</div>',
-  { minWidth: 180 }
-);
+  // Add to cluster group (falls back to direct map add if cluster not ready)
+  if (clusterGroup) clusterGroup.addLayer(m);
+  else m.addTo(mapObj);
 
   mapMarkers[addr.id] = m;
 }
@@ -831,16 +893,67 @@ function fitToAddresses() {
   mapObj.fitBounds(bounds, { padding: [48, 48], maxZoom: 17 });
 }
 
+// Pre-warm the browser's tile cache by fetching the 8 surrounding tiles at the
+// current map view. This means when the user pans slightly the tiles are already
+// in the HTTP cache and appear instantly instead of loading from the network.
+function prefetchTiles() {
+  if (!mapObj) return;
+  try {
+    var center = mapObj.getCenter();
+    var zoom   = mapObj.getZoom();
+    var tilePoint = mapObj.project(center, zoom).divideBy(256).floor();
+    var urlTemplate = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+    var offsets = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
+    offsets.forEach(function(o) {
+      var url = urlTemplate
+        .replace('{z}', zoom)
+        .replace('{y}', tilePoint.y + o[0])
+        .replace('{x}', tilePoint.x + o[1]);
+      var img = new Image();
+      img.src = url; // browser will cache the response; we discard the element
+    });
+  } catch(e) {}
+}
+
 function geocodeAll() {
   var toGeocode = addresses.filter(function(a) { return !a.lat || !a.lng; });
   if (toGeocode.length === 0) { buildList(); return; }
 
-  var total   = toGeocode.length;
-  var done    = 0;
-  var failed  = 0;
+  var total  = toGeocode.length;
+  var done   = 0;
+  var failed = 0;
   showGeocodeBar(done, total);
 
   var idx = 0;
+
+  // Debounced buildList — rebuilds sidebar at most once per second while
+  // geocoding is in progress, instead of on every single address completion.
+  // With 200 addresses this cuts ~200 full DOM rebuilds down to ~3-4.
+  var _buildListTimer = null;
+  function debouncedBuildList() {
+    if (_buildListTimer) return;
+    _buildListTimer = setTimeout(function() {
+      _buildListTimer = null;
+      buildList();
+    }, 800);
+  }
+
+  // Persist newly geocoded coordinates back to the Google Sheet so future
+  // sessions load with lat/lng already set — skipping geocoding entirely.
+  function saveGeocodedCoords(a) {
+    if (!a.sheetRow || !webhookURL) return;
+    fetch(webhookURL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type:     'save_coords',
+        sheetRow: a.sheetRow,
+        lat:      a.lat,
+        lng:      a.lng
+      })
+    }).catch(function(){});
+  }
 
   function geocodeOne(a) {
     var query = [a.address, a.city, a.state, a.zip].filter(Boolean).join(', ');
@@ -853,13 +966,14 @@ function geocodeAll() {
           a.lat = parseFloat(data[0].lat);
           a.lng = parseFloat(data[0].lon);
           if (mapObj) placeMarker(a);
+          saveGeocodedCoords(a);
         } else {
           failed++;
           a._geocodeFailed = true;
         }
         done++;
         showGeocodeBar(done, total, failed);
-        buildList();
+        debouncedBuildList();
         scheduleNext();
       })
       .catch(function() {
@@ -876,13 +990,16 @@ function geocodeAll() {
       var a = toGeocode[idx++];
       setTimeout(function() { geocodeOne(a); }, 1100);
     } else if (done >= total) {
+      // Flush any pending debounced buildList before finishing
+      if (_buildListTimer) { clearTimeout(_buildListTimer); _buildListTimer = null; }
+      buildList();
       if (failed > 0) {
         document.getElementById('gc-text').textContent =
-          '⚠ ' + (total - failed) + '/' + total + ' geocoded. ' + failed + ' not found.';
+          '\u26a0 ' + (total - failed) + '/' + total + ' geocoded. ' + failed + ' not found.';
         document.getElementById('gc-fill').style.background = '#d97706';
         setTimeout(hideGeocodeBar, 6000);
       } else {
-        document.getElementById('gc-text').textContent = '✓ All ' + total + ' addresses geocoded';
+        document.getElementById('gc-text').textContent = '\u2713 All ' + total + ' addresses geocoded';
         document.getElementById('gc-fill').style.background = '#059669';
         setTimeout(hideGeocodeBar, 2500);
         fitToAddresses();
@@ -890,8 +1007,9 @@ function geocodeAll() {
     }
   }
 
+  // Start a single geocoding chain — the old code called scheduleNext() twice,
+  // which accidentally launched two parallel chains that stomped on each other.
   scheduleNext();
-  setTimeout(scheduleNext, 1100);
 }
 
 function showGeocodeBar(done, total, failed) {
@@ -925,6 +1043,23 @@ var TAG_HTML  = {
   business:      '<span class="ar-tag tag-biz">🏢 Business</span>'
 };
 
+// Single delegated click listener on the address list container.
+// Attached once at startup — never recreated on buildList() calls.
+// Replaces the old pattern of adding a listener to every row on every render,
+// which was leaking N listeners every 30 seconds during polling.
+(function initAddressListListener() {
+  var container = document.getElementById('addr-items');
+  if (!container) return;
+  container.addEventListener('click', function(e) {
+    var row = e.target.closest('.addr-row');
+    if (!row) return;
+    var id = parseInt(row.getAttribute('data-id'), 10);
+    if (isNaN(id)) return;
+    openForm(id);
+    if (window.innerWidth <= 640 && sidebarOpen) toggleSidebar();
+  });
+})();
+
 function buildList(filter) {
   var list = filter
     ? addresses.filter(function(a) {
@@ -951,29 +1086,21 @@ function buildList(filter) {
     } else {
       icon = '<div style="width:10px;height:10px;border-radius:50%;background:' + color + '"></div>';
     }
-var noteLine = (a.note && a.note.trim())
-  ? '<div class="ar-note">' + escHtml(a.note.trim()) + '</div>'
-  : '';
-
-return '<div class="addr-row' + selC + '" data-id="' + a.id + '">' +
-  '<div class="ar-dot">' + icon + '</div>' +
-  '<div class="ar-info">' +
-    '<div class="ar-st">'  + escHtml(a.address) + '</div>' +
-    '<div class="ar-sub">' + escHtml(sub)        + '</div>' +
-    noteLine +
-  '</div>' + tag + '</div>';
+    var noteLine = (a.note && a.note.trim())
+      ? '<div class="ar-note">' + escHtml(a.note.trim()) + '</div>'
+      : '';
+    return '<div class="addr-row' + selC + '" data-id="' + a.id + '">' +
+      '<div class="ar-dot">' + icon + '</div>' +
+      '<div class="ar-info">' +
+        '<div class="ar-st">'  + escHtml(a.address) + '</div>' +
+        '<div class="ar-sub">' + escHtml(sub)        + '</div>' +
+        noteLine +
+      '</div>' + tag + '</div>';
   }).join('');
 
   var container = document.getElementById('addr-items');
   container.innerHTML = html || '<div style="padding:24px;text-align:center;color:var(--muted);font-size:12px">No addresses found</div>';
-
-  container.querySelectorAll('.addr-row').forEach(function(row) {
-    row.addEventListener('click', function() {
-      var id = parseInt(this.getAttribute('data-id'), 10);
-      openForm(id);
-      if (window.innerWidth <= 640 && sidebarOpen) toggleSidebar();
-    });
-  });
+  // No per-row listeners needed — delegated listener above handles all clicks
 }
 
 function filterList(val) { buildList(val || null); }
@@ -1561,7 +1688,9 @@ function submitStatus() {
     status: selStatus
   };
 
-  sendData(payload);
+  // NOTE: sendData() is intentionally NOT called here — no-sale statuses
+  // should never go to recordSale(). Only updateAddressStatus() is needed
+  // to write the status + note to the Addresses tab.
   maybeWriteNewAddrToSheet(addr);
 
   var smap = { 'Not Home':'nothome','Brightspeed':'brightspeed','In Contract':'incontract','Not Interested':'notinterested','Go Back Later':'goback','Vacant':'vacant','Business':'business' };
@@ -1595,7 +1724,8 @@ function updateAddressStatus(addr, status, note) {
       status:          status,
       salesperson:     repName,
       note:            (note || ''),
-      dispositionNote: (note || '')
+      dispositionNote: (note || ''),
+      knockedAt:       new Date().toISOString()
     })
   }).catch(function(){});
 }
@@ -1802,30 +1932,70 @@ function emailCustomerOffer(pkgKey) {
 function refreshMapMarkers() {
   if (!mapObj) return;
 
-  // Clear existing markers (if any)
-  if (window.mapMarkers) {
+  // Clear all markers from the cluster group in one shot (much faster than
+  // removing them one at a time from the map directly)
+  if (clusterGroup) {
+    clusterGroup.clearLayers();
+  } else {
     Object.keys(mapMarkers).forEach(function(k){
       try { mapObj.removeLayer(mapMarkers[k]); } catch(e) {}
     });
   }
-  window.mapMarkers = {};
+  mapMarkers = {};
 
-  // Re-add markers for current addresses
+  // Batch-add all markers to the cluster group at once.
+  // L.markerClusterGroup.addLayers() is far faster than calling
+  // addLayer() in a loop — it does a single internal reindex.
+  var toAdd = [];
   (addresses || []).forEach(function(a){
-    if (a && a.lat != null && a.lng != null) {
-      placeMarker(a);
-    }
+    if (!a || a.lat == null || a.lng == null) return;
+    var color  = getMarkerColor(a);
+    var shape  = getMarkerShape(a);
+    var html   = markerHTML(color, shape);
+    var size   = shape === 'house' ? [26,26] : shape === 'bolt' ? [20,28] : [16,16];
+    var anchor = shape === 'house' ? [13,26] : shape === 'bolt' ? [10,28] : [8,8];
+    var icon   = L.divIcon({ className:'', html: html, iconSize: size, iconAnchor: anchor });
+    var m      = L.marker([a.lat, a.lng], { icon: icon });
+    var pid    = a.id;
+    m.bindPopup(function() {
+      var shape2  = getMarkerShape(a);
+      var btnHTML = shape2 === 'bolt'
+        ? '<button class="pop-open-btn pop-active-btn" onclick="openFormFromMap(' + pid + ')">⚡ View Address</button>'
+        : '<button class="pop-open-btn" onclick="openFormFromMap(' + pid + ')">Open Sales Form</button>';
+      return '<div style="font-family:Syne,sans-serif;min-width:160px">' +
+        popupHtmlForAddr(a) + btnHTML + '</div>';
+    }, { minWidth: 180 });
+    mapMarkers[a.id] = m;
+    toAdd.push(m);
   });
+
+  if (clusterGroup) clusterGroup.addLayers(toAdd);
 }
 
 function openManagerPanel() {
   document.getElementById('manager-modal').classList.add('open');
+  switchMgrTab('team', document.querySelector('.mgr-tab'));
   refreshManagerPanel();
   mgrAutoRefresh = setInterval(refreshManagerPanel, 30000);
 }
 function closeManagerPanel() {
   document.getElementById('manager-modal').classList.remove('open');
   clearInterval(mgrAutoRefresh);
+  // Turn off heat map if it was on
+  if (heatMapOn) toggleHeatMap();
+}
+
+// ── Tab switching ─────────────────────────────────────────
+function switchMgrTab(tab, btn) {
+  document.querySelectorAll('.mgr-tab-panel').forEach(function(p){ p.classList.remove('active'); });
+  document.querySelectorAll('.mgr-tab').forEach(function(b){ b.classList.remove('active'); });
+  var panel = document.getElementById('mgr-tab-' + tab);
+  if (panel) panel.classList.add('active');
+  if (btn)   btn.classList.add('active');
+
+  if (tab === 'analytics') renderAnalyticsTab();
+  if (tab === 'coverage')  renderCoverageTab();
+  if (tab === 'forecast')  renderForecastTab();
 }
 function refreshManagerPanel() {
   var btn = document.getElementById('mgr-refresh-btn');
@@ -1964,6 +2134,370 @@ function updateMgrPerformance(metrics) {
   if (paceSub)  paceSub.textContent  = (hours > 0) ? ('Across ' + online + ' online rep' + (online===1?'':'s')) : '—';
   if (mixSub)   mixSub.textContent   = (denom > 0) ? (gig + ' Gig • ' + mega + ' Mega') : 'No sales reported';
   if (sprSub)   sprSub.textContent   = (online > 0) ? ('Online reps only') : '—';
+}
+
+// ══════════════════════════════════════════════════════════
+//  TIER 1 ANALYTICS — Tab renderers
+// ══════════════════════════════════════════════════════════
+
+// ── Helpers ────────────────────────────────────────────────
+function pct(x) { return Math.round(x * 100) + '%'; }
+function usd(n) {
+  return '$' + n.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+// Status label map for display
+var STATUS_LABELS = {
+  mega:          'Mega Sale',
+  gig:           'Gig Sale',
+  nothome:       'Not Home',
+  brightspeed:   'Brightspeed',
+  incontract:    'In Contract',
+  notinterested: 'Not Interested',
+  goback:        'Go Back Later',
+  vacant:        'Vacant',
+  business:      'Business',
+  pending:       'Pending / Untouched',
+  nocontact:     'No Contact'
+};
+
+// ── Analytics Tab ──────────────────────────────────────────
+function renderAnalyticsTab() {
+  renderTodChart();
+  renderStatusBars();
+  renderCompetitor();
+  renderLeaderboard();
+}
+
+// 1. Time-of-day knock chart
+// Uses knockedAt stored on each address object (set when rep submits a status).
+// Falls back to graceful empty state when no hourly data exists yet.
+function renderTodChart() {
+  var hourSales = new Array(24).fill(0);
+  var hourKnocks = new Array(24).fill(0);
+
+  addresses.forEach(function(a) {
+    if (!a.knockedAt) return;
+    var h = new Date(a.knockedAt).getHours();
+    if (h < 0 || h > 23) return;
+    hourKnocks[h]++;
+    if (a.status === 'mega' || a.status === 'gig') hourSales[h]++;
+  });
+
+  // Only show 7am–9pm (hours 7–21) — the realistic knock window
+  var hours   = [];
+  var labels  = [];
+  for (var h = 7; h <= 21; h++) {
+    hours.push(h);
+    labels.push(h < 12 ? h + 'a' : h === 12 ? '12p' : (h-12) + 'p');
+  }
+
+  var maxRate = 0;
+  var rates   = hours.map(function(h) {
+    var rate = hourKnocks[h] > 0 ? hourSales[h] / hourKnocks[h] : 0;
+    if (rate > maxRate) maxRate = rate;
+    return { h: h, rate: rate, knocks: hourKnocks[h], sales: hourSales[h] };
+  });
+
+  var chartEl  = document.getElementById('ana-tod-chart');
+  var labelEl  = document.getElementById('ana-tod-labels');
+  if (!chartEl || !labelEl) return;
+
+  var totalKnocks = hourKnocks.reduce(function(s,v){ return s+v; }, 0);
+  if (totalKnocks === 0) {
+    chartEl.innerHTML = '<div style="width:100%;text-align:center;padding:20px 0;font-size:11px;color:var(--muted)">No knock data yet — data populates as reps log door contacts</div>';
+    labelEl.innerHTML = '';
+    return;
+  }
+
+  chartEl.innerHTML = rates.map(function(r) {
+    var heightPct = maxRate > 0 ? Math.max((r.rate / maxRate) * 100, r.knocks > 0 ? 5 : 1) : 2;
+    var color = r.rate >= 0.15 ? '#10b981'
+              : r.rate >= 0.08 ? '#facc15'
+              : r.knocks > 0   ? '#d97706'
+              : 'rgba(255,255,255,.08)';
+    var label = r.knocks > 0 ? pct(r.rate) : '';
+    return '<div class="tod-bar-wrap">' +
+      '<div class="tod-bar" style="height:' + heightPct + '%;background:' + color + '">' +
+        (label ? '<div class="tod-bar-val">' + label + '</div>' : '') +
+      '</div>' +
+    '</div>';
+  }).join('');
+
+  labelEl.innerHTML = labels.map(function(l) {
+    return '<span>' + l + '</span>';
+  }).join('');
+}
+
+// 2. Status breakdown horizontal bars
+function renderStatusBars() {
+  var el = document.getElementById('ana-status-bars');
+  if (!el) return;
+
+  var counts = {};
+  var worked = addresses.filter(function(a) {
+    var s = (a.status || 'pending').toLowerCase();
+    return s !== 'pending' && s !== '';
+  });
+
+  worked.forEach(function(a) {
+    var s = (a.status || 'unknown').toLowerCase();
+    counts[s] = (counts[s] || 0) + 1;
+  });
+
+  if (worked.length === 0) {
+    el.innerHTML = '<div style="text-align:center;padding:16px;font-size:11px;color:var(--muted)">No doors worked yet this session</div>';
+    return;
+  }
+
+  var sorted = Object.keys(counts).sort(function(a,b){ return counts[b]-counts[a]; });
+
+  el.innerHTML = sorted.map(function(s) {
+    var color = COLORS[s] || '#6b7280';
+    var widthPct = (counts[s] / worked.length) * 100;
+    var label = STATUS_LABELS[s] || s;
+    return '<div class="sb-row">' +
+      '<div class="sb-header">' +
+        '<span class="sb-label">' + label + '</span>' +
+        '<span class="sb-count">' + counts[s] + ' (' + pct(counts[s]/worked.length) + ')</span>' +
+      '</div>' +
+      '<div class="sb-track"><div class="sb-fill" style="width:' + widthPct + '%;background:' + color + '"></div></div>' +
+    '</div>';
+  }).join('');
+}
+
+// 3. Competitor landscape — who do prospects already have?
+function renderCompetitor() {
+  var el = document.getElementById('ana-competitor');
+  if (!el) return;
+
+  var total     = addresses.length;
+  var bspeed    = addresses.filter(function(a){ return a.status === 'brightspeed'; }).length;
+  var incon     = addresses.filter(function(a){ return a.status === 'incontract'; }).length;
+  var sold      = addresses.filter(function(a){ return a.status === 'mega' || a.status === 'gig'; }).length;
+  var avail     = addresses.filter(function(a){
+    var s = (a.status || 'pending').toLowerCase();
+    return !s || s === 'pending' || s === 'nothome' || s === 'goback' || s === 'nocontact';
+  }).length;
+
+  var cells = [
+    { val: total,  label: 'Total Homes', color: 'var(--text)' },
+    { val: bspeed, label: 'Brightspeed', color: '#ef4444' },
+    { val: incon,  label: 'In Contract', color: '#818cf8' },
+    { val: sold,   label: 'Zito Sales',  color: '#10b981' },
+    { val: avail,  label: 'Still Available', color: '#facc15' },
+    { val: total > 0 ? pct(avail/total) : '—', label: 'Market Open', color: '#06b6d4', isStr: true }
+  ];
+
+  el.innerHTML = cells.map(function(c) {
+    return '<div class="comp-pill">' +
+      '<div class="comp-pill-val" style="color:' + c.color + '">' + (c.isStr ? c.val : c.val) + '</div>' +
+      '<div class="comp-pill-lbl">' + c.label + '</div>' +
+    '</div>';
+  }).join('');
+}
+
+// 4. Rep leaderboard — close rate, min 5 doors
+function renderLeaderboard() {
+  var el = document.getElementById('ana-leaderboard');
+  if (!el) return;
+
+  // Aggregate per rep from addresses array
+  var repData = {};
+  addresses.forEach(function(a) {
+    var rep = (a.salesperson || '').trim();
+    if (!rep) return;
+    if (!repData[rep]) repData[rep] = { doors: 0, sales: 0 };
+    var s = (a.status || 'pending').toLowerCase();
+    if (s !== 'pending' && s !== '') repData[rep].doors++;
+    if (s === 'mega' || s === 'gig') repData[rep].sales++;
+  });
+
+  var rows = Object.keys(repData)
+    .filter(function(r){ return repData[r].doors >= 5; })
+    .map(function(r) {
+      var d = repData[r];
+      return { name: r, doors: d.doors, sales: d.sales, rate: d.doors > 0 ? d.sales/d.doors : 0 };
+    })
+    .sort(function(a,b){ return b.rate - a.rate; });
+
+  if (rows.length === 0) {
+    el.innerHTML = '<div style="text-align:center;padding:16px;font-size:11px;color:var(--muted);">Need at least 5 doors per rep to rank</div>';
+    return;
+  }
+
+  var medals = ['gold','silver','bronze'];
+  el.innerHTML = rows.map(function(r, i) {
+    var medal = medals[i] || '';
+    return '<div class="lb-row">' +
+      '<div class="lb-rank ' + medal + '">' + (i+1) + '</div>' +
+      '<div>' +
+        '<div class="lb-name">' + escHtml(r.name) + '</div>' +
+        '<div class="lb-stats">' + r.sales + ' sales / ' + r.doors + ' doors</div>' +
+      '</div>' +
+      '<div class="lb-rate">' + pct(r.rate) + '</div>' +
+    '</div>';
+  }).join('');
+}
+
+// ── Coverage Tab ──────────────────────────────────────────
+function renderCoverageTab() {
+  var el = document.getElementById('cov-territory-bars');
+  if (!el) return;
+
+  // Group addresses by territory
+  var terrMap = {};
+  addresses.forEach(function(a) {
+    var t = (a.territory || 'Unknown').trim();
+    if (!terrMap[t]) terrMap[t] = { total: 0, worked: 0, sold: 0 };
+    terrMap[t].total++;
+    var s = (a.status || 'pending').toLowerCase();
+    if (s !== 'pending' && s !== '') terrMap[t].worked++;
+    if (s === 'mega' || s === 'gig') terrMap[t].sold++;
+  });
+
+  var names = Object.keys(terrMap).sort();
+  if (names.length === 0) {
+    el.innerHTML = '<div style="text-align:center;padding:16px;font-size:11px;color:var(--muted);">No territory data available</div>';
+    return;
+  }
+
+  el.innerHTML = names.map(function(t) {
+    var d = terrMap[t];
+    var covPct  = d.total > 0 ? d.worked / d.total : 0;
+    var soldPct = d.total > 0 ? d.sold / d.total : 0;
+    // Gradient: sold (green) fills left portion, rest of worked (blue) fills remaining
+    var soldW   = (soldPct * 100).toFixed(1);
+    var workedW = ((covPct - soldPct) * 100).toFixed(1);
+    return '<div class="cov-terr-row">' +
+      '<div class="cov-terr-header">' +
+        '<span class="cov-terr-name">' + escHtml(t) + '</span>' +
+        '<span class="cov-terr-stats">' +
+          d.worked + '/' + d.total + ' worked · ' + pct(covPct) + ' coverage · ' + d.sold + ' sales' +
+        '</span>' +
+      '</div>' +
+      '<div class="cov-track">' +
+        '<div class="cov-fill" style="width:' + soldW + '%;background:#10b981;float:left"></div>' +
+        '<div class="cov-fill" style="width:' + workedW + '%;background:rgba(0,86,150,.6);float:left"></div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+// ── Forecast Tab ──────────────────────────────────────────
+// Pricing constants (match PKG at top of file)
+var FC_MONTHLY = {
+  mega: 29.95 + 5.00 + 1.00,  // base + eero + proc
+  gig:  39.95 + 5.00 + 1.00
+};
+
+function renderForecastTab() {
+  // Current actuals
+  var totalHomes  = addresses.length;
+  var soldMega    = addresses.filter(function(a){ return a.status === 'mega'; }).length;
+  var soldGig     = addresses.filter(function(a){ return a.status === 'gig'; }).length;
+  var totalSold   = soldMega + soldGig;
+  var worked      = addresses.filter(function(a){
+    var s = (a.status||'pending').toLowerCase();
+    return s !== 'pending' && s !== '';
+  }).length;
+  var pending     = addresses.filter(function(a){
+    var s = (a.status||'pending').toLowerCase();
+    return !s || s === 'pending';
+  }).length;
+
+  var closeRate   = worked > 0 ? totalSold / worked : 0;
+  var gigMix      = totalSold > 0 ? soldGig / totalSold : 0.40; // default 40% gig mix
+
+  // Projected additional sales from remaining pending homes
+  var projSales   = Math.round(pending * closeRate);
+  var projGig     = Math.round(projSales * gigMix);
+  var projMega    = projSales - projGig;
+
+  // Current MRR from confirmed sales
+  var currentMRR  = (soldMega * FC_MONTHLY.mega) + (soldGig * FC_MONTHLY.gig);
+  // Projected total MRR including pending conversions
+  var projMRR     = currentMRR +
+    (projMega * FC_MONTHLY.mega) +
+    (projGig  * FC_MONTHLY.gig);
+
+  // Render hero number
+  var mrrEl = document.getElementById('fc-mrr');
+  if (mrrEl) mrrEl.textContent = usd(projMRR);
+
+  // Render inputs grid
+  var inputsEl = document.getElementById('fc-inputs-grid');
+  if (inputsEl) {
+    var inputs = [
+      { val: totalHomes, lbl: 'Total Homes' },
+      { val: pending, lbl: 'Pending' },
+      { val: worked > 0 ? pct(closeRate) : '—', lbl: 'Close Rate' },
+      { val: projSales, lbl: 'Projected Sales' },
+      { val: usd(currentMRR), lbl: 'Current MRR' },
+      { val: pct(gigMix), lbl: 'Gig Mix' }
+    ];
+    inputsEl.innerHTML = inputs.map(function(i) {
+      return '<div class="fc-input-cell">' +
+        '<div class="fc-input-val">' + i.val + '</div>' +
+        '<div class="fc-input-lbl">' + i.lbl + '</div>' +
+      '</div>';
+    }).join('');
+  }
+
+  // Render territory breakdown
+  var terrMap = {};
+  addresses.forEach(function(a) {
+    var t = (a.territory || 'Unknown').trim();
+    if (!terrMap[t]) terrMap[t] = { pending: 0, sold: 0, worked: 0 };
+    var s = (a.status||'pending').toLowerCase();
+    if (!s || s === 'pending') terrMap[t].pending++;
+    if (s !== 'pending' && s !== '') terrMap[t].worked++;
+    if (s === 'mega' || s === 'gig') terrMap[t].sold++;
+  });
+
+  var terrEl = document.getElementById('fc-territory-table');
+  if (terrEl) {
+    var tNames = Object.keys(terrMap).sort();
+    if (tNames.length === 0) {
+      terrEl.innerHTML = '<div style="text-align:center;padding:16px;font-size:11px;color:var(--muted);">No territory data</div>';
+    } else {
+      terrEl.innerHTML = '<div class="fc-terr-table">' +
+        tNames.map(function(t) {
+          var d    = terrMap[t];
+          var cr   = d.worked > 0 ? d.sold/d.worked : closeRate; // use territory CR or global
+          var proj = Math.round(d.pending * cr);
+          var mrr  = proj * (FC_MONTHLY.mega * (1 - gigMix) + FC_MONTHLY.gig * gigMix);
+          return '<div class="fc-terr-row">' +
+            '<span class="fc-terr-name">' + escHtml(t) + '</span>' +
+            '<span class="fc-terr-pending">' + d.pending + ' pending</span>' +
+            '<span class="fc-terr-rev">+' + usd(mrr) + '/mo</span>' +
+          '</div>';
+        }).join('') +
+      '</div>';
+    }
+  }
+
+  // Package split bars
+  var pkgEl = document.getElementById('fc-pkg-split');
+  if (pkgEl) {
+    var totalProjRev = projMRR;
+    var megaRev = (soldMega + projMega) * FC_MONTHLY.mega;
+    var gigRev  = (soldGig  + projGig)  * FC_MONTHLY.gig;
+    var pkgs = [
+      { label: 'Gig Speed Fiber',  rev: gigRev,  color: '#10b981' },
+      { label: 'Mega Speed Fiber', rev: megaRev, color: '#8b5cf6' }
+    ];
+    pkgEl.innerHTML = pkgs.map(function(p) {
+      var w = totalProjRev > 0 ? (p.rev / totalProjRev) * 100 : 0;
+      return '<div class="fc-pkg-row">' +
+        '<div class="fc-pkg-header">' +
+          '<span class="fc-pkg-label">' + p.label + '</span>' +
+          '<span class="fc-pkg-val">' + usd(p.rev) + '/mo</span>' +
+        '</div>' +
+        '<div class="fc-pkg-track"><div class="fc-pkg-fill" style="width:' + w + '%;background:' + p.color + '"></div></div>' +
+      '</div>';
+    }).join('');
+  }
 }
 
 function timeAgo(isoString) {
@@ -2301,17 +2835,32 @@ function submitNewAddress() {
 //  PIN DROP — tap the map to add a new address
 // ──────────────────────────────────────────────────────────
 
+// Helper — updates BOTH the topbar button (desktop) and the FAB (mobile)
+// so whichever is visible always reflects the current pin-drop state.
+function _setPinDropBtnState_(active) {
+  var btnTop = document.getElementById('btn-drop-pin-top');
+  var btnFab = document.getElementById('btn-drop-pin-fab');
+  [btnTop, btnFab].forEach(function(btn) {
+    if (!btn) return;
+    if (active) {
+      btn.classList.add('active');
+      btn.textContent = '📍 Tap a Home…';
+    } else {
+      btn.classList.remove('active');
+      btn.textContent = '📍 Drop Pin';
+    }
+  });
+}
+
 function togglePinDropMode() {
   pinDropMode = !pinDropMode;
-  var btn    = document.getElementById('btn-pin-drop');
   var banner = document.getElementById('pin-drop-banner');
   var mapEl  = document.getElementById('map');
 
   if (pinDropMode) {
-    btn.classList.add('active');
-    btn.textContent = '📍 Tap a Home…';
-    banner.classList.add('show');
-    mapEl.classList.add('pin-drop-mode');
+    _setPinDropBtnState_(true);
+    if (banner) banner.classList.add('show');
+    if (mapEl)  mapEl.classList.add('pin-drop-mode');
     // Collapse sidebar on mobile so the full map is visible
     if (window.innerWidth <= 640 && sidebarOpen) toggleSidebar();
     toast('📍 Pin mode ON — tap any home on the map', 't-info');
@@ -2322,12 +2871,11 @@ function togglePinDropMode() {
 
 function cancelPinDropMode() {
   pinDropMode = false;
-  var btn    = document.getElementById('btn-pin-drop');
   var banner = document.getElementById('pin-drop-banner');
   var mapEl  = document.getElementById('map');
-  if (btn)    { btn.classList.remove('active'); btn.textContent = '📍 Drop Pin'; }
-  if (banner) { banner.classList.remove('show'); }
-  if (mapEl)  { mapEl.classList.remove('pin-drop-mode'); }
+  _setPinDropBtnState_(false);
+  if (banner) banner.classList.remove('show');
+  if (mapEl)  mapEl.classList.remove('pin-drop-mode');
   // Remove temp pin if still showing
   if (tempPinMarker && mapObj) { mapObj.removeLayer(tempPinMarker); tempPinMarker = null; }
 }
@@ -2464,3 +3012,13 @@ function toast(msg, cls) {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(function() { el.classList.remove('show'); }, 3200);
 }
+
+// Top Bar Drop Pin Hook
+document.addEventListener('DOMContentLoaded', function() {
+  var topDropBtn = document.getElementById('btn-drop-pin-top');
+  if (!topDropBtn) return;
+  topDropBtn.addEventListener('click', function(e) {
+    e.preventDefault();
+    if (typeof togglePinDropMode === 'function') togglePinDropMode();
+  });
+});

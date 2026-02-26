@@ -140,7 +140,7 @@ body { font-family: 'Syne', sans-serif; color: var(--text); background: var(--bg
   position: absolute;
   top: 62px; /* below topbar */
   left: var(--sidebar-w);
-  z-index: 300;
+  z-index: 1050; /* above wx-pill (999) so it's always tappable */
   width: 24px; height: 48px;
   background: var(--surface);
   border: 1px solid var(--border);
@@ -167,7 +167,7 @@ body { font-family: 'Syne', sans-serif; color: var(--text); background: var(--bg
 #panel-list {
   position: absolute; top: 52px; left: 0; width: var(--sidebar-w); bottom: 0;
   background: var(--surface); border-right: 1px solid var(--border);
-  display: flex; flex-direction: column; z-index: 100;
+  display: flex; flex-direction: column; z-index: 1000; /* above wx-pill (999) */
   transition: transform .25s ease;
 }
 
@@ -190,7 +190,7 @@ body { font-family: 'Syne', sans-serif; color: var(--text); background: var(--bg
     left: 0 !important;
   }
   #panel-list {
-    z-index: 200;
+    z-index: 1050; /* above wx-pill on mobile too */
     box-shadow: 4px 0 20px rgba(0,0,0,.4);
   }
   #page-app.sidebar-collapsed #panel-list {
@@ -205,6 +205,8 @@ body { font-family: 'Syne', sans-serif; color: var(--text); background: var(--bg
   /* Hide some topbar stats on small screens */
   .tb-stat { display: none; }
   .tb-stat:first-of-type { display: flex; }
+  /* Drop Pin moves to a FAB on mobile — hide the topbar button */
+  #btn-drop-pin-top { display: none; }
 }
 
 .pl-head {
@@ -1294,6 +1296,48 @@ body { font-family: 'Syne', sans-serif; color: var(--text); background: var(--bg
 }
 #pin-drop-banner.show { display: flex; }
 
+/* ── DROP PIN FAB (mobile only) ─────────────────────────
+   A floating action button on the map so reps can drop pins
+   without the topbar overflowing on small screens.
+   ──────────────────────────────────────────────────────── */
+#btn-drop-pin-fab {
+  display: none; /* hidden on desktop — topbar button used instead */
+}
+@media (max-width: 640px) {
+  #btn-drop-pin-fab {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    position: absolute;
+    bottom: 24px;
+    right: 16px;
+    z-index: 1050;
+    background: rgba(6,9,19,.85);
+    border: 1px solid rgba(255,255,255,.2);
+    border-radius: 999px;
+    color: #eaf0ff;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    padding: 11px 18px;
+    box-shadow: 0 4px 20px rgba(0,0,0,.45);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    cursor: pointer;
+    transition: background .15s, transform .1s;
+    user-select: none;
+  }
+  #btn-drop-pin-fab:active {
+    transform: scale(0.96);
+  }
+  #btn-drop-pin-fab.active {
+    background: rgba(88,28,220,.9);
+    border-color: rgba(139,92,246,.6);
+    box-shadow: 0 4px 20px rgba(139,92,246,.45);
+  }
+}
+
 /* ── TEMP PIN (pulsing while geocoding) ── */
 .temp-pin-outer {
   width: 36px; height: 36px;
@@ -1488,3 +1532,382 @@ body { font-family: 'Syne', sans-serif; color: var(--text); background: var(--bg
   text-overflow: ellipsis;
   max-width: 220px;
 }
+
+
+/* Top Bar Drop Pin Button */
+.topbar-btn {
+  background: #46bba4;
+  color: #000;
+  font-weight: 700;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 25px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: 0.2s ease;
+}
+
+.topbar-btn:hover {
+  background: #ffd700;
+}
+
+/* ── Marker Cluster Overrides ─────────────────────────────
+   Replace the default blue circles with the app's dark theme
+   so clusters feel native rather than like a third-party addon.
+   ──────────────────────────────────────────────────────── */
+.marker-cluster {
+  background-clip: padding-box;
+  border-radius: 50%;
+}
+.marker-cluster div {
+  width: 30px;
+  height: 30px;
+  margin-left: 5px;
+  margin-top: 5px;
+  text-align: center;
+  border-radius: 50%;
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+/* Small cluster (< 10 pins) */
+.marker-cluster-small {
+  background-color: rgba(0, 86, 150, 0.25);
+}
+.marker-cluster-small div {
+  background-color: rgba(0, 86, 150, 0.85);
+  color: #fff;
+}
+/* Medium cluster (10–49 pins) */
+.marker-cluster-medium {
+  background-color: rgba(139, 92, 246, 0.25);
+}
+.marker-cluster-medium div {
+  background-color: rgba(139, 92, 246, 0.85);
+  color: #fff;
+}
+/* Large cluster (50+ pins) */
+.marker-cluster-large {
+  background-color: rgba(239, 68, 68, 0.25);
+}
+.marker-cluster-large div {
+  background-color: rgba(239, 68, 68, 0.85);
+  color: #fff;
+}
+.cluster-inner {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 13px;
+  color: #fff;
+}
+
+/* ══════════════════════════════════════════════════════════
+   TIER 1 ANALYTICS — Manager Dashboard Tabs + Charts
+   ══════════════════════════════════════════════════════════ */
+
+/* ── Tab nav ─────────────────────────────────────────────── */
+.mgr-tabs {
+  display: flex;
+  gap: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 5px;
+}
+.mgr-tab {
+  flex: 1;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: var(--muted);
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  font-size: 11px;
+  padding: 8px 4px;
+  cursor: pointer;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.mgr-tab:hover { color: var(--text); }
+.mgr-tab.active {
+  background: rgba(0,86,150,.25);
+  color: var(--accent);
+  border: 1px solid rgba(0,86,150,.35);
+}
+
+/* ── Tab panels ──────────────────────────────────────────── */
+.mgr-tab-panel { display: none; flex-direction: column; gap: 12px; }
+.mgr-tab-panel.active { display: flex; }
+
+/* ── Analytics cards ─────────────────────────────────────── */
+.ana-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px;
+}
+.ana-card-head {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.ana-card-sub {
+  font-size: 10px;
+  color: var(--muted);
+  font-family: 'Space Mono', monospace;
+  margin-bottom: 14px;
+}
+
+/* ── Time-of-day bar chart ───────────────────────────────── */
+.tod-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 80px;
+}
+.tod-bar-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  height: 100%;
+  position: relative;
+}
+.tod-bar {
+  width: 100%;
+  border-radius: 4px 4px 0 0;
+  min-height: 3px;
+  transition: height .4s ease;
+  position: relative;
+}
+.tod-bar-val {
+  position: absolute;
+  top: -16px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 8px;
+  font-family: 'Space Mono', monospace;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.tod-x-labels {
+  display: flex;
+  gap: 3px;
+  margin-top: 4px;
+}
+.tod-x-labels span {
+  flex: 1;
+  text-align: center;
+  font-size: 8px;
+  color: var(--muted);
+  font-family: 'Space Mono', monospace;
+}
+
+/* ── Status breakdown bars ───────────────────────────────── */
+.status-bars { display: flex; flex-direction: column; gap: 8px; }
+.sb-row { display: flex; flex-direction: column; gap: 3px; }
+.sb-header { display: flex; justify-content: space-between; font-size: 11px; }
+.sb-label { color: var(--text); font-weight: 600; }
+.sb-count { color: var(--muted); font-family: 'Space Mono', monospace; font-size: 10px; }
+.sb-track {
+  height: 7px;
+  background: rgba(255,255,255,.06);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.sb-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width .5s ease;
+}
+
+/* ── Competitor grid ─────────────────────────────────────── */
+.competitor-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.comp-pill {
+  background: rgba(255,255,255,.04);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  text-align: center;
+}
+.comp-pill-val {
+  font-size: 22px;
+  font-weight: 800;
+  font-family: 'Space Mono', monospace;
+  color: var(--text);
+}
+.comp-pill-lbl {
+  font-size: 9px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .8px;
+  margin-top: 4px;
+  font-family: 'Space Mono', monospace;
+}
+
+/* ── Leaderboard ─────────────────────────────────────────── */
+.leaderboard-list { display: flex; flex-direction: column; gap: 6px; }
+.lb-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255,255,255,.03);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.lb-rank {
+  font-size: 11px;
+  font-weight: 800;
+  font-family: 'Space Mono', monospace;
+  color: var(--muted);
+  width: 20px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.lb-rank.gold   { color: #facc15; }
+.lb-rank.silver { color: #94a3b8; }
+.lb-rank.bronze { color: #d97706; }
+.lb-name  { flex: 1; font-size: 13px; font-weight: 700; color: var(--text); }
+.lb-stats { font-size: 10px; color: var(--muted); font-family: 'Space Mono', monospace; }
+.lb-rate  { font-size: 14px; font-weight: 800; font-family: 'Space Mono', monospace; color: var(--accent); min-width: 42px; text-align: right; }
+
+/* ── Coverage tab ────────────────────────────────────────── */
+.cov-terr-row { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
+.cov-terr-row:last-child { margin-bottom: 0; }
+.cov-terr-header { display: flex; justify-content: space-between; align-items: center; }
+.cov-terr-name { font-size: 12px; font-weight: 700; color: var(--text); }
+.cov-terr-stats { font-size: 10px; color: var(--muted); font-family: 'Space Mono', monospace; }
+.cov-track {
+  height: 10px;
+  background: rgba(255,255,255,.06);
+  border-radius: 6px;
+  overflow: hidden;
+  position: relative;
+}
+.cov-fill {
+  height: 100%;
+  border-radius: 6px;
+  transition: width .5s ease;
+}
+.cov-legend {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 4px;
+}
+.cov-leg-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.cov-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  opacity: .85;
+}
+.heat-btn {
+  background: rgba(0,86,150,.15);
+  border: 1px solid rgba(0,86,150,.35);
+  border-radius: 8px;
+  color: var(--accent);
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  font-size: 11px;
+  padding: 5px 10px;
+  cursor: pointer;
+  transition: all .15s;
+}
+.heat-btn:hover { background: rgba(0,86,150,.3); }
+.heat-btn.active {
+  background: rgba(139,92,246,.25);
+  border-color: rgba(139,92,246,.5);
+  color: #c4b5fd;
+}
+
+/* ── Forecast tab ────────────────────────────────────────── */
+.forecast-hero { text-align: center; }
+.forecast-mrr {
+  font-size: 42px;
+  font-weight: 800;
+  font-family: 'Space Mono', monospace;
+  color: #10b981;
+  margin: 16px 0 4px;
+  letter-spacing: -1px;
+}
+.forecast-mrr-label {
+  font-size: 10px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  font-family: 'Space Mono', monospace;
+}
+.fc-inputs-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.fc-input-cell {
+  background: rgba(255,255,255,.03);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.fc-input-val {
+  font-size: 18px;
+  font-weight: 800;
+  font-family: 'Space Mono', monospace;
+  color: var(--text);
+}
+.fc-input-lbl {
+  font-size: 9px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .8px;
+  margin-top: 3px;
+  font-family: 'Space Mono', monospace;
+}
+.fc-terr-table { display: flex; flex-direction: column; gap: 6px; }
+.fc-terr-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  background: rgba(255,255,255,.03);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 11px;
+}
+.fc-terr-name { font-weight: 700; color: var(--text); flex: 1; }
+.fc-terr-pending { color: var(--muted); font-family: 'Space Mono', monospace; width: 70px; text-align: center; }
+.fc-terr-rev { font-weight: 800; font-family: 'Space Mono', monospace; color: #10b981; width: 80px; text-align: right; }
+.fc-pkg-split { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+.fc-pkg-row { display: flex; flex-direction: column; gap: 4px; }
+.fc-pkg-header { display: flex; justify-content: space-between; font-size: 11px; }
+.fc-pkg-label { font-weight: 700; color: var(--text); }
+.fc-pkg-val { font-family: 'Space Mono', monospace; color: var(--accent); }
+.fc-pkg-track {
+  height: 8px;
+  background: rgba(255,255,255,.06);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.fc-pkg-fill { height: 100%; border-radius: 4px; transition: width .5s ease; }
