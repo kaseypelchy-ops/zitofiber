@@ -242,6 +242,7 @@
         <button class="mgr-tab" onclick="switchMgrTab('analytics',this)">📊 Analytics</button>
         <button class="mgr-tab" onclick="switchMgrTab('coverage',this)">🗺 Coverage</button>
         <button class="mgr-tab" onclick="switchMgrTab('forecast',this)">💰 Forecast</button>
+        <button class="mgr-tab" onclick="switchMgrTab('territory',this)">🎯 Territory</button>
       </div>
 
       <!-- ── TAB: TEAM ── -->
@@ -362,13 +363,76 @@
 
       </div>
 
+      <!-- ── TAB: TERRITORY INTEL ── -->
+      <div id="mgr-tab-territory" class="mgr-tab-panel">
+
+        <div class="ana-card">
+          <div class="ana-card-head">📡 Territory Saturation</div>
+          <div class="ana-card-sub">How worked-out is each territory? When to rotate reps in.</div>
+          <div id="ti-saturation"></div>
+        </div>
+
+        <div class="ana-card">
+          <div class="ana-card-head">🆚 Competitor Breakdown by Territory</div>
+          <div class="ana-card-sub">% of homes using Brightspeed, in contract, or open market — per territory</div>
+          <div id="ti-competitor-table"></div>
+        </div>
+
+        <div class="ana-card">
+          <div class="ana-card-head">🔄 Follow-Up Queue</div>
+          <div class="ana-card-sub">Go Back Later &amp; Not Home doors across all territories — sorted by how long they've been waiting</div>
+          <div id="ti-stale-list"></div>
+        </div>
+
+        <div class="ana-card">
+          <div class="ana-card-head">📋 Deploy Recommendations</div>
+          <div class="ana-card-sub">Where to focus reps next based on coverage and close rate data</div>
+          <div id="ti-recommendations"></div>
+        </div>
+
+      </div>
+
       <button class="mgr-close-btn" onclick="closeManagerPanel()">Close</button>
     </div>
   </div>
 
+  <!-- ═══════════════════ GPS PERMISSION PROMPT ═══════════════════ -->
+  <div id="gps-prompt" class="gps-prompt-overlay">
+    <div class="gps-prompt-box">
+      <div class="gps-prompt-icon">📍</div>
+      <div class="gps-prompt-title">Enable Location</div>
+      <div class="gps-prompt-body">
+        FieldOS uses your location to:<br><br>
+        <span class="gps-feat">🧭 <strong>Route Mode</strong> — sort addresses nearest-first as you walk</span>
+        <span class="gps-feat">📡 <strong>Territory loading</strong> — auto-load homes near you</span>
+        <span class="gps-feat">🔄 <strong>Follow-Up Queue</strong> — show distance to each callback</span>
+      </div>
+      <div class="gps-prompt-sub">Your location is never stored or shared. It stays on your device.</div>
+      <button class="gps-btn-allow" onclick="requestGPS()">Allow Location Access</button>
+      <button class="gps-btn-skip"  onclick="dismissGPSPrompt()">Not Now</button>
+    </div>
+  </div>
+
+  <!-- GPS status banner (shows briefly after grant/deny) -->
+  <div id="gps-banner" class="gps-banner"></div>
+
   <div id="panel-list">
     <div class="pl-head">
-      <div class="pl-title">Addresses <span class="pl-badge" id="addr-count">0</span></div>
+      <div class="pl-title">
+        Addresses
+        <span class="pl-badge" id="addr-count">0</span>
+      </div>
+      <div class="pl-mode-btns">
+        <button class="pl-mode-btn" id="btn-route-mode" onclick="toggleRouteMode()">
+          <span class="pl-mode-icon">🧭</span>
+          <span class="pl-mode-label">Route</span>
+        </button>
+        <button class="pl-mode-btn" id="btn-stale-mode" onclick="toggleStaleMode()">
+          <span class="pl-mode-icon">🔄</span>
+          <span class="pl-mode-label">Follow-Up</span>
+          <span class="pl-mode-count" id="stale-badge"></span>
+        </button>
+      </div>
       <input class="search-in" id="addr-search" placeholder="🔍 Search addresses…" oninput="filterList(this.value)">
     </div>
     <div id="addr-items"></div>

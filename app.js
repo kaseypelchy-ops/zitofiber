@@ -48,6 +48,26 @@ var COLORS = {
   business:      '#6366f1'
 };
 var COLOR_ACTIVE = '#facc15';
+
+// ── Knockable door classification ─────────────────────────
+// An address is "knockable" if it is NOT an existing Zito customer.
+// Existing customers arrive from the sheet with activeCount = 'active',
+// 'existing', or 'customer' — they show as ⚡ bolt icons and must be
+// excluded from coverage, close rate, pending, and forecast calculations.
+// Everything else (homes passed with no service, empty activeCount) is knockable.
+function isKnockable(a) {
+  var ac = (a.activeCount || '').toLowerCase().trim();
+  var s  = (a.status      || '').toLowerCase().trim();
+  if (ac === 'active' || ac === 'existing' || ac === 'customer') return false;
+  if (s  === 'active') return false;
+  return true;
+}
+
+// Count knockable addresses — use this everywhere instead of addresses.length
+// when you need the size of the actual sales universe.
+function knockableCount() {
+  return addresses.filter(isKnockable).length;
+}
 var COLOR_PASSED = '#6b7280';
 
 var colors = {
@@ -459,6 +479,8 @@ function launchApp() {
     startPolling();
     maybeAutoCollapse();
     initBadge();
+    // Ask for GPS permission right after launch so Route Mode is ready to go
+    startGPSPing();
     // Managers land on the team dashboard automatically
     if (isManager()) {
       setTimeout(function(){ openManagerPanel(); }, 600);
@@ -1061,14 +1083,50 @@ var TAG_HTML  = {
 })();
 
 function buildList(filter) {
-  var list = filter
-    ? addresses.filter(function(a) {
-        var q = filter.toLowerCase();
+  // Update stale badge every time list rebuilds
+  updateStaleBadge();
+
+  var list;
+
+  // Stale mode: show only Not Home / Go Back addresses, oldest first
+  if (staleMode) {
+    list = getStaleAddresses();
+    if (filter) {
+      var q = filter.toLowerCase();
+      list = list.filter(function(a) {
+        return a.address.toLowerCase().indexOf(q) >= 0 ||
+               (a.city && a.city.toLowerCase().indexOf(q) >= 0);
+      });
+    }
+  // Route mode: sort all addresses by distance from current GPS, nearest first
+  } else if (routeMode && lastGPS) {
+    list = addresses.slice().sort(function(a, b) {
+      var distA = (a.lat && a.lng)
+        ? haversineMiles(lastGPS.lat, lastGPS.lng, a.lat, a.lng)
+        : 9999;
+      var distB = (b.lat && b.lng)
+        ? haversineMiles(lastGPS.lat, lastGPS.lng, b.lat, b.lng)
+        : 9999;
+      return distA - distB;
+    });
+    if (filter) {
+      var q = filter.toLowerCase();
+      list = list.filter(function(a) {
         return a.address.toLowerCase().indexOf(q) >= 0 ||
                (a.city && a.city.toLowerCase().indexOf(q) >= 0) ||
                (a.zip  && a.zip.indexOf(q) >= 0);
-      })
-    : addresses;
+      });
+    }
+  } else {
+    list = filter
+      ? addresses.filter(function(a) {
+          var q = filter.toLowerCase();
+          return a.address.toLowerCase().indexOf(q) >= 0 ||
+                 (a.city && a.city.toLowerCase().indexOf(q) >= 0) ||
+                 (a.zip  && a.zip.indexOf(q) >= 0);
+        })
+      : addresses;
+  }
 
   document.getElementById('addr-count').textContent = addresses.length;
 
@@ -1089,12 +1147,28 @@ function buildList(filter) {
     var noteLine = (a.note && a.note.trim())
       ? '<div class="ar-note">' + escHtml(a.note.trim()) + '</div>'
       : '';
+
+    // Route mode: show distance from current GPS position
+    var modeLine = '';
+    if (routeMode && lastGPS && a.lat && a.lng) {
+      var mi = haversineMiles(lastGPS.lat, lastGPS.lng, a.lat, a.lng);
+      var distStr = mi < 0.1 ? 'Nearby' : mi.toFixed(2) + ' mi';
+      modeLine = '<div class="ar-dist">📍 ' + distStr + '</div>';
+    } else if (staleMode && a.knockedAt) {
+      var hrs = (Date.now() - new Date(a.knockedAt).getTime()) / 3600000;
+      var ageStr = hrs < 1 ? Math.round(hrs * 60) + 'm ago'
+                 : hrs < 24 ? hrs.toFixed(1) + 'h ago'
+                 : Math.floor(hrs / 24) + 'd ago';
+      modeLine = '<div class="ar-dist" style="color:#d97706">⏱ ' + ageStr + '</div>';
+    }
+
     return '<div class="addr-row' + selC + '" data-id="' + a.id + '">' +
       '<div class="ar-dot">' + icon + '</div>' +
       '<div class="ar-info">' +
         '<div class="ar-st">'  + escHtml(a.address) + '</div>' +
         '<div class="ar-sub">' + escHtml(sub)        + '</div>' +
         noteLine +
+        modeLine +
       '</div>' + tag + '</div>';
   }).join('');
 
@@ -1744,9 +1818,11 @@ function sendData(payload) {
 //  STATS
 // ──────────────────────────────────────────────────────────
 function updateStats() {
-  document.getElementById('st-total').textContent = addresses.length;
+  // Total = knockable doors only (homes passed without active Zito service)
+  var knockable = addresses.filter(isKnockable);
+  document.getElementById('st-total').textContent = knockable.length;
   document.getElementById('st-sched').textContent = addresses.filter(function(a){ return a.status==='mega' || a.status==='gig'; }).length;
-  document.getElementById('st-pend').textContent  = addresses.filter(function(a){
+  document.getElementById('st-pend').textContent  = knockable.filter(function(a){
     var s = (a.status||'').toLowerCase();
     return !s || s === 'pending' || s === 'homes passed';
   }).length;
@@ -1791,6 +1867,7 @@ function sendHeartbeat(statusOverride) {
     return a.status === 'gig'  && ((a.salesperson || '').toLowerCase() === rn);
   }).length;
   var doorsWorked = addresses.filter(function(a){
+    if (!isKnockable(a)) return false;
     var st = String(a.status||'').toLowerCase();
     if (!st || st === 'pending') return false;
     return ((a.salesperson || '').toLowerCase() === rn);
@@ -1996,6 +2073,7 @@ function switchMgrTab(tab, btn) {
   if (tab === 'analytics') renderAnalyticsTab();
   if (tab === 'coverage')  renderCoverageTab();
   if (tab === 'forecast')  renderForecastTab();
+  if (tab === 'territory') renderTerritoryTab();
 }
 function refreshManagerPanel() {
   var btn = document.getElementById('mgr-refresh-btn');
@@ -2271,11 +2349,13 @@ function renderCompetitor() {
   var el = document.getElementById('ana-competitor');
   if (!el) return;
 
-  var total     = addresses.length;
-  var bspeed    = addresses.filter(function(a){ return a.status === 'brightspeed'; }).length;
-  var incon     = addresses.filter(function(a){ return a.status === 'incontract'; }).length;
-  var sold      = addresses.filter(function(a){ return a.status === 'mega' || a.status === 'gig'; }).length;
-  var avail     = addresses.filter(function(a){
+  // Only count knockable homes — existing customers are a separate universe
+  var knockable = addresses.filter(isKnockable);
+  var total     = knockable.length;
+  var bspeed    = knockable.filter(function(a){ return a.status === 'brightspeed'; }).length;
+  var incon     = knockable.filter(function(a){ return a.status === 'incontract'; }).length;
+  var sold      = knockable.filter(function(a){ return a.status === 'mega' || a.status === 'gig'; }).length;
+  var avail     = knockable.filter(function(a){
     var s = (a.status || 'pending').toLowerCase();
     return !s || s === 'pending' || s === 'nothome' || s === 'goback' || s === 'nocontact';
   }).length;
@@ -2302,11 +2382,12 @@ function renderLeaderboard() {
   var el = document.getElementById('ana-leaderboard');
   if (!el) return;
 
-  // Aggregate per rep from addresses array
+  // Aggregate per rep — knockable addresses only
   var repData = {};
   addresses.forEach(function(a) {
     var rep = (a.salesperson || '').trim();
     if (!rep) return;
+    if (!isKnockable(a)) return;  // skip existing customers
     if (!repData[rep]) repData[rep] = { doors: 0, sales: 0 };
     var s = (a.status || 'pending').toLowerCase();
     if (s !== 'pending' && s !== '') repData[rep].doors++;
@@ -2345,9 +2426,10 @@ function renderCoverageTab() {
   var el = document.getElementById('cov-territory-bars');
   if (!el) return;
 
-  // Group addresses by territory
+  // Group knockable addresses by territory — existing customers excluded
   var terrMap = {};
   addresses.forEach(function(a) {
+    if (!isKnockable(a)) return;
     var t = (a.territory || 'Unknown').trim();
     if (!terrMap[t]) terrMap[t] = { total: 0, worked: 0, sold: 0 };
     terrMap[t].total++;
@@ -2392,16 +2474,17 @@ var FC_MONTHLY = {
 };
 
 function renderForecastTab() {
-  // Current actuals
-  var totalHomes  = addresses.length;
-  var soldMega    = addresses.filter(function(a){ return a.status === 'mega'; }).length;
-  var soldGig     = addresses.filter(function(a){ return a.status === 'gig'; }).length;
+  // Current actuals — knockable doors only (excludes existing Zito customers)
+  var knockable   = addresses.filter(isKnockable);
+  var totalHomes  = knockable.length;
+  var soldMega    = knockable.filter(function(a){ return a.status === 'mega'; }).length;
+  var soldGig     = knockable.filter(function(a){ return a.status === 'gig'; }).length;
   var totalSold   = soldMega + soldGig;
-  var worked      = addresses.filter(function(a){
+  var worked      = knockable.filter(function(a){
     var s = (a.status||'pending').toLowerCase();
     return s !== 'pending' && s !== '';
   }).length;
-  var pending     = addresses.filter(function(a){
+  var pending     = knockable.filter(function(a){
     var s = (a.status||'pending').toLowerCase();
     return !s || s === 'pending';
   }).length;
@@ -2444,9 +2527,10 @@ function renderForecastTab() {
     }).join('');
   }
 
-  // Render territory breakdown
+  // Render territory breakdown — knockable doors only
   var terrMap = {};
   addresses.forEach(function(a) {
+    if (!isKnockable(a)) return;
     var t = (a.territory || 'Unknown').trim();
     if (!terrMap[t]) terrMap[t] = { pending: 0, sold: 0, worked: 0 };
     var s = (a.status||'pending').toLowerCase();
@@ -2498,6 +2582,392 @@ function renderForecastTab() {
       '</div>';
     }).join('');
   }
+}
+
+// ══════════════════════════════════════════════════════════
+//  TIER 3 — TERRITORY INTELLIGENCE
+// ══════════════════════════════════════════════════════════
+
+// ── Haversine distance in miles (client-side) ─────────────
+function haversineMiles(lat1, lng1, lat2, lng2) {
+  var R    = 3958.76;
+  var dLat = (lat2 - lat1) * Math.PI / 180;
+  var dLng = (lng2 - lng1) * Math.PI / 180;
+  var a    = Math.sin(dLat/2) * Math.sin(dLat/2) +
+             Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+             Math.sin(dLng/2) * Math.sin(dLng/2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// ──────────────────────────────────────────────────────────
+//  ROUTE MODE
+//  Sorts the sidebar list nearest-first from the rep's current
+//  GPS position so they walk an efficient path door to door.
+// ──────────────────────────────────────────────────────────
+var routeMode = false;
+var staleMode = false;
+var STALE_HOURS = 2; // hours before a Not Home / Go Back is considered stale
+
+function toggleRouteMode() {
+  routeMode = !routeMode;
+  if (routeMode) staleMode = false;  // mutually exclusive
+
+  var btn     = document.getElementById('btn-route-mode');
+  var staleBtn = document.getElementById('btn-stale-mode');
+  if (btn)     btn.classList.toggle('active', routeMode);
+  if (staleBtn) staleBtn.classList.remove('active');
+
+  if (routeMode && !lastGPS) {
+    routeMode = false;
+    if (btn) btn.classList.remove('active');
+    // Re-show the GPS prompt so they can grant permission on the spot
+    showGPSPrompt();
+    return;
+  }
+
+  buildList();
+  toast(routeMode ? '🧭 Route Mode ON — sorted nearest first' : '🧭 Route Mode OFF', 't-info');
+}
+
+function toggleStaleMode() {
+  staleMode = !staleMode;
+  if (staleMode) routeMode = false;  // mutually exclusive
+
+  var btn      = document.getElementById('btn-stale-mode');
+  var routeBtn = document.getElementById('btn-route-mode');
+  if (btn)      btn.classList.toggle('active', staleMode);
+  if (routeBtn) routeBtn.classList.remove('active');
+
+  buildList();
+  toast(staleMode ? '🔄 Follow-Up Mode ON — showing stale contacts' : '🔄 Follow-Up Mode OFF', 't-info');
+}
+
+// Returns the follow-up queue: Not Home or Go Back Later addresses
+// sorted by how long since they were knocked (oldest first so rep revisits them)
+function getStaleAddresses() {
+  var now = Date.now();
+  return addresses.filter(function(a) {
+    var s = (a.status || '').toLowerCase();
+    if (s !== 'nothome' && s !== 'goback') return false;
+    // Include anything without a knockedAt — we don't know when it was last tried
+    if (!a.knockedAt) return true;
+    var hrs = (now - new Date(a.knockedAt).getTime()) / 3600000;
+    return hrs >= STALE_HOURS;
+  }).sort(function(a, b) {
+    // Oldest knockedAt first; nulls go to top (unknown = assume old)
+    var ta = a.knockedAt ? new Date(a.knockedAt).getTime() : 0;
+    var tb = b.knockedAt ? new Date(b.knockedAt).getTime() : 0;
+    return ta - tb;
+  });
+}
+
+// Updates the stale count badge on the Follow-Up button
+function updateStaleBadge() {
+  var el = document.getElementById('stale-badge');
+  if (!el) return;
+  var count = getStaleAddresses().length;
+  // textContent drives the CSS :empty selector — clear when zero so badge hides
+  el.textContent = count > 0 ? String(count) : '';
+}
+
+// ──────────────────────────────────────────────────────────
+//  TERRITORY INTEL TAB
+// ──────────────────────────────────────────────────────────
+function renderTerritoryTab() {
+  renderSaturation();
+  renderCompetitorByTerritory();
+  renderStaleList();
+  renderDeployRecommendations();
+}
+
+// 1. Saturation — how worked-out is each territory?
+function renderSaturation() {
+  var el = document.getElementById('ti-saturation');
+  if (!el) return;
+
+  var terrMap = buildTerrMap();
+  var names   = Object.keys(terrMap).sort();
+
+  if (!names.length) {
+    el.innerHTML = noDataMsg('No territory data loaded');
+    return;
+  }
+
+  el.innerHTML = names.map(function(t) {
+    var d   = terrMap[t];
+    var cov = d.total > 0 ? d.worked / d.total : 0;
+    var cr  = d.worked > 0 ? d.sales / d.worked : 0;
+
+    // Saturation signal
+    var sig, sigColor, sigIcon;
+    if (cov >= 0.90) {
+      sig = 'Saturated — consider rotating reps out';
+      sigColor = '#ef4444'; sigIcon = '🔴';
+    } else if (cov >= 0.70) {
+      sig = 'Well-worked — push for closes on remaining homes';
+      sigColor = '#facc15'; sigIcon = '🟡';
+    } else if (cov >= 0.40) {
+      sig = 'Active — good opportunity remaining';
+      sigColor = '#10b981'; sigIcon = '🟢';
+    } else {
+      sig = 'Fresh territory — high opportunity';
+      sigColor = '#06b6d4'; sigIcon = '🔵';
+    }
+
+    var covW  = (cov * 100).toFixed(1);
+    var soldW = d.total > 0 ? ((d.sales / d.total) * 100).toFixed(1) : 0;
+
+    return '<div class="ti-terr-card">' +
+      '<div class="ti-terr-header">' +
+        '<div>' +
+          '<div class="ti-terr-name">' + escHtml(t) + '</div>' +
+          '<div class="ti-terr-sig" style="color:' + sigColor + '">' + sigIcon + ' ' + sig + '</div>' +
+        '</div>' +
+        '<div class="ti-terr-pct" style="color:' + sigColor + '">' + covW + '%</div>' +
+      '</div>' +
+      '<div class="ti-track">' +
+        '<div class="ti-fill" style="width:' + soldW + '%;background:#10b981"></div>' +
+        '<div class="ti-fill" style="width:' + (covW - soldW) + '%;background:rgba(0,86,150,.55)"></div>' +
+      '</div>' +
+      '<div class="ti-terr-stats">' +
+        '<span>' + d.worked + '/' + d.total + ' knocked</span>' +
+        '<span>' + d.sales + ' sales</span>' +
+        '<span>Close rate: ' + pct(cr) + '</span>' +
+        '<span>' + d.pending + ' remaining</span>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+// 2. Competitor breakdown per territory
+function renderCompetitorByTerritory() {
+  var el = document.getElementById('ti-competitor-table');
+  if (!el) return;
+
+  var terrMap = buildTerrMap();
+  var names   = Object.keys(terrMap).sort();
+
+  if (!names.length) {
+    el.innerHTML = noDataMsg('No territory data loaded');
+    return;
+  }
+
+  // Header
+  var rows = '<div class="ti-comp-header">' +
+    '<span class="ti-comp-terr">Territory</span>' +
+    '<span class="ti-comp-col" style="color:#ef4444">Brightspd</span>' +
+    '<span class="ti-comp-col" style="color:#818cf8">In Contr</span>' +
+    '<span class="ti-comp-col" style="color:#10b981">Zito</span>' +
+    '<span class="ti-comp-col" style="color:#06b6d4">Open</span>' +
+  '</div>';
+
+  rows += names.map(function(t) {
+    var d       = terrMap[t];
+    var total   = d.total || 1;
+    var open    = total - d.brightspeed - d.incontract - d.sales;
+    open = Math.max(open, 0);
+
+    function bar(val, color) {
+      var w = ((val / total) * 100).toFixed(0);
+      return '<div class="ti-comp-bar-wrap">' +
+        '<span class="ti-comp-num">' + val + '</span>' +
+        '<div class="ti-mini-track"><div style="width:' + w + '%;background:' + color + ';height:100%;border-radius:2px"></div></div>' +
+      '</div>';
+    }
+
+    return '<div class="ti-comp-row">' +
+      '<span class="ti-comp-terr" title="' + escHtml(t) + '">' + escHtml(t) + '</span>' +
+      bar(d.brightspeed, '#ef4444') +
+      bar(d.incontract,  '#818cf8') +
+      bar(d.sales,       '#10b981') +
+      bar(open,          '#06b6d4') +
+    '</div>';
+  }).join('');
+
+  el.innerHTML = rows;
+}
+
+// 3. Stale follow-up list — oldest unvisited contacts first
+function renderStaleList() {
+  var el = document.getElementById('ti-stale-list');
+  if (!el) return;
+
+  var stale = getStaleAddresses();
+
+  if (!stale.length) {
+    el.innerHTML = '<div class="ti-empty">No follow-up contacts — all Not Home and Go Back doors are either fresh or cleared 👍</div>';
+    return;
+  }
+
+  var now = Date.now();
+  el.innerHTML = stale.slice(0, 20).map(function(a) {
+    var s       = (a.status || '').toLowerCase();
+    var icon    = s === 'goback' ? '🔄' : '🚪';
+    var label   = s === 'goback' ? 'Go Back' : 'Not Home';
+    var color   = s === 'goback' ? '#06b6d4' : '#d97706';
+
+    var age = '';
+    if (a.knockedAt) {
+      var hrs = (now - new Date(a.knockedAt).getTime()) / 3600000;
+      age = hrs < 1 ? Math.round(hrs * 60) + 'm ago'
+          : hrs < 24 ? hrs.toFixed(1) + 'h ago'
+          : Math.floor(hrs / 24) + 'd ago';
+    } else {
+      age = 'unknown';
+    }
+
+    var dist = '';
+    if (lastGPS && a.lat && a.lng) {
+      var mi = haversineMiles(lastGPS.lat, lastGPS.lng, a.lat, a.lng);
+      dist = mi < 0.1 ? 'nearby' : mi.toFixed(2) + ' mi';
+    }
+
+    return '<div class="ti-stale-row" onclick="openForm(' + a.id + ');closeManagerPanel()">' +
+      '<div class="ti-stale-icon" style="color:' + color + '">' + icon + '</div>' +
+      '<div class="ti-stale-info">' +
+        '<div class="ti-stale-addr">' + escHtml(a.address) + '</div>' +
+        '<div class="ti-stale-meta">' +
+          '<span style="color:' + color + '">' + label + '</span>' +
+          (a.note ? ' · ' + escHtml(a.note.substring(0, 40)) : '') +
+        '</div>' +
+      '</div>' +
+      '<div class="ti-stale-right">' +
+        (dist ? '<div class="ti-stale-dist">' + dist + '</div>' : '') +
+        '<div class="ti-stale-age">' + age + '</div>' +
+      '</div>' +
+    '</div>';
+  }).join('') +
+  (stale.length > 20 ? '<div class="ti-empty" style="margin-top:8px">+ ' + (stale.length - 20) + ' more — use Follow-Up Mode in sidebar to see all</div>' : '');
+}
+
+// 4. Deploy recommendations based on saturation + close rate + pending count
+function renderDeployRecommendations() {
+  var el = document.getElementById('ti-recommendations');
+  if (!el) return;
+
+  var terrMap = buildTerrMap();
+  var names   = Object.keys(terrMap);
+
+  if (!names.length) {
+    el.innerHTML = noDataMsg('No territory data to analyze');
+    return;
+  }
+
+  var recs = [];
+
+  names.forEach(function(t) {
+    var d    = terrMap[t];
+    var cov  = d.total > 0 ? d.worked / d.total : 0;
+    var cr   = d.worked > 0 ? d.sales / d.worked : 0;
+    var pending = d.pending;
+    var staleCount = addresses.filter(function(a) {
+      return (a.territory || '').trim() === t &&
+             (a.status === 'nothome' || a.status === 'goback');
+    }).length;
+
+    // Rule engine
+    if (cov >= 0.90) {
+      recs.push({
+        territory: t, priority: 'high',
+        icon: '🔴',
+        action: 'Rotate out — ' + (cov * 100).toFixed(0) + '% worked, only ' + pending + ' homes left',
+        detail: 'Territory is effectively saturated. Move reps to a fresh area to maintain pace.'
+      });
+    } else if (staleCount >= 10 && cov >= 0.50) {
+      recs.push({
+        territory: t, priority: 'medium',
+        icon: '🔄',
+        action: 'Schedule a revisit day — ' + staleCount + ' Not Home / Go Back contacts waiting',
+        detail: 'High stale count suggests many residents were not home during the initial sweep. A dedicated revisit run could yield hidden sales.'
+      });
+    } else if (cr >= 0.12 && cov < 0.50) {
+      recs.push({
+        territory: t, priority: 'high',
+        icon: '🟢',
+        action: 'Double down — ' + pct(cr) + ' close rate with ' + pending + ' homes untouched',
+        detail: 'Above-average performance with significant runway remaining. Add more reps or extend hours here.'
+      });
+    } else if (cr < 0.05 && d.worked >= 20) {
+      recs.push({
+        territory: t, priority: 'low',
+        icon: '🟡',
+        action: 'Review approach — only ' + pct(cr) + ' close rate after ' + d.worked + ' doors',
+        detail: 'Low close rate may indicate high competitor penetration or wrong rep-territory fit. Check competitor data.'
+      });
+    } else if (cov < 0.20 && d.total > 50) {
+      recs.push({
+        territory: t, priority: 'medium',
+        icon: '🔵',
+        action: 'Fresh territory — send more reps to ' + t,
+        detail: 'Only ' + (cov * 100).toFixed(0) + '% worked. High opportunity — deploy additional reps to increase pace.'
+      });
+    }
+  });
+
+  if (!recs.length) {
+    el.innerHTML = '<div class="ti-empty">All territories are well-balanced — no urgent recommendations right now.</div>';
+    return;
+  }
+
+  var priorityOrder = { high: 0, medium: 1, low: 2 };
+  recs.sort(function(a,b){ return (priorityOrder[a.priority]||0) - (priorityOrder[b.priority]||0); });
+
+  el.innerHTML = recs.map(function(r) {
+    var borderColor = r.priority === 'high' ? '#ef4444' : r.priority === 'medium' ? '#facc15' : '#6b7280';
+    return '<div class="ti-rec-card" style="border-left-color:' + borderColor + '">' +
+      '<div class="ti-rec-header">' +
+        '<span class="ti-rec-icon">' + r.icon + '</span>' +
+        '<div>' +
+          '<div class="ti-rec-terr">' + escHtml(r.territory) + '</div>' +
+          '<div class="ti-rec-action">' + r.action + '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="ti-rec-detail">' + r.detail + '</div>' +
+    '</div>';
+  }).join('');
+}
+
+// ── Shared territory aggregation ─────────────────────────
+function buildTerrMap() {
+  var m = {};
+  addresses.forEach(function(a) {
+    var t = (a.territory || 'Unknown').trim();
+    if (!m[t]) m[t] = {
+      total: 0, worked: 0, pending: 0, sales: 0,
+      mega: 0, gig: 0, nothome: 0,
+      brightspeed: 0, incontract: 0, goback: 0,
+      notinterested: 0, vacant: 0, business: 0,
+      // Existing customer count tracked separately for context
+      existingCustomers: 0
+    };
+    var d = m[t];
+    var s = (a.status || 'pending').toLowerCase();
+
+    // Track existing customers separately — they are NOT in the knockable universe
+    if (!isKnockable(a)) {
+      d.existingCustomers++;
+      return;
+    }
+
+    // Only knockable addresses count toward totals, coverage, and close rate
+    d.total++;
+    if (!s || s === 'pending') { d.pending++; return; }
+    d.worked++;
+    if (s === 'mega')            { d.mega++;          d.sales++; }
+    else if (s === 'gig')        { d.gig++;           d.sales++; }
+    else if (s === 'nothome')      d.nothome++;
+    else if (s === 'brightspeed')  d.brightspeed++;
+    else if (s === 'incontract')   d.incontract++;
+    else if (s === 'goback')       d.goback++;
+    else if (s === 'notinterested') d.notinterested++;
+    else if (s === 'vacant')       d.vacant++;
+    else if (s === 'business')     d.business++;
+  });
+  return m;
+}
+
+function noDataMsg(msg) {
+  return '<div class="ti-empty">' + escHtml(msg) + '</div>';
 }
 
 function timeAgo(isoString) {
@@ -2621,31 +3091,210 @@ function closeBadge() {
   document.getElementById('badge-modal').classList.remove('open');
 }
 
-var lastGPS = null;
-var gpsWatchId = null;
+var lastGPS       = null;
+var gpsWatchId    = null;
+var repMarker     = null;   // Leaflet marker showing the rep's live position
+var repAccCircle  = null;   // Accuracy radius circle
 
-function startGPSPing() {
-  if (isManager()) return;       // managers see all territories — no GPS filtering
+// ── GPS Permission & Init ─────────────────────────────────
+
+function showGPSPrompt() {
+  var el = document.getElementById('gps-prompt');
+  if (el) el.classList.add('open');
+}
+
+function dismissGPSPrompt(reason) {
+  var el = document.getElementById('gps-prompt');
+  if (el) el.classList.remove('open');
+  if (reason) showGPSBanner(reason.text, reason.type);
+}
+
+function showGPSBanner(msg, type) {
+  var el = document.getElementById('gps-banner');
+  if (!el) return;
+  el.textContent = msg;
+  el.className = 'gps-banner ' + (type || 'ok');
+  el.classList.add('show');
+  setTimeout(function() { el.classList.remove('show'); }, 3500);
+}
+
+// ── Rep position marker ──────────────────────────────────
+function updateRepMarker(lat, lng, acc) {
+  if (!mapObj) return;
+
+  // Build initials from repName
+  var parts    = (repName || 'ME').trim().split(/\s+/);
+  var initials = parts.length >= 2
+    ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+    : (repName || 'ME').slice(0, 2).toUpperCase();
+
+  // SVG icon: outer pulse ring + solid dot + initials label
+  var markerHTML = [
+    '<div class="rep-marker-wrap">',
+      '<div class="rep-marker-pulse"></div>',
+      '<div class="rep-marker-dot">',
+        '<span class="rep-marker-initials">' + initials + '</span>',
+      '</div>',
+    '</div>'
+  ].join('');
+
+  var icon = L.divIcon({
+    className: '',
+    html: markerHTML,
+    iconSize:   [44, 44],
+    iconAnchor: [22, 22],
+    popupAnchor:[0, -22]
+  });
+
+  if (repMarker) {
+    // Smoothly move existing marker
+    repMarker.setLatLng([lat, lng]);
+    repMarker.setIcon(icon); // refreshes initials if repName changed
+  } else {
+    // First time — create marker on a custom pane so it floats above all address pins
+    if (!mapObj.getPane('repPane')) {
+      mapObj.createPane('repPane');
+      mapObj.getPane('repPane').style.zIndex = 650; // above markerPane (600)
+      mapObj.getPane('repPane').style.pointerEvents = 'none';
+    }
+    repMarker = L.marker([lat, lng], {
+      icon:        icon,
+      pane:        'repPane',
+      interactive: false,   // don't intercept taps meant for address pins
+      zIndexOffset: 1000
+    }).addTo(mapObj);
+
+    repMarker.bindTooltip(
+      '<strong>' + (repName || 'Rep') + '</strong><br><span style="font-size:10px;color:#8b949e">Your location</span>',
+      { permanent: false, direction: 'top', className: 'rep-tooltip' }
+    );
+  }
+
+  // Update accuracy circle
+  if (acc && acc > 0 && acc < 500) {
+    if (repAccCircle) {
+      repAccCircle.setLatLng([lat, lng]).setRadius(acc);
+    } else {
+      repAccCircle = L.circle([lat, lng], {
+        radius:      acc,
+        color:       '#3b82f6',
+        fillColor:   '#3b82f6',
+        fillOpacity: 0.06,
+        opacity:     0.25,
+        weight:      1,
+        interactive: false
+      }).addTo(mapObj);
+    }
+  } else if (repAccCircle) {
+    mapObj.removeLayer(repAccCircle);
+    repAccCircle = null;
+  }
+}
+
+function removeRepMarker() {
+  if (repMarker)    { mapObj.removeLayer(repMarker);    repMarker    = null; }
+  if (repAccCircle) { mapObj.removeLayer(repAccCircle); repAccCircle = null; }
+}
+
+function requestGPS() {
+  dismissGPSPrompt(); // close the modal first
+
+  if (!navigator.geolocation) {
+    showGPSBanner('⚠ GPS not supported on this device', 'err');
+    return;
+  }
+
+  // One-shot getCurrentPosition to trigger the browser permission dialog.
+  // If the user grants it, we immediately kick off the persistent watchPosition.
+  navigator.geolocation.getCurrentPosition(
+    function(pos) {
+      // Permission granted — seed lastGPS right away so Route Mode works immediately
+      lastGPS = {
+        lat: pos.coords.latitude,
+        lng: pos.coords.longitude,
+        acc: pos.coords.accuracy || null,
+        ts: Date.now()
+      };
+      updateRepMarker(lastGPS.lat, lastGPS.lng, lastGPS.acc);
+      showGPSBanner('📍 Location enabled — Route Mode available', 'ok');
+      _startGPSWatch_();  // begin continuous watch
+    },
+    function(err) {
+      var msg = err.code === 1
+        ? '📍 Location denied — Route Mode unavailable. Enable in browser settings.'
+        : '📍 Could not get location — try again later.';
+      showGPSBanner(msg, 'warn');
+      _markRouteButtonUnavailable_();
+    },
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+  );
+}
+
+function _markRouteButtonUnavailable_() {
+  var btn = document.getElementById('btn-route-mode');
+  if (btn) btn.classList.add('no-gps');
+}
+
+function _startGPSWatch_() {
+  if (gpsWatchId !== null) return;  // already watching
   if (!navigator.geolocation) return;
 
-  // Watch position so it updates as they move
-  gpsWatchId = navigator.geolocation.watchPosition(function(pos){
+  gpsWatchId = navigator.geolocation.watchPosition(function(pos) {
     lastGPS = {
       lat: pos.coords.latitude,
       lng: pos.coords.longitude,
       acc: pos.coords.accuracy || null,
       ts: Date.now()
     };
-
-    // Send to server every update (or throttle if you want)
+    // Remove no-gps class if it was set (e.g. permission granted after initial deny)
+    var btn = document.getElementById('btn-route-mode');
+    if (btn) btn.classList.remove('no-gps');
+    updateRepMarker(lastGPS.lat, lastGPS.lng, lastGPS.acc);
     pingNearbyAddresses();
-  }, function(err){
-    console.warn('Geolocation error:', err);
+  }, function(err) {
+    console.warn('Geolocation watch error:', err);
   }, {
     enableHighAccuracy: true,
     maximumAge: 10000,
     timeout: 10000
   });
+}
+
+// Public entry called from launchApp — shows the in-app prompt first
+function startGPSPing() {
+  if (isManager()) return;  // managers don't use GPS
+  if (!navigator.geolocation) {
+    _markRouteButtonUnavailable_();
+    return;
+  }
+  // Check if permission was already granted (won't re-prompt if so)
+  if (navigator.permissions && navigator.permissions.query) {
+    navigator.permissions.query({ name: 'geolocation' }).then(function(result) {
+      if (result.state === 'granted') {
+        // Already have permission — skip the prompt and go straight to watching
+        _startGPSWatch_();
+        navigator.geolocation.getCurrentPosition(function(pos) {
+          lastGPS = { lat: pos.coords.latitude, lng: pos.coords.longitude,
+                      acc: pos.coords.accuracy || null, ts: Date.now() };
+          updateRepMarker(lastGPS.lat, lastGPS.lng, lastGPS.acc);
+          showGPSBanner('📍 Location active', 'ok');
+        }, function(){});
+      } else if (result.state === 'denied') {
+        // Already denied — mark button unavailable, no point prompting
+        _markRouteButtonUnavailable_();
+        showGPSBanner('📍 Location blocked — enable in browser settings for Route Mode', 'warn');
+      } else {
+        // 'prompt' state — show our friendly in-app prompt first
+        showGPSPrompt();
+      }
+    }).catch(function() {
+      // permissions API not supported — show prompt anyway
+      showGPSPrompt();
+    });
+  } else {
+    // No permissions API (older browsers) — show our prompt
+    showGPSPrompt();
+  }
 }
 
 function pingNearbyAddresses() {
@@ -2734,8 +3383,9 @@ function pingNearbyAddresses() {
     buildList();
     refreshMapMarkers();
 
-    // Optional: keep map centered on rep
-    if (mapObj) mapObj.setView([lastGPS.lat, lastGPS.lng], 17);
+    // Don't forcibly re-center the map on every GPS update — too disruptive
+    // while the rep is interacting with the address list or form.
+    // The rep marker updates in place via updateRepMarker().
   })
   .catch(function(e){
     console.warn('rep_location failed', e);
