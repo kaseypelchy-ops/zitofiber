@@ -773,17 +773,35 @@ body { font-family: 'Syne', sans-serif; color: var(--text); background: var(--bg
 /* ── Manager dashboard ── */
 #manager-modal {
   display: none; position: fixed; inset: 0;
-  background: rgba(0,0,0,.85); z-index: 3500;
+  background: rgba(0,0,0,.88); z-index: 3500;
   align-items: flex-start; justify-content: center;
-  padding: 20px;
-  padding-bottom: max(20px, calc(20px + env(safe-area-inset-bottom)));
+  padding: 24px 20px;
+  padding-bottom: max(24px, calc(24px + env(safe-area-inset-bottom)));
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }
 #manager-modal.open { display: flex; }
 .mgr-wrap {
-  width: 100%; max-width: 480px; margin: auto;
-  display: flex; flex-direction: column; gap: 12px; padding: 8px 0;
+  width: 100%; max-width: 900px; margin: 0 auto;
+  display: flex; flex-direction: column; gap: 14px; padding: 8px 0;
+}
+
+/* Desktop 2-column layout for analytics/coverage/forecast cards */
+@media (min-width: 700px) {
+  .mgr-summary { grid-template-columns: repeat(3, 1fr); }
+  .mgr-perf-grid { grid-template-columns: repeat(4, 1fr); }
+  .mgr-tab { font-size: 12px; padding: 9px 14px; }
+  .mgr-tabs { gap: 6px; }
+  .ana-card { padding: 20px 22px; }
+  .ana-card-head { font-size: 14px; }
+  .mgr-header { padding: 22px 26px; }
+  .mgr-title { font-size: 24px; }
+  /* Side-by-side cards where it makes sense */
+  .mgr-two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
 }
 .mgr-header {
   background: linear-gradient(135deg, #0d1f35, #0a1628);
@@ -1637,9 +1655,13 @@ body { font-family: 'Syne', sans-serif; color: var(--text); background: var(--bg
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 5px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
+.mgr-tabs::-webkit-scrollbar { display: none; }
 .mgr-tab {
-  flex: 1;
+  flex: 0 0 auto;
   background: transparent;
   border: none;
   border-radius: 8px;
@@ -2439,30 +2461,81 @@ body { font-family: 'Syne', sans-serif; color: var(--text); background: var(--bg
   .setup-card .sub { font-size: 12px; margin-bottom: 24px; }
   .step { margin-bottom: 20px; }
 
-  /* ── Manager modal ───────────────────────────────────── */
-  #manager-modal { padding: 12px; align-items: flex-start; }
-  .mgr-wrap { gap: 10px; }
-  .mgr-header { padding: 16px 16px; border-radius: 14px; }
-  .mgr-title { font-size: 17px; }
+  /* ── Manager modal — full-screen bottom sheet on mobile ── */
+  #manager-modal {
+    padding: 0;
+    align-items: flex-end;
+    background: rgba(0,0,0,.75);
+  }
+  .mgr-wrap {
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    max-height: 94vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 22px 22px 0 0;
+    background: var(--bg);
+    padding: 0 0 max(20px, env(safe-area-inset-bottom)) 0;
+    gap: 0;
+  }
+  /* Drag handle pill */
+  .mgr-wrap::before {
+    content: '';
+    display: block;
+    width: 38px; height: 4px;
+    background: rgba(255,255,255,.18);
+    border-radius: 2px;
+    margin: 10px auto 6px;
+    flex-shrink: 0;
+  }
+  .mgr-header {
+    border-radius: 0;
+    border-left: none; border-right: none; border-top: none;
+    border-bottom: 1px solid var(--border);
+    padding: 14px 18px;
+    margin-bottom: 0;
+  }
+  .mgr-title { font-size: 18px; }
   .mgr-subtitle { font-size: 10px; }
 
-  /* ── Manager tabs: 5 tabs on a phone ────────────────── */
-  /* Allow horizontal scroll so nothing gets clipped */
+  .mgr-summary { margin: 12px 14px 0; }
+  .mgr-perf { margin: 12px 14px 0; }
+
+  /* Tabs: scrollable pill strip */
   .mgr-tabs {
-    gap: 4px;
-    padding: 4px;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    flex-wrap: nowrap;
+    margin: 12px 14px 0;
+    gap: 6px;
+    padding: 5px 6px;
+    border-radius: 14px;
   }
-  .mgr-tabs::-webkit-scrollbar { display: none; }
   .mgr-tab {
-    font-size: 10px;
-    padding: 7px 6px;
+    font-size: 11px;
+    padding: 8px 10px;
     white-space: nowrap;
-    flex: 0 0 auto;      /* don't shrink — let the row scroll */
-    min-width: 58px;
+    flex: 0 0 auto;
+    border-radius: 10px;
+  }
+
+  /* All tab panels: padded sides */
+  .mgr-tab-panel {
+    padding: 12px 14px 0;
+    gap: 10px;
+  }
+
+  /* Cards: tighter, full-width */
+  .ana-card { padding: 14px 14px; border-radius: 14px; }
+  .ana-card-head { font-size: 13px; }
+  .ana-card-sub { font-size: 10px; margin-bottom: 10px; }
+
+  /* Close button: full-width sticky at bottom */
+  .mgr-close-btn {
+    display: block;
+    width: calc(100% - 28px);
+    margin: 14px 14px 0;
+    padding: 14px;
+    font-size: 14px;
+    border-radius: 14px;
   }
 
   /* ── Analytics cards ─────────────────────────────────── */
@@ -2575,7 +2648,7 @@ body { font-family: 'Syne', sans-serif; color: var(--text); background: var(--bg
 
 /* ── Ultra-small phones (≤ 380px) ─────────────────────── */
 @media (max-width: 380px) {
-  .mgr-tab { font-size: 9px; padding: 6px 4px; min-width: 52px; }
+  .mgr-tab { font-size: 10px; padding: 7px 8px; }
   .mgr-title { font-size: 15px; }
   .ti-comp-col { width: 40px; }
   .ti-comp-bar-wrap { width: 40px; }
@@ -2600,4 +2673,25 @@ body { font-family: 'Syne', sans-serif; color: var(--text); background: var(--bg
   #btn-drop-pin-fab {
     bottom: calc(24px + env(safe-area-inset-bottom));
   }
+}
+
+/* (AI Coach styles removed) */
+
+/* ── Two-column card grid — collapses on mobile ────────── */
+.mgr-two-col {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+@media (min-width: 700px) {
+  .mgr-two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+}
+
+/* ── Mobile: mgr-two-col always single column ──────────── */
+@media (max-width: 699px) {
+  .mgr-two-col { display: flex; flex-direction: column; gap: 10px; }
 }

@@ -327,6 +327,7 @@ addresses = json.rows.map(function(row, i) {
     // ✅ IMPORTANT: bring note over from Apps Script
     note:         (row.note || row.dispositionNote || row.disposition_note || '').toString().trim(),
 
+    knockedAt:    (row.knockedAt || row.knocked_at || null),
     sale:         null
   };
 });
@@ -677,7 +678,8 @@ function renderHeatMap() {
       color:       style.fill,
       opacity:     0.15,
       weight:      1,
-      interactive: false   // don't intercept map clicks
+      interactive: false,   // don't intercept map clicks
+      pane:        'heatPane'
     });
     circles.push(circle);
   });
@@ -719,6 +721,10 @@ function setSatelliteBaseLayer() {
 
 function initMap() {
   mapObj = L.map('map');
+
+  // Create a custom pane for the heat map so it always renders above cluster markers
+  mapObj.createPane('heatPane');
+  mapObj.getPane('heatPane').style.zIndex = 650; // above markerPane (600) and clusters
 
   // Default to satellite — best for pin dropping on houses
   setSatelliteBaseLayer();
@@ -1818,9 +1824,9 @@ function sendData(payload) {
 //  STATS
 // ──────────────────────────────────────────────────────────
 function updateStats() {
-  // Total = knockable doors only (homes passed without active Zito service)
+  // Total = ALL homes passed (entire fiber footprint, including existing Zito customers)
+  document.getElementById('st-total').textContent = addresses.length;
   var knockable = addresses.filter(isKnockable);
-  document.getElementById('st-total').textContent = knockable.length;
   document.getElementById('st-sched').textContent = addresses.filter(function(a){ return a.status==='mega' || a.status==='gig'; }).length;
   document.getElementById('st-pend').textContent  = knockable.filter(function(a){
     var s = (a.status||'').toLowerCase();
@@ -1841,7 +1847,7 @@ function updateStats() {
 // ──────────────────────────────────────────────────────────
 //  MANAGER — Kasey Pelchy only
 // ──────────────────────────────────────────────────────────
-var MANAGER_NAMES  = ['kasey pelchy']; // ← add more names here, all lowercase
+var MANAGER_NAMES  = ['kasey pelchy', 'james rigas', 'chris ruding']; // ← add more names here, all lowercase
 var heartbeatTimer = null;
 var mgrAutoRefresh = null;
 
@@ -2058,8 +2064,6 @@ function openManagerPanel() {
 function closeManagerPanel() {
   document.getElementById('manager-modal').classList.remove('open');
   clearInterval(mgrAutoRefresh);
-  // Turn off heat map if it was on
-  if (heatMapOn) toggleHeatMap();
 }
 
 // ── Tab switching ─────────────────────────────────────────
@@ -2315,7 +2319,7 @@ function renderStatusBars() {
   var counts = {};
   var worked = addresses.filter(function(a) {
     var s = (a.status || 'pending').toLowerCase();
-    return s !== 'pending' && s !== '';
+    return s !== 'pending' && s !== '' && s !== 'homes passed';
   });
 
   worked.forEach(function(a) {
@@ -2390,7 +2394,7 @@ function renderLeaderboard() {
     if (!isKnockable(a)) return;  // skip existing customers
     if (!repData[rep]) repData[rep] = { doors: 0, sales: 0 };
     var s = (a.status || 'pending').toLowerCase();
-    if (s !== 'pending' && s !== '') repData[rep].doors++;
+    if (s !== 'pending' && s !== '' && s !== 'homes passed') repData[rep].doors++;
     if (s === 'mega' || s === 'gig') repData[rep].sales++;
   });
 
@@ -2434,7 +2438,7 @@ function renderCoverageTab() {
     if (!terrMap[t]) terrMap[t] = { total: 0, worked: 0, sold: 0 };
     terrMap[t].total++;
     var s = (a.status || 'pending').toLowerCase();
-    if (s !== 'pending' && s !== '') terrMap[t].worked++;
+    if (s !== 'pending' && s !== '' && s !== 'homes passed') terrMap[t].worked++;
     if (s === 'mega' || s === 'gig') terrMap[t].sold++;
   });
 
@@ -2482,7 +2486,7 @@ function renderForecastTab() {
   var totalSold   = soldMega + soldGig;
   var worked      = knockable.filter(function(a){
     var s = (a.status||'pending').toLowerCase();
-    return s !== 'pending' && s !== '';
+    return s !== 'pending' && s !== '' && s !== 'homes passed';
   }).length;
   var pending     = knockable.filter(function(a){
     var s = (a.status||'pending').toLowerCase();
@@ -2535,7 +2539,7 @@ function renderForecastTab() {
     if (!terrMap[t]) terrMap[t] = { pending: 0, sold: 0, worked: 0 };
     var s = (a.status||'pending').toLowerCase();
     if (!s || s === 'pending') terrMap[t].pending++;
-    if (s !== 'pending' && s !== '') terrMap[t].worked++;
+    if (s !== 'pending' && s !== '' && s !== 'homes passed') terrMap[t].worked++;
     if (s === 'mega' || s === 'gig') terrMap[t].sold++;
   });
 
@@ -2951,7 +2955,7 @@ function buildTerrMap() {
 
     // Only knockable addresses count toward totals, coverage, and close rate
     d.total++;
-    if (!s || s === 'pending') { d.pending++; return; }
+    if (!s || s === 'pending' || s === 'homes passed') { d.pending++; return; }
     d.worked++;
     if (s === 'mega')            { d.mega++;          d.sales++; }
     else if (s === 'gig')        { d.gig++;           d.sales++; }
@@ -3672,3 +3676,5 @@ document.addEventListener('DOMContentLoaded', function() {
     if (typeof togglePinDropMode === 'function') togglePinDropMode();
   });
 });
+
+// (AI Coach removed)

@@ -144,7 +144,7 @@
       <img src="https://www.zitomedia.net/wp-content/uploads/2025/03/Untitled-design-6.png" alt="Logo" style="height:30px;width:auto;">
     </div>
     <div class="tb-sep"></div>
-    <div class="tb-stat">Total: <strong id="st-total">0</strong></div>
+    <div class="tb-stat">Homes Passed: <strong id="st-total">0</strong></div>
     <div class="tb-stat" style="color:#059669">✅ Scheduled: <strong id="st-sched">0</strong></div>
     <div class="tb-stat">Pending: <strong id="st-pend">0</strong></div>
     <div class="ml-auto" style="display:flex;align-items:center;gap:8px;">
@@ -243,6 +243,7 @@
         <button class="mgr-tab" onclick="switchMgrTab('coverage',this)">🗺 Coverage</button>
         <button class="mgr-tab" onclick="switchMgrTab('forecast',this)">💰 Forecast</button>
         <button class="mgr-tab" onclick="switchMgrTab('territory',this)">🎯 Territory</button>
+        <!-- AI Coach removed -->
       </div>
 
       <!-- ── TAB: TEAM ── -->
@@ -281,29 +282,33 @@
       <!-- ── TAB: ANALYTICS ── -->
       <div id="mgr-tab-analytics" class="mgr-tab-panel">
 
-        <div class="ana-card">
-          <div class="ana-card-head">🕐 Best Hours to Knock</div>
-          <div class="ana-card-sub">Close rate by hour of day — based on all recorded door knocks</div>
-          <div id="ana-tod-chart" class="tod-chart"></div>
-          <div class="tod-x-labels" id="ana-tod-labels"></div>
+        <div class="mgr-two-col">
+          <div class="ana-card">
+            <div class="ana-card-head">🕐 Best Hours to Knock</div>
+            <div class="ana-card-sub">Close rate by hour of day — based on all recorded door knocks</div>
+            <div id="ana-tod-chart" class="tod-chart"></div>
+            <div class="tod-x-labels" id="ana-tod-labels"></div>
+          </div>
+
+          <div class="ana-card">
+            <div class="ana-card-head">📶 Status Breakdown</div>
+            <div class="ana-card-sub">Disposition of all worked doors this session</div>
+            <div id="ana-status-bars" class="status-bars"></div>
+          </div>
         </div>
 
-        <div class="ana-card">
-          <div class="ana-card-head">📶 Status Breakdown</div>
-          <div class="ana-card-sub">Disposition of all worked doors this session</div>
-          <div id="ana-status-bars" class="status-bars"></div>
-        </div>
+        <div class="mgr-two-col">
+          <div class="ana-card">
+            <div class="ana-card-head">🆚 Competitor Landscape</div>
+            <div class="ana-card-sub">What service do prospects already have?</div>
+            <div id="ana-competitor" class="competitor-grid"></div>
+          </div>
 
-        <div class="ana-card">
-          <div class="ana-card-head">🆚 Competitor Landscape</div>
-          <div class="ana-card-sub">What service do prospects already have?</div>
-          <div id="ana-competitor" class="competitor-grid"></div>
-        </div>
-
-        <div class="ana-card">
-          <div class="ana-card-head">👤 Rep Leaderboard</div>
-          <div class="ana-card-sub">Ranked by close rate — minimum 5 doors worked</div>
-          <div id="ana-leaderboard" class="leaderboard-list"></div>
+          <div class="ana-card">
+            <div class="ana-card-head">👤 Rep Leaderboard</div>
+            <div class="ana-card-sub">Ranked by close rate — minimum 5 doors worked</div>
+            <div id="ana-leaderboard" class="leaderboard-list"></div>
+          </div>
         </div>
 
       </div>
@@ -311,26 +316,28 @@
       <!-- ── TAB: COVERAGE ── -->
       <div id="mgr-tab-coverage" class="mgr-tab-panel">
 
-        <div class="ana-card">
-          <div class="ana-card-head" style="display:flex;align-items:center;justify-content:space-between;">
-            <span>Territory Coverage</span>
-            <button class="heat-btn" id="btn-heat-map" onclick="toggleHeatMap()">🌡 Coverage Map</button>
+        <div class="mgr-two-col">
+          <div class="ana-card">
+            <div class="ana-card-head" style="display:flex;align-items:center;justify-content:space-between;">
+              <span>Territory Coverage</span>
+              <button class="heat-btn" id="btn-heat-map" onclick="toggleHeatMap()">🌡 Coverage Map</button>
+            </div>
+            <div class="ana-card-sub">% of addresses knocked per territory</div>
+            <div id="cov-territory-bars"></div>
           </div>
-          <div class="ana-card-sub">% of addresses knocked per territory</div>
-          <div id="cov-territory-bars"></div>
-        </div>
 
-        <div class="ana-card">
-          <div class="ana-card-head">📍 Coverage Legend</div>
-          <div class="cov-legend">
-            <div class="cov-leg-row"><span class="cov-swatch" style="background:#8b5cf6"></span>Mega Sale</div>
-            <div class="cov-leg-row"><span class="cov-swatch" style="background:#10b981"></span>Gig Sale</div>
-            <div class="cov-leg-row"><span class="cov-swatch" style="background:#d97706"></span>Not Home</div>
-            <div class="cov-leg-row"><span class="cov-swatch" style="background:#ef4444"></span>Brightspeed</div>
-            <div class="cov-leg-row"><span class="cov-swatch" style="background:#818cf8"></span>In Contract</div>
-            <div class="cov-leg-row"><span class="cov-swatch" style="background:#dc2626"></span>Not Interested</div>
-            <div class="cov-leg-row"><span class="cov-swatch" style="background:#06b6d4"></span>Go Back Later</div>
-            <div class="cov-leg-row"><span class="cov-swatch" style="background:#6b7280"></span>Pending / Untouched</div>
+          <div class="ana-card">
+            <div class="ana-card-head">📍 Coverage Legend</div>
+            <div class="cov-legend">
+              <div class="cov-leg-row"><span class="cov-swatch" style="background:#8b5cf6"></span>Mega Sale</div>
+              <div class="cov-leg-row"><span class="cov-swatch" style="background:#10b981"></span>Gig Sale</div>
+              <div class="cov-leg-row"><span class="cov-swatch" style="background:#d97706"></span>Not Home</div>
+              <div class="cov-leg-row"><span class="cov-swatch" style="background:#ef4444"></span>Brightspeed</div>
+              <div class="cov-leg-row"><span class="cov-swatch" style="background:#818cf8"></span>In Contract</div>
+              <div class="cov-leg-row"><span class="cov-swatch" style="background:#dc2626"></span>Not Interested</div>
+              <div class="cov-leg-row"><span class="cov-swatch" style="background:#06b6d4"></span>Go Back Later</div>
+              <div class="cov-leg-row"><span class="cov-swatch" style="background:#6b7280"></span>Pending / Untouched</div>
+            </div>
           </div>
         </div>
 
@@ -391,6 +398,8 @@
         </div>
 
       </div>
+
+      <!-- AI Coach tab removed -->
 
       <button class="mgr-close-btn" onclick="closeManagerPanel()">Close</button>
     </div>

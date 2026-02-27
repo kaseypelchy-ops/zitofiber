@@ -4,7 +4,7 @@
    reps get fresh files on their next open.
    ============================================================ */
 
-var CACHE_VERSION = 'fieldos-v1.1.0';
+var CACHE_VERSION = 'fieldos-v1.2.0';
 
 /* Files that make up the app shell — cached on install so the
    app loads instantly even with no signal. */
