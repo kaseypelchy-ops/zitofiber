@@ -432,7 +432,7 @@ function startPolling() {
         }
       })
       .catch(function(){});
-  }, 30000);
+  }, 10000);
 }
 function launchApp() {
   repName = (document.getElementById('rep-name').value || '').trim();
@@ -2051,7 +2051,7 @@ function openManagerPanel() {
   document.getElementById('manager-modal').classList.add('open');
   switchMgrTab('team', document.querySelector('.mgr-tab'));
   refreshManagerPanel();
-  mgrAutoRefresh = setInterval(refreshManagerPanel, 30000);
+  mgrAutoRefresh = setInterval(refreshManagerPanel, 10000);
 }
 function closeManagerPanel() {
   document.getElementById('manager-modal').classList.remove('open');
