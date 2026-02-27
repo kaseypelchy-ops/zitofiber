@@ -282,7 +282,9 @@ function rebuildKmlGeoJSON() {
 function fetchAddressesFromSheet() {
   var btn = document.getElementById('btn-fetch-addr');
   var st  = document.getElementById('fetch-addr-status');
+  var profileSt = document.getElementById('rep-profile-status');
   var repInput = (document.getElementById('rep-name') ? (document.getElementById('rep-name').value || '').trim() : '');
+
   if (!repInput || repInput.split(/\s+/).filter(function(p){ return p.length > 0; }).length < 2) {
     st.className = 'dz-status err';
     st.textContent = '✗ Enter your full name first (First Last).';
@@ -292,9 +294,9 @@ function fetchAddressesFromSheet() {
   btn.disabled = true;
   document.getElementById('fetch-addr-icon').textContent = '⏳';
   st.className = 'dz-status';
-  st.textContent = 'Loading addresses…';
+  st.textContent = 'Loading…';
+  if (profileSt) { profileSt.style.color = 'var(--muted)'; profileSt.textContent = ''; }
 
-  // Let the backend know this is a manager so it returns ALL territories
   var managerFlag = MANAGER_NAMES.indexOf(repInput.toLowerCase()) >= 0 ? '&isManager=true' : '';
   fetch(webhookURL + '?action=addresses&repName=' + encodeURIComponent(repInput) + managerFlag + '&_t=' + Date.now())
     .then(function(r){ return r.json(); })
@@ -302,59 +304,48 @@ function fetchAddressesFromSheet() {
       if (!json || !json.rows) throw new Error('Bad response from server');
       if (json.status === 'error') throw new Error(json.message || 'Server error');
 
-  activeTerritory = (json.territory || '').trim();
+      activeTerritory = (json.territory || '').trim();
 
-addresses = json.rows.map(function(row, i) {
-  var lat = (row.lat !== '' && row.lat != null) ? parseFloat(row.lat) : null;
-  var lng = (row.lng !== '' && row.lng != null) ? parseFloat(row.lng) : null;
+      // Populate rep profile from Reps sheet
+      if (json.repPhone) {
+        repPhone = json.repPhone;
+        try { localStorage.setItem('zito_rep_phone', repPhone); } catch(e) {}
+      }
+      if (json.repEmail) {
+        repEmail = json.repEmail;
+        try { localStorage.setItem('zito_rep_email', repEmail); } catch(e) {}
+      }
+      if (profileSt && (json.repPhone || json.repEmail)) {
+        profileSt.style.color = '#10b981';
+        profileSt.textContent = '✓ Profile loaded' +
+          (json.repPhone ? ' • ' + json.repPhone : '') +
+          (json.repEmail ? ' • ' + json.repEmail : '');
+      }
 
-  return {
-    id:           i,
-    sheetRow:     row.sheetRow,
-    territory:    (row.territory || activeTerritory || '').trim(),
-    address:      (row.address || '').trim(),
-    city:         (row.city || '').trim(),
-    state:        (row.state || '').trim(),
-    zip:          (row.zip || '').trim(),
+      addresses = json.rows.map(function(row, i) {
+        var lat = (row.lat !== '' && row.lat != null) ? parseFloat(row.lat) : null;
+        var lng = (row.lng !== '' && row.lng != null) ? parseFloat(row.lng) : null;
+        return {
+          id:          i,
+          sheetRow:    row.sheetRow,
+          territory:   (row.territory || activeTerritory || '').trim(),
+          address:     (row.address || '').trim(),
+          city:        (row.city || '').trim(),
+          state:       (row.state || '').trim(),
+          zip:         (row.zip || '').trim(),
+          lat:         (isFinite(lat) ? lat : null),
+          lng:         (isFinite(lng) ? lng : null),
+          activeCount: (row.activeCount || row.active_count || row.type || '').toString().trim(),
+          status:      (row.status || 'pending').toLowerCase(),
+          salesperson: (row.salesperson || '').trim(),
+          note:        (row.note || row.dispositionNote || row.disposition_note || '').toString().trim(),
+          knockedAt:   (row.knockedAt || row.knocked_at || null),
+          sale:        null
+        };
+      });
 
-    lat:          (isFinite(lat) ? lat : null),
-    lng:          (isFinite(lng) ? lng : null),
-
-    activeCount:  (row.activeCount || row.active_count || row.type || '').toString().trim(),
-    status:       (row.status || 'pending').toLowerCase(),
-    salesperson:  (row.salesperson || '').trim(),
-
-    // ✅ IMPORTANT: bring note over from Apps Script
-    note:         (row.note || row.dispositionNote || row.disposition_note || '').toString().trim(),
-
-    knockedAt:    (row.knockedAt || row.knocked_at || null),
-    sale:         null
-  };
-});
-
-// ✅ These are the missing pieces that make sidebar + map update immediately
-updateStats();
-buildList();
-refreshMapMarkers(); // if you have this helper; otherwise use the fallback below
-
-// Fallback if you DO NOT have refreshMapMarkers():
-// if (mapObj) {
-//   // clear old markers if you track them
-//   if (mapMarkers) {
-//     Object.keys(mapMarkers).forEach(function(k){
-//       try { mapObj.removeLayer(mapMarkers[k]); } catch(e) {}
-//     });
-//     mapMarkers = {};
-//   }
-//   addresses.forEach(function(a){ if (a.lat != null && a.lng != null) placeMarker(a); });
-// }
-
-st.className   = 'dz-status ok';
-st.textContent = '✓ ' + addresses.length + ' addresses loaded' + (activeTerritory ? (' • ' + activeTerritory) : '');
-document.getElementById('fetch-addr-icon').textContent = '✅';
-btn.disabled = false;
-checkLaunchReady();
-
+      updateStats();
+      buildList();
       st.className   = 'dz-status ok';
       st.textContent = '✓ ' + addresses.length + ' addresses loaded' + (activeTerritory ? (' • ' + activeTerritory) : '');
       document.getElementById('fetch-addr-icon').textContent = '✅';
@@ -366,6 +357,7 @@ checkLaunchReady();
       st.textContent = '✗ ' + (err && err.message ? err.message : 'Unable to load addresses');
       document.getElementById('fetch-addr-icon').textContent = '📋';
       btn.disabled = false;
+      if (profileSt) { profileSt.textContent = ''; }
     });
 }
 
@@ -444,13 +436,12 @@ function startPolling() {
 }
 function launchApp() {
   repName = (document.getElementById('rep-name').value || '').trim();
-  repPhone = (document.getElementById('rep-phone') ? (document.getElementById('rep-phone').value || '').trim() : '');
-  repEmail = (document.getElementById('rep-email') ? (document.getElementById('rep-email').value || '').trim() : '');
+  // repPhone and repEmail are populated by fetchAddressesFromSheet from the Reps sheet
 
   try {
     localStorage.setItem('zito_rep_name', repName);
-    localStorage.setItem('zito_rep_phone', repPhone);
-    localStorage.setItem('zito_rep_email', repEmail);
+    if (repPhone) localStorage.setItem('zito_rep_phone', repPhone);
+    if (repEmail) localStorage.setItem('zito_rep_email', repEmail);
     if (!localStorage.getItem('fieldos_session_start')) {
       localStorage.setItem('fieldos_session_start', new Date().toISOString());
     }
@@ -1939,8 +1930,8 @@ function confirmSignOut() {
     document.getElementById('page-app').style.display   = 'none';
     document.getElementById('page-setup').style.display = 'flex';
     document.getElementById('rep-name').value = '';
-    if (document.getElementById('rep-phone')) document.getElementById('rep-phone').value = '';
-    if (document.getElementById('rep-email')) document.getElementById('rep-email').value = '';
+    repPhone = '';
+    repEmail = '';
     try { localStorage.removeItem('zito_rep_name'); localStorage.removeItem('zito_rep_phone'); localStorage.removeItem('zito_rep_email'); } catch(e) {}
     document.getElementById('launch-btn').disabled = true;
     document.getElementById('fetch-addr-status').textContent = '';
@@ -1955,9 +1946,10 @@ function restoreRepProfile() {
     var n = localStorage.getItem('zito_rep_name')  || '';
     var p = localStorage.getItem('zito_rep_phone') || '';
     var e = localStorage.getItem('zito_rep_email') || '';
-    if (n && document.getElementById('rep-name'))  document.getElementById('rep-name').value  = n;
-    if (document.getElementById('rep-phone')) document.getElementById('rep-phone').value = p;
-    if (document.getElementById('rep-email')) document.getElementById('rep-email').value = e;
+    if (n && document.getElementById('rep-name')) document.getElementById('rep-name').value = n;
+    // Restore cached phone/email (populated from sheet on last session)
+    if (p) repPhone = p;
+    if (e) repEmail = e;
   } catch(err) {}
 }
 
