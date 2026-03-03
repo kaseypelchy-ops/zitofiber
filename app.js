@@ -30,6 +30,7 @@ var kmlGeoJSON = null;
 var toastTimer = null;
 var sidebarOpen  = true;
 var pinDropMode  = false;
+var drawZoneMode = false;   // polygon drawing for zone-based house import
 var tempPinMarker = null;
 
 // ──────────────────────────────────────────────────────────
@@ -797,8 +798,17 @@ function initMap() {
 
   // ── Pin-drop: tap map to place a new address ──────────────
   mapObj.on('click', function(e) {
+    if (drawZoneMode) { handleDrawZoneClick(e.latlng); return; }
     if (!pinDropMode) return;
     handleMapPinDrop(e.latlng);
+  });
+
+  // Double-click closes polygon when drawing (also prevents zoom-in during draw mode)
+  mapObj.on('dblclick', function(e) {
+    if (drawZoneMode && drawZonePoints.length >= 3) {
+      L.DomEvent.stopPropagation(e);
+      finalizeDrawZone();
+    }
   });
 
   // (Map Drop Pin control removed — use top bar button)
@@ -964,7 +974,7 @@ function geocodeAll() {
     fetch(webhookURL, {
       method: 'POST',
       mode: 'no-cors',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify({
         type:     'save_coords',
         sheetRow: a.sheetRow,
@@ -1562,7 +1572,7 @@ function schedBookSlot(date, time, customerName, address) {
   fetch(SCHED_URL, {
     method: 'POST',
     mode: 'no-cors',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'text/plain' },
     body: JSON.stringify({ type:'booking', date:date, time:time, name:customerName, address:address })
   }).catch(function(){});
 
@@ -1652,7 +1662,7 @@ function maybeWriteNewAddrToSheet(addr) {
   fetch(webhookURL, {
     method: 'POST',
     mode: 'no-cors',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'text/plain' },
     body: JSON.stringify({
       type:      'add_address',
       address:   addr.address,
@@ -1783,7 +1793,7 @@ function updateAddressStatus(addr, status, note) {
   fetch(webhookURL, {
     method: 'POST',
     mode: 'no-cors',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'text/plain' },
     body: JSON.stringify({
       type:            'status_update',
       territory:       (addr.territory || activeTerritory || ''),
@@ -1806,7 +1816,7 @@ function sendData(payload) {
   fetch(webhookURL, {
     method: 'POST',
     mode: 'no-cors',
-    headers: { 'Content-Type':'application/json' },
+    headers: { 'Content-Type': 'text/plain' },
     body: JSON.stringify(payload)
   }).catch(function() {});
 }
@@ -1873,7 +1883,7 @@ function sendHeartbeat(statusOverride) {
   try { firstSeen = localStorage.getItem('fieldos_session_start') || ''; } catch(e) {}
   fetch(webhookURL, {
     method: 'POST', mode: 'no-cors',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'text/plain' },
     body: JSON.stringify({
       type:        'rep_heartbeat',
       salesperson: repName,
@@ -2070,6 +2080,7 @@ function switchMgrTab(tab, btn) {
   if (tab === 'coverage')  renderCoverageTab();
   if (tab === 'forecast')  renderForecastTab();
   if (tab === 'territory') renderTerritoryTab();
+  if (tab === 'ai')        renderAITab();
 }
 function refreshManagerPanel() {
   var btn = document.getElementById('mgr-refresh-btn');
@@ -3300,7 +3311,7 @@ function pingNearbyAddresses() {
 
   fetch(webhookURL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'text/plain' },
     body: JSON.stringify({
       type: 'rep_location',
       repName: repName,
@@ -3315,6 +3326,10 @@ function pingNearbyAddresses() {
     if (!json || json.status !== 'ok') return;
 
     activeTerritory = (json.territory || '').trim();
+
+    // If GPS radius returned no rows, the rep is just not near any addresses
+    // right now — keep the existing loaded addresses rather than wiping them.
+    if (!json.rows || json.rows.length === 0) return;
 
     // ── Snapshot current rep-set dispositions before overwriting ──
     // This ensures that a sale/no-sale the rep already logged (on ANY address,
@@ -3649,6 +3664,367 @@ function addPinDropAddress(street, city, state, zip, lat, lng) {
 }
 
 // ──────────────────────────────────────────────────────────
+//  DRAW ZONE — polygon drawing + OSM rooftop auto-import
+// ──────────────────────────────────────────────────────────
+var drawZoneMode    = false;
+var drawZonePoints  = [];        // [{lat,lng}] polygon vertices
+var drawZoneVisuals = [];        // temp Leaflet layers to clear on cancel/reset
+var drawZonePolygon = null;      // filled polygon shown after closing
+var drawZonePending = [];        // buildings awaiting user confirmation
+
+function toggleDrawZoneMode() {
+  if (drawZoneMode) { cancelDrawZone(); return; }
+  if (pinDropMode)  cancelPinDropMode();
+  drawZoneMode   = true;
+  drawZonePoints = [];
+  _dzClearVisuals_();
+  var btn = document.getElementById('btn-draw-zone-top');
+  if (btn) { btn.classList.add('active'); btn.textContent = '✏️ Drawing…'; }
+  document.getElementById('draw-zone-banner').classList.add('show');
+  var mapEl = document.getElementById('map');
+  if (mapEl) mapEl.classList.add('draw-zone-mode');
+  if (window.innerWidth <= 640 && sidebarOpen) toggleSidebar();
+  toast('✏️ Tap corners on the map — double-tap or tap the ● to close', 't-info');
+}
+
+function cancelDrawZone() {
+  drawZoneMode   = false;
+  drawZonePoints = [];
+  _dzClearVisuals_();
+  var btn = document.getElementById('btn-draw-zone-top');
+  if (btn) { btn.classList.remove('active'); btn.textContent = '🏘 Draw Zone'; }
+  document.getElementById('draw-zone-banner').classList.remove('show');
+  var mapEl = document.getElementById('map');
+  if (mapEl) mapEl.classList.remove('draw-zone-mode');
+}
+
+function _dzClearVisuals_() {
+  if (!mapObj) return;
+  drawZoneVisuals.forEach(function(l) { try { mapObj.removeLayer(l); } catch(e) {} });
+  drawZoneVisuals = [];
+  if (drawZonePolygon) { try { mapObj.removeLayer(drawZonePolygon); } catch(e) {} drawZonePolygon = null; }
+}
+
+function handleDrawZoneClick(latlng) {
+  // Snap-to-close: clicking within ~200ft of the first point closes the polygon
+  if (drawZonePoints.length >= 3) {
+    var first = drawZonePoints[0];
+    if (haversineMiles(first.lat, first.lng, latlng.lat, latlng.lng) < 0.04) {
+      finalizeDrawZone();
+      return;
+    }
+  }
+  drawZonePoints.push({ lat: latlng.lat, lng: latlng.lng });
+  _dzUpdateVisuals_();
+  // Update hint after first point
+  var hint = document.getElementById('draw-zone-banner-text');
+  if (hint && drawZonePoints.length === 1) hint.textContent = '✏️ Keep tapping corners — double-tap or tap ● to close';
+  if (hint && drawZonePoints.length >= 3)  hint.textContent = '✏️ ' + drawZonePoints.length + ' corners — double-tap or tap ● to close';
+}
+
+function _dzUpdateVisuals_() {
+  _dzClearVisuals_();
+  if (!mapObj || drawZonePoints.length === 0) return;
+  var pts = drawZonePoints;
+  var lls = pts.map(function(p) { return [p.lat, p.lng]; });
+
+  // Main polyline
+  if (pts.length >= 2) {
+    var line = L.polyline(lls, { color: '#3b82f6', weight: 2.5, dashArray: '7 4', opacity: .9 }).addTo(mapObj);
+    drawZoneVisuals.push(line);
+    // Dashed closing preview line
+    if (pts.length >= 3) {
+      var close = L.polyline([lls[lls.length-1], lls[0]], { color: '#3b82f6', weight: 2, dashArray: '4 6', opacity: .45 }).addTo(mapObj);
+      drawZoneVisuals.push(close);
+    }
+  }
+
+  // Vertex dots
+  pts.forEach(function(p, i) {
+    var isFirst = i === 0;
+    var dot = L.circleMarker([p.lat, p.lng], {
+      radius: isFirst ? 9 : 5,
+      fillColor: isFirst ? '#10b981' : '#3b82f6',
+      color: '#fff', weight: 2.5, fillOpacity: 1,
+      interactive: isFirst && pts.length >= 3
+    }).addTo(mapObj);
+    if (isFirst && pts.length >= 3) {
+      dot.bindTooltip('Tap to close', { permanent: false, direction: 'top' });
+      dot.on('click', function(e) { L.DomEvent.stopPropagation(e); finalizeDrawZone(); });
+    }
+    drawZoneVisuals.push(dot);
+  });
+}
+
+function finalizeDrawZone() {
+  if (drawZonePoints.length < 3) { toast('⚠ Need at least 3 corners', 't-err'); return; }
+  drawZoneMode = false;
+  var btn = document.getElementById('btn-draw-zone-top');
+  if (btn) { btn.classList.remove('active'); btn.textContent = '🏘 Draw Zone'; }
+  document.getElementById('draw-zone-banner').classList.remove('show');
+
+  // Show filled polygon while scanning
+  _dzClearVisuals_();
+  var lls = drawZonePoints.map(function(p) { return [p.lat, p.lng]; });
+  drawZonePolygon = L.polygon(lls, {
+    color: '#3b82f6', weight: 2.5, dashArray: '6 4',
+    fillColor: '#3b82f6', fillOpacity: .12
+  }).addTo(mapObj);
+
+  toast('🔍 Scanning for houses in zone…', 't-info');
+  _dzQueryBuildings_(drawZonePoints.slice());
+}
+
+// Point-in-polygon (ray casting)
+function pointInPolygon(lat, lng, polygon) {
+  var inside = false, n = polygon.length;
+  for (var i = 0, j = n - 1; i < n; j = i++) {
+    var xi = polygon[i].lat, yi = polygon[i].lng;
+    var xj = polygon[j].lat, yj = polygon[j].lng;
+    if (((yi > lng) !== (yj > lng)) && (lat < (xj - xi) * (lng - yi) / (yj - yi) + xi)) inside = !inside;
+  }
+  return inside;
+}
+
+function _dzQueryBuildings_(points) {
+  var polyStr = points.map(function(p) { return p.lat + ' ' + p.lng; }).join(' ');
+
+  // PRIMARY: address nodes — these are what Nominatim resolves when you drop a pin.
+  // Far better coverage in US residential areas than building footprint tags.
+  // SECONDARY: building ways/nodes as a fallback for areas with footprints but no addr tags.
+  var query =
+    '[out:json][timeout:45];\n' +
+    '(\n' +
+    // Address nodes with both housenumber and street — highest quality, pin immediately
+    '  node["addr:housenumber"]["addr:street"](poly:"' + polyStr + '");\n' +
+    // Address ways (some subdivisions tag the parcel/lot rather than a node)
+    '  way["addr:housenumber"]["addr:street"](poly:"' + polyStr + '");\n' +
+    // Building footprints as fallback — will need reverse geocoding
+    '  way["building"]["building"!~"^(commercial|industrial|retail|office|warehouse|garage|shed|barn|church|school|hospital|hotel|supermarket|mall|civic|public|construction)$"](poly:"' + polyStr + '");\n' +
+    '  node["building"="house"](poly:"' + polyStr + '");\n' +
+    '  node["building"="residential"](poly:"' + polyStr + '");\n' +
+    ');\n' +
+    'out center tags;';
+
+  fetch('https://overpass-api.de/api/interpreter', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: 'data=' + encodeURIComponent(query)
+  })
+  .then(function(r) { if (!r.ok) throw new Error('Overpass returned ' + r.status); return r.json(); })
+  .then(function(data) { _dzProcessBuildings_(data.elements || [], points); })
+  .catch(function(err) {
+    _dzClearVisuals_();
+    toast('⚠ Zone scan failed: ' + String(err.message || err).substring(0, 60), 't-err');
+  });
+}
+
+// US Census Bureau geocoder — free, no API key, best for US residential addresses
+// Falls back to Nominatim if Census returns no match
+function _dzReverseGeocode_(lat, lng, callback) {
+  var censusUrl =
+    'https://geocoding.geo.census.gov/geocoder/locations/coordinates' +
+    '?x=' + encodeURIComponent(lng) +
+    '&y=' + encodeURIComponent(lat) +
+    '&benchmark=2020&format=json';
+
+  fetch(censusUrl)
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      var matches = data &&
+                    data.result &&
+                    data.result.addressMatches;
+      if (matches && matches.length > 0) {
+        var m    = matches[0];
+        var addr = m.addressComponents || {};
+        var streetNum  = (addr.fromAddress || '').split('-')[0].trim();
+        var streetName = (addr.streetName || '').trim();
+        var suffix     = (addr.suffixType || '').trim();
+        var street     = [streetNum, streetName, suffix].filter(Boolean).join(' ');
+        if (!street) street = (m.matchedAddress || '').split(',')[0].trim();
+        callback({
+          address: street,
+          city:    (addr.city || '').trim(),
+          state:   (addr.state || '').trim(),
+          zip:     (addr.zip || '').trim()
+        });
+      } else {
+        // Census had no match — fall back to Nominatim
+        _dzNominatimReverse_(lat, lng, callback);
+      }
+    })
+    .catch(function() {
+      _dzNominatimReverse_(lat, lng, callback);
+    });
+}
+
+function _dzNominatimReverse_(lat, lng, callback) {
+  var url = 'https://nominatim.openstreetmap.org/reverse?format=json' +
+            '&lat=' + encodeURIComponent(lat) +
+            '&lon=' + encodeURIComponent(lng) +
+            '&zoom=18&addressdetails=1';
+  fetch(url, { headers: { 'Accept': 'application/json', 'User-Agent': 'FieldSalesApp/1.0' } })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      var a  = data && data.address ? data.address : {};
+      var hn = (a.house_number || '').trim();
+      var rd = (a.road || a.pedestrian || a.path || '').trim();
+      var street = hn && rd ? (hn + ' ' + rd) : (rd || (data.display_name ? data.display_name.split(',')[0].trim() : ''));
+      callback({
+        address: street || ('Building at ' + lat.toFixed(5) + ',' + lng.toFixed(5)),
+        city:    a.city || a.town || a.village || a.hamlet || '',
+        state:   a.state ? stateAbbr(a.state) : '',
+        zip:     a.postcode || ''
+      });
+    })
+    .catch(function() {
+      callback({
+        address: 'Building at ' + lat.toFixed(5) + ',' + lng.toFixed(5),
+        city: '', state: '', zip: ''
+      });
+    });
+}
+
+function _dzProcessBuildings_(elements, polygonPoints) {
+  if (!elements.length) {
+    _dzClearVisuals_();
+    toast('⚠ No buildings found — OSM may not have rooftop data for this area yet', 't-err');
+    return;
+  }
+
+  var buildings = [];
+  elements.forEach(function(el) {
+    var lat = el.type === 'node' ? el.lat : (el.center ? el.center.lat : null);
+    var lng = el.type === 'node' ? el.lon : (el.center ? el.center.lon : null);
+    if (!lat || !lng) return;
+    // Precise point-in-polygon check (Overpass poly filter is slightly approximate)
+    if (!pointInPolygon(lat, lng, polygonPoints)) return;
+    // Skip if close to an existing address pin
+    var exists = addresses.some(function(a) {
+      return a.lat && a.lng && haversineMiles(a.lat, a.lng, lat, lng) < 0.005;
+    });
+    if (exists) return;
+
+    var tags     = el.tags || {};
+    var houseNum = (tags['addr:housenumber'] || '').trim();
+    var street   = (tags['addr:street'] || '').trim();
+    var city     = (tags['addr:city'] || '').trim();
+    var state    = (tags['addr:state'] || '').trim();
+    var zip      = (tags['addr:postcode'] || '').trim();
+    var hasAddr  = !!(houseNum && street);
+
+    buildings.push({
+      lat: lat, lng: lng,
+      address: hasAddr ? (houseNum + ' ' + street) : null,
+      city: city, state: state, zip: zip, hasAddress: hasAddr
+    });
+  });
+
+  if (!buildings.length) {
+    _dzClearVisuals_();
+    toast('✓ All buildings in this zone are already in your list', 't-info');
+    return;
+  }
+
+  // Populate confirm modal
+  drawZonePending = buildings;
+  var withAddr    = buildings.filter(function(b) { return b.hasAddress; }).length;
+  var needGeo     = buildings.length - withAddr;
+
+  document.getElementById('dz-count-big').textContent = buildings.length;
+
+  var parts = [];
+  if (withAddr) parts.push('<span class="dz-ok">✓ ' + withAddr + ' have street addresses from OSM</span>');
+  if (needGeo)  parts.push('<span class="dz-warn">⏳ ' + needGeo + ' will be reverse-geocoded (~' + needGeo + 's)</span>');
+  document.getElementById('dz-breakdown').innerHTML = parts.join('');
+  document.getElementById('dz-geocode-time').textContent = needGeo
+    ? 'Pins appear on the map instantly — addresses fill in as geocoding completes'
+    : 'All addresses are ready — homes will be pinned instantly';
+
+  var terrInput = document.getElementById('dz-territory-input');
+  if (terrInput && !terrInput.value) terrInput.value = activeTerritory || '';
+
+  document.getElementById('draw-zone-confirm-modal').classList.add('open');
+}
+
+function closeDrawZoneConfirm() {
+  document.getElementById('draw-zone-confirm-modal').classList.remove('open');
+  _dzClearVisuals_();
+  drawZonePending = [];
+}
+
+function confirmAddZoneBuildings() {
+  document.getElementById('draw-zone-confirm-modal').classList.remove('open');
+  var terrInput = document.getElementById('dz-territory-input');
+  var zoneTerr  = terrInput ? terrInput.value.trim() : (activeTerritory || '');
+  var buildings = drawZonePending.slice();
+  drawZonePending = [];
+
+  var withAddr  = buildings.filter(function(b) { return  b.hasAddress; });
+  var needGeo   = buildings.filter(function(b) { return !b.hasAddress; });
+
+  // Add OSM-addressed buildings immediately
+  withAddr.forEach(function(b) {
+    _dzAddBuilding_(b.lat, b.lng, b.address, b.city || '', b.state, b.zip, zoneTerr);
+  });
+  buildList(); updateStats();
+
+  if (!needGeo.length) {
+    _dzClearVisuals_();
+    toast('✅ ' + withAddr.length + ' homes added from zone!', 't-ok');
+    return;
+  }
+
+  // Geocode the rest progressively at 1.2/sec (Census allows ~50 req/s but be polite)
+  var total = needGeo.length, done = 0, idx = 0;
+  showGeocodeBar(0, total, 0);
+
+  function geocodeNext() {
+    if (idx >= needGeo.length) {
+      _dzClearVisuals_();
+      buildList(); updateStats(); hideGeocodeBar();
+      toast('✅ ' + (withAddr.length + done) + ' homes added from zone!', 't-ok');
+      return;
+    }
+    var b = needGeo[idx++];
+    _dzReverseGeocode_(b.lat, b.lng, function(result) {
+      _dzAddBuilding_(b.lat, b.lng, result.address, result.city, result.state, result.zip, zoneTerr);
+      done++;
+      showGeocodeBar(done, total, 0);
+      if (done % 15 === 0) { buildList(); updateStats(); }
+      setTimeout(geocodeNext, 1200);
+    });
+  }
+  geocodeNext();
+}
+
+function _dzAddBuilding_(lat, lng, address, city, state, zip, territory) {
+  // Deduplicate by address text + proximity
+  var dup = addresses.find(function(a) {
+    if (a.lat && a.lng && haversineMiles(a.lat, a.lng, lat, lng) < 0.005) return true;
+    if (address && a.address && a.address.toLowerCase() === address.toLowerCase() &&
+        (a.city || '').toLowerCase() === (city || '').toLowerCase()) return true;
+    return false;
+  });
+  if (dup) return;
+
+  var newId = addresses.length > 0
+    ? Math.max.apply(null, addresses.map(function(a) { return a.id; })) + 1 : 0;
+
+  var newAddr = {
+    id: newId, sheetRow: null,
+    address: address, city: city, state: state, zip: zip,
+    territory: territory || activeTerritory || '',
+    lat: lat, lng: lng, activeCount: '',
+    status: 'pending', salesperson: '', note: '', sale: null,
+    _manuallyAdded: true, _zoneAdded: true
+  };
+  addresses.push(newAddr);
+  if (mapObj) placeMarker(newAddr);
+  maybeWriteNewAddrToSheet(newAddr);
+}
+
+// ──────────────────────────────────────────────────────────
 //  TOAST
 // ──────────────────────────────────────────────────────────
 function toast(msg, cls) {
@@ -3670,3 +4046,710 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // (AI Coach removed)
+
+// ══════════════════════════════════════════════════════════
+//  TEAM CHAT
+// ══════════════════════════════════════════════════════════
+//  GET  ?action=getChat&since=ISO_TIMESTAMP  → {messages:[…]}
+//  POST { type:'chat_message', sender, text, ts } → {result:'ok'}
+//  Chat tab in Google Sheet: Col A=Timestamp, B=Sender, C=Message
+// ──────────────────────────────────────────────────────────
+
+var chatOpen        = false;
+var chatMessages    = [];
+var chatLastTS      = null;
+var chatPollTimer   = null;
+var chatUnreadCount = 0;
+var chatSending     = false;
+
+var CHAT_POLL_OPEN   = 5000;   // poll every 5 s while panel is visible
+var CHAT_POLL_CLOSED = 30000;  // poll every 30 s in background
+
+function openChat() {
+  document.getElementById('chat-modal').classList.add('open');
+  chatOpen = true;
+  chatUnreadCount = 0;
+  updateChatBadge();
+  renderChatMessages();
+  if (chatMessages.length === 0) fetchChatMessages(true);
+  startChatPoll();
+  setTimeout(scrollChatBottom, 80);
+  document.getElementById('chat-input').focus();
+}
+
+function closeChat() {
+  document.getElementById('chat-modal').classList.remove('open');
+  chatOpen = false;
+  stopChatPoll();
+  startChatPoll(); // restart at slow background rate
+}
+
+function startChatPoll() {
+  stopChatPoll();
+  var interval = chatOpen ? CHAT_POLL_OPEN : CHAT_POLL_CLOSED;
+  chatPollTimer = setInterval(function() { fetchChatMessages(false); }, interval);
+}
+function stopChatPoll() {
+  if (chatPollTimer) { clearInterval(chatPollTimer); chatPollTimer = null; }
+}
+
+function fetchChatMessages(isInitial) {
+  if (!webhookURL) return;
+  var url = webhookURL + '?action=getChat&_t=' + Date.now();
+  if (!isInitial && chatLastTS) url += '&since=' + encodeURIComponent(chatLastTS);
+
+  fetch(url)
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      var msgs = data.messages || [];
+      if (msgs.length === 0) { if (isInitial) renderChatMessages(); return; }
+
+      var wasAtBottom = isChatScrolledToBottom();
+      if (isInitial) {
+        chatMessages = msgs;
+      } else {
+        msgs.forEach(function(m) {
+          var key = m.ts + '|' + m.sender;
+          var exists = chatMessages.some(function(x) { return (x.ts + '|' + x.sender) === key; });
+          if (!exists) { chatMessages.push(m); if (!chatOpen) chatUnreadCount++; }
+        });
+        chatMessages.sort(function(a, b) { return a.ts < b.ts ? -1 : 1; });
+      }
+      if (chatMessages.length) chatLastTS = chatMessages[chatMessages.length - 1].ts;
+      updateChatBadge();
+      if (chatOpen) { renderChatMessages(); if (wasAtBottom || isInitial) scrollChatBottom(); }
+    })
+    .catch(function() {}); // silently retry next poll
+}
+
+function sendChatMessage() {
+  if (chatSending) return;
+  var input = document.getElementById('chat-input');
+  var text  = (input.value || '').trim();
+  if (!text) return;
+  if (!webhookURL) { toast('⚠ No webhook configured', 't-err'); return; }
+
+  var ts   = new Date().toISOString();
+  var name = repName || 'Rep';
+
+  // Optimistic UI
+  chatMessages.push({ ts: ts, sender: name, text: text, _pending: true });
+  chatLastTS = ts;
+  renderChatMessages();
+  scrollChatBottom();
+  input.value = '';
+
+  chatSending = true;
+  var sendBtn = document.querySelector('.chat-send-btn');
+  if (sendBtn) sendBtn.disabled = true;
+
+  // Using text/plain avoids the CORS preflight that blocks application/json
+  // Apps Script receives the body identically via e.postData.contents either way
+  fetch(webhookURL, {
+    method:  'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body:    JSON.stringify({ type: 'chat_message', sender: name, text: text, ts: ts })
+  })
+  .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+  .then(function(data) {
+    if (data && data.result === 'ok') {
+      chatMessages.forEach(function(m) {
+        if (m._pending && m.ts === ts && m.sender === name) delete m._pending;
+      });
+      renderChatMessages();
+      setTimeout(function() { fetchChatMessages(false); }, 500);
+    } else {
+      throw new Error(data && data.msg ? data.msg : 'Apps Script returned: ' + JSON.stringify(data));
+    }
+  })
+  .catch(function(err) {
+    console.error('[Chat] Send failed:', err);
+    var errMsg = String(err.message || err);
+    if (errMsg.indexOf('Chat sheet not found') >= 0) {
+      toast('⚠ Run setupChatSheet() in Apps Script first', 't-err');
+    } else {
+      toast('⚠ ' + errMsg.substring(0, 60), 't-err');
+    }
+    chatMessages = chatMessages.filter(function(m) {
+      return !(m._pending && m.ts === ts && m.sender === name);
+    });
+    renderChatMessages();
+    input.value = text;
+  })
+  .finally(function() {
+    chatSending = false;
+    if (sendBtn) sendBtn.disabled = false;
+    input.focus();
+  });
+}
+
+function renderChatMessages() {
+  var el = document.getElementById('chat-messages');
+  if (!el) return;
+
+  if (chatMessages.length === 0) {
+    el.innerHTML =
+      '<div class="chat-empty"><div class="chat-empty-icon">💬</div>' +
+      'No messages yet. Say hello to the team!</div>';
+    updateChatSubtitle();
+    return;
+  }
+
+  var myName      = repName || 'Rep';
+  var html        = '';
+  var lastDateStr = '';
+
+  chatMessages.forEach(function(m) {
+    var isMine  = m.sender === myName;
+    var msgDate = new Date(m.ts);
+    var dateStr = msgDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    var timeStr = msgDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+    var today   = new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+
+    if (dateStr !== lastDateStr) {
+      html += '<div class="chat-date-sep">' + (dateStr === today ? 'Today' : dateStr) + '</div>';
+      lastDateStr = dateStr;
+    }
+
+    html += '<div class="chat-msg ' + (isMine ? 'mine' : 'theirs') + '">' +
+      '<div class="chat-msg-meta">' +
+        (isMine ? '' : '<span class="chat-msg-sender">' + escHtml(m.sender) + '</span> · ') +
+        '<span>' + timeStr + '</span>' +
+        (m._pending ? ' · <span style="opacity:.5">sending…</span>' : '') +
+      '</div>' +
+      '<div class="chat-bubble">' + escHtml(m.text) + '</div>' +
+    '</div>';
+  });
+
+  el.innerHTML = html;
+  updateChatSubtitle();
+}
+
+function updateChatSubtitle() {
+  var el = document.getElementById('chat-subtitle');
+  if (!el) return;
+  var n = chatMessages.length;
+  el.textContent = n === 0 ? 'Be the first to message' : n + ' message' + (n === 1 ? '' : 's');
+}
+
+function updateChatBadge() {
+  var badge = document.getElementById('chat-unread-badge');
+  if (!badge) return;
+  if (chatUnreadCount > 0) {
+    badge.textContent = chatUnreadCount > 99 ? '99+' : String(chatUnreadCount);
+    badge.classList.remove('hidden');
+  } else {
+    badge.classList.add('hidden');
+  }
+}
+
+function isChatScrolledToBottom() {
+  var el = document.getElementById('chat-messages');
+  return el ? (el.scrollHeight - el.scrollTop - el.clientHeight < 60) : true;
+}
+function scrollChatBottom() {
+  var el = document.getElementById('chat-messages');
+  if (el) el.scrollTop = el.scrollHeight;
+}
+
+// Start background polling once the app page is live
+document.addEventListener('DOMContentLoaded', function() {
+  var observer = new MutationObserver(function() {
+    var appPage = document.getElementById('page-app');
+    if (appPage && appPage.style.display !== 'none' && appPage.style.display !== '') {
+      observer.disconnect();
+      setTimeout(function() { fetchChatMessages(true); startChatPoll(); }, 2000);
+    }
+  });
+  var appPage = document.getElementById('page-app');
+  if (appPage) observer.observe(appPage, { attributes: true, attributeFilter: ['style', 'class'] });
+});
+
+// ══════════════════════════════════════════════════════════
+//  AI FIELD ANALYSIS
+// ══════════════════════════════════════════════════════════
+
+var aiLastResult = null;   // cache last result so tab re-opens instantly
+
+function renderAITab() {
+  // Load saved key into the input
+  var saved = localStorage.getItem('fieldos_ai_key') || '';
+  var input = document.getElementById('ai-key-input');
+  if (input && saved) {
+    input.value = saved;
+    var hint = document.getElementById('ai-key-hint');
+    if (hint) { hint.textContent = '✓ Key saved in this browser'; hint.className = 'ai-key-hint saved'; }
+  }
+  renderAIContextPills();
+  if (aiLastResult) renderAIResult(aiLastResult);
+}
+
+function aiKeySave() {
+  var input = document.getElementById('ai-key-input');
+  var hint  = document.getElementById('ai-key-hint');
+  if (!input) return;
+  var val = input.value.trim();
+  if (val) {
+    localStorage.setItem('fieldos_ai_key', val);
+    if (hint) { hint.textContent = '✓ Key saved in this browser'; hint.className = 'ai-key-hint saved'; }
+  } else {
+    localStorage.removeItem('fieldos_ai_key');
+    if (hint) { hint.textContent = 'Saved in your browser only — never sent to the sheet'; hint.className = 'ai-key-hint'; }
+  }
+}
+
+function aiKeyToggle() {
+  var input = document.getElementById('ai-key-input');
+  if (input) input.type = (input.type === 'password') ? 'text' : 'password';
+}
+
+function renderAIContextPills() {
+  var el = document.getElementById('ai-context-pills');
+  if (!el) return;
+  var terrMap   = buildTerrMap();
+  var territories = Object.keys(terrMap);
+  var knockable = addresses.filter(isKnockable);
+  var worked    = knockable.filter(function(a){
+    var s = (a.status||'pending').toLowerCase();
+    return s !== 'pending' && s !== '' && s !== 'homes passed';
+  }).length;
+  var totalSales = knockable.filter(function(a){
+    return a.status === 'mega' || a.status === 'gig';
+  }).length;
+  var staleCount = getStaleAddresses ? getStaleAddresses().length : 0;
+
+  var pills = [
+    { dot: 'default', label: territories.length + ' territor' + (territories.length===1?'y':'ies') },
+    { dot: 'default', label: knockable.length + ' homes' },
+    { dot: 'default', label: worked + ' knocked' },
+    { dot: totalSales > 0 ? 'default' : 'dim', label: totalSales + ' sales' },
+    { dot: staleCount > 5 ? 'warn' : 'default', label: staleCount + ' follow-ups' }
+  ];
+
+  el.innerHTML = pills.map(function(p) {
+    return '<div class="ai-pill">' +
+      '<div class="ai-pill-dot ' + (p.dot !== 'default' ? p.dot : '') + '"></div>' +
+      p.label +
+    '</div>';
+  }).join('');
+}
+
+// ── Build the full data payload ────────────────────────────
+function buildAIPayload() {
+  var terrMap   = buildTerrMap();
+  var knockable = addresses.filter(isKnockable);
+
+  // --- Rep performance from the last manager fetch ---
+  var repListEl   = document.getElementById('mgr-rep-list');
+  var repCards    = repListEl ? repListEl.querySelectorAll('.mgr-rep-card') : [];
+  var repSummary  = [];
+  repCards.forEach(function(card) {
+    var nameEl  = card.querySelector('.mgr-rep-name');
+    var salesEl = card.querySelector('.mgr-rep-sales');
+    var isOnline = card.classList.contains('rep-online');
+    if (nameEl) {
+      repSummary.push({
+        name:   nameEl.textContent.trim(),
+        online: isOnline,
+        sales:  salesEl ? salesEl.textContent.trim() : '0 sales'
+      });
+    }
+  });
+
+  // --- Territory stats ---
+  var territoryStats = Object.keys(terrMap).map(function(t) {
+    var d  = terrMap[t];
+    var cr = d.worked > 0 ? (d.sales / d.worked) : 0;
+    var cov = d.total > 0 ? (d.worked / d.total) : 0;
+    return {
+      name:            t,
+      totalHomes:      d.total,
+      knocked:         d.worked,
+      pending:         d.pending,
+      coveragePct:     Math.round(cov * 100),
+      sales:           d.sales,
+      mega:            d.mega,
+      gig:             d.gig,
+      closeRatePct:    Math.round(cr * 100),
+      notHome:         d.nothome,
+      brightspeed:     d.brightspeed,
+      inContract:      d.incontract,
+      goBack:          d.goback,
+      notInterested:   d.notinterested,
+      vacant:          d.vacant,
+      business:        d.business,
+      existingCustomers: d.existingCustomers
+    };
+  });
+
+  // --- Overall metrics ---
+  var totalWorked = knockable.filter(function(a){
+    var s = (a.status||'pending').toLowerCase();
+    return s !== 'pending' && s !== '' && s !== 'homes passed';
+  }).length;
+  var totalSold = knockable.filter(function(a){
+    return a.status === 'mega' || a.status === 'gig';
+  }).length;
+  var totalMega = knockable.filter(function(a){ return a.status === 'mega'; }).length;
+  var totalGig  = knockable.filter(function(a){ return a.status === 'gig';  }).length;
+  var pending   = knockable.filter(function(a){
+    var s = (a.status||'pending').toLowerCase();
+    return !s || s === 'pending';
+  }).length;
+  var globalCR  = totalWorked > 0 ? totalSold / totalWorked : 0;
+  var gigMix    = totalSold   > 0 ? totalGig  / totalSold   : 0;
+
+  // --- Stale follow-up summary ---
+  var stale = typeof getStaleAddresses === 'function' ? getStaleAddresses() : [];
+  var staleByTerritory = {};
+  stale.forEach(function(a) {
+    var t = (a.territory || 'Unknown').trim();
+    if (!staleByTerritory[t]) staleByTerritory[t] = { goBack: 0, notHome: 0 };
+    if (a.status === 'goback')   staleByTerritory[t].goBack++;
+    else                         staleByTerritory[t].notHome++;
+  });
+
+  // --- Forecast ---
+  var MEGA_MRR = 29.95 + 5.00 + 1.00;
+  var GIG_MRR  = 39.95 + 5.00 + 1.00;
+  var currentMRR  = (totalMega * MEGA_MRR) + (totalGig * GIG_MRR);
+  var projSales   = Math.round(pending * globalCR);
+  var projGig     = Math.round(projSales * (gigMix || 0.40));
+  var projMega    = projSales - projGig;
+  var projMRR     = currentMRR + (projMega * MEGA_MRR) + (projGig * GIG_MRR);
+
+  return {
+    generatedAt:     new Date().toISOString(),
+    summary: {
+      totalKnockableHomes: knockable.length,
+      totalKnocked:        totalWorked,
+      totalPending:        pending,
+      totalSales:          totalSold,
+      megaSales:           totalMega,
+      gigSales:            totalGig,
+      globalCloseRatePct:  Math.round(globalCR * 100),
+      gigMixPct:           Math.round(gigMix * 100),
+      currentMRR:          Math.round(currentMRR),
+      projectedMRR:        Math.round(projMRR),
+      projectedAdditionalSales: projSales,
+      totalFollowUps:      stale.length,
+      onlineReps:          repSummary.filter(function(r){ return r.online; }).length,
+      totalReps:           repSummary.length
+    },
+    territories:     territoryStats,
+    reps:            repSummary,
+    followUpsByTerritory: staleByTerritory
+  };
+}
+
+// ── Run the analysis ───────────────────────────────────────
+function runAIAnalysis() {
+  var btn    = document.getElementById('ai-run-btn');
+  var label  = document.getElementById('ai-run-btn-label');
+  var output = document.getElementById('ai-output');
+
+  function resetBtn(txt) {
+    if (btn)   btn.disabled = false;
+    if (label) label.textContent = txt || '↻ Re-run Analysis';
+  }
+
+  // ── Get API key ────────────────────────────────────────
+  var apiKey = (document.getElementById('ai-key-input') || {}).value;
+  if (!apiKey) apiKey = localStorage.getItem('fieldos_ai_key') || '';
+  apiKey = apiKey.trim();
+
+  if (!apiKey) {
+    renderAIError('Enter your Anthropic API key in the field above first.');
+    return;
+  }
+
+  // ── Disable button & show loading ──────────────────────
+  if (btn)   btn.disabled = true;
+  if (label) label.textContent = '⏳ Analysing…';
+
+  if (output) {
+    output.className = 'ai-output-loading';
+    output.innerHTML =
+      '<div class="ai-loading-orb"></div>' +
+      '<div class="ai-loading-label">Analysing field data…</div>' +
+      '<div class="ai-loading-steps" id="ai-loading-step">Building territory snapshot</div>';
+  }
+
+  var steps = [
+    'Building territory snapshot',
+    'Computing close rates & coverage',
+    'Scanning competitor landscape',
+    'Evaluating follow-up queue',
+    'Generating deployment recommendations',
+    'Writing briefing…'
+  ];
+  var stepIdx = 0;
+  var stepTimer = setInterval(function() {
+    stepIdx = (stepIdx + 1) % steps.length;
+    var el = document.getElementById('ai-loading-step');
+    if (el) el.textContent = steps[stepIdx];
+  }, 1800);
+
+  // ── Build payload ──────────────────────────────────────
+  var payload;
+  try {
+    payload = buildAIPayload();
+  } catch (buildErr) {
+    clearInterval(stepTimer);
+    renderAIError('Failed to build data payload: ' + buildErr.message);
+    resetBtn('▶ Run Analysis');
+    return;
+  }
+
+  // ── Assemble prompt ────────────────────────────────────
+  var s = payload.summary || {};
+  var summaryLines = [
+    'Total knockable homes: '          + s.totalKnockableHomes,
+    'Total knocked: '                  + s.totalKnocked,
+    'Pending (untouched): '            + s.totalPending,
+    'Total sales today: '              + s.totalSales + ' (' + s.megaSales + ' Mega, ' + s.gigSales + ' Gig)',
+    'Global close rate: '              + s.globalCloseRatePct + '%',
+    'Gig mix: '                        + s.gigMixPct + '%',
+    'Current MRR: $'                   + s.currentMRR,
+    'Projected full-territory MRR: $'  + s.projectedMRR,
+    'Projected additional sales: '     + s.projectedAdditionalSales,
+    'Open follow-up contacts: '        + s.totalFollowUps,
+    'Online reps: '                    + s.onlineReps + ' of ' + s.totalReps
+  ].join('\n');
+
+  var terrLines = (payload.territories || []).map(function(t) {
+    return '  • ' + t.name + ': ' + t.coveragePct + '% coverage, ' +
+      t.closeRatePct + '% close rate, ' + t.sales + ' sales, ' + t.pending + ' pending | ' +
+      'Brightspeed=' + t.brightspeed + ' InContract=' + t.inContract +
+      ' NotHome=' + t.notHome + ' GoBack=' + t.goBack;
+  }).join('\n') || '  No territory data';
+
+  var repLines = (payload.reps || []).map(function(r) {
+    return '  • ' + r.name + ' [' + (r.online ? 'ONLINE' : 'offline') + '] — ' + r.sales;
+  }).join('\n') || '  No rep data';
+
+  var followUpLines = Object.keys(payload.followUpsByTerritory || {}).map(function(t) {
+    var f = payload.followUpsByTerritory[t];
+    return '  • ' + t + ': ' + f.goBack + ' Go Back, ' + f.notHome + ' Not Home';
+  }).join('\n') || '  None';
+
+  var systemPrompt =
+    'You are a field sales operations analyst for Zito Media, a fiber internet company. ' +
+    'You receive real-time door-knocking data and produce a concise, actionable daily briefing for the sales manager. ' +
+    'Be direct and specific. Use exact numbers. Avoid generic advice. ' +
+    'Prioritize actions by urgency and revenue impact. ' +
+    'Gig Speed ($54.95/mo) is higher value than Mega Speed ($44.95/mo). ' +
+    'Respond ONLY with a valid JSON object — no markdown fences, no preamble. ' +
+    'Schema:\n' +
+    '{\n' +
+    '  "headline": "one punchy sentence",\n' +
+    '  "situation": "2-3 sentences on where things stand",\n' +
+    '  "metrics": [{"label":"Close Rate","value":"12%"}, {"label":"Gig Mix","value":"43%"}, {"label":"Proj. MRR","value":"$4,820"}],\n' +
+    '  "recommendations": [{"priority":"high|medium|low","territory":"name or null","action":"specific action","reasoning":"why, citing data"}],\n' +
+    '  "insights": [{"icon":"📊","text":"insight"}],\n' +
+    '  "repCoaching": [{"rep":"Name","note":"specific note"}],\n' +
+    '  "todaysFocus": "one paragraph: the single most important thing right now"\n' +
+    '}';
+
+  var userPrompt =
+    '── OVERALL SUMMARY ──\n' + summaryLines +
+    '\n\n── TERRITORY BREAKDOWN ──\n' + terrLines +
+    '\n\n── REP STATUS ──\n' + repLines +
+    '\n\n── FOLLOW-UP QUEUE ──\n' + followUpLines +
+    '\n\nProduce the JSON briefing now.';
+
+  // ── Call Anthropic with auto-retry on 529 overloaded ──
+  var MAX_RETRIES = 3;
+  var retryCount  = 0;
+
+  var requestBody = JSON.stringify({
+    model:      'claude-sonnet-4-6',
+    max_tokens: 4000,
+    system:     systemPrompt,
+    messages:   [{ role: 'user', content: userPrompt }]
+  });
+
+  function attemptFetch() {
+    var controller = new AbortController();
+    var timeoutId  = setTimeout(function() { controller.abort(); }, 45000);
+
+    fetch('https://api.anthropic.com/v1/messages', {
+      method:  'POST',
+      signal:  controller.signal,
+      headers: {
+        'Content-Type':      'application/json',
+        'x-api-key':         apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: requestBody
+    })
+    .then(function(r) {
+      clearTimeout(timeoutId);
+      if (r.status === 529 || r.status === 503) {
+        retryCount++;
+        if (retryCount <= MAX_RETRIES) {
+          var delay = retryCount * 8000;
+          var stepEl = document.getElementById('ai-loading-step');
+          if (stepEl) stepEl.textContent = 'API busy — retrying in ' + (delay/1000) + 's (' + retryCount + '/' + MAX_RETRIES + ')';
+          setTimeout(attemptFetch, delay);
+          return null;
+        }
+        return r.text().then(function() {
+          throw new Error('Anthropic API is overloaded. Wait 30–60 seconds and try again.');
+        });
+      }
+      if (!r.ok) return r.text().then(function(t) { throw new Error('HTTP ' + r.status + ': ' + t.substring(0, 200)); });
+      return r.json();
+    })
+    .then(function(apiResult) {
+      if (!apiResult) return;
+      clearInterval(stepTimer);
+      var rawText = apiResult.content && apiResult.content[0] && apiResult.content[0].text
+        ? apiResult.content[0].text.trim() : '';
+      if (!rawText) throw new Error('Empty response from Claude.');
+      // Strip markdown fences
+      rawText = rawText.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
+
+      // Extract just the JSON object if there's surrounding text
+      var braceStart = rawText.indexOf('{');
+      var braceEnd   = rawText.lastIndexOf('}');
+      if (braceStart > 0 || (braceEnd > 0 && braceEnd < rawText.length - 1)) {
+        rawText = rawText.substring(braceStart, braceEnd + 1);
+      }
+
+      var analysis;
+      try {
+        analysis = JSON.parse(rawText);
+      } catch (parseErr) {
+        // Claude occasionally uses single-quoted keys or trailing commas — fix and retry
+        var fixed = rawText
+          .replace(/,\s*([}\]])/g, '$1')                          // trailing commas
+          .replace(/([{,]\s*)'([^']+)'(\s*:)/g, '$1"$2"$3')      // single-quoted keys
+          .replace(/:\s*'([^']*)'/g, ': "$1"');                   // single-quoted string values
+        try {
+          analysis = JSON.parse(fixed);
+        } catch (e2) {
+          throw new Error('Could not parse Claude response as JSON. Raw: ' + rawText.substring(0, 120));
+        }
+      }
+      aiLastResult = { status: 'ok', analysis: analysis };
+      renderAIResult(aiLastResult);
+      var ts = document.getElementById('ai-timestamp');
+      if (ts) ts.textContent = 'Generated ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      resetBtn('\u21bb Re-run Analysis');
+    })
+    .catch(function(err) {
+      clearInterval(stepTimer);
+      clearTimeout(timeoutId);
+      renderAIError(err.name === 'AbortError'
+        ? 'Request timed out after 45 s. Check your API key and try again.'
+        : String(err.message || err));
+      resetBtn('\u21bb Re-run Analysis');
+    });
+  }
+
+  attemptFetch();
+}
+
+// ── Render the structured result ───────────────────────────
+function renderAIResult(data) {
+  var output = document.getElementById('ai-output');
+  if (!output) return;
+  output.className = 'ai-output-active';
+
+  var r = data.analysis || {};
+  var html = '';
+
+  // ── Summary grid ───────────────────────────────────────
+  if (r.headline) {
+    html += '<div class="ai-section">' +
+      '<div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:8px;line-height:1.4">' +
+        escHtml(r.headline) +
+      '</div>';
+    if (r.situation) {
+      html += '<div style="font-size:12.5px;color:var(--muted);line-height:1.6;margin-bottom:10px">' +
+        escHtml(r.situation) + '</div>';
+    }
+    html += '</div>';
+  }
+
+  // ── Key metrics row ────────────────────────────────────
+  if (r.metrics && r.metrics.length) {
+    html += '<div class="ai-summary-grid">';
+    r.metrics.forEach(function(m) {
+      html += '<div class="ai-summary-cell">' +
+        '<div class="ai-summary-val">' + escHtml(String(m.value)) + '</div>' +
+        '<div class="ai-summary-lbl">' + escHtml(m.label) + '</div>' +
+      '</div>';
+    });
+    html += '</div>';
+  }
+
+  // ── Deployment recommendations ─────────────────────────
+  if (r.recommendations && r.recommendations.length) {
+    html += '<div class="ai-section">' +
+      '<div class="ai-section-head">🎯 Deployment Recommendations</div>';
+    r.recommendations.forEach(function(rec) {
+      var pri = (rec.priority || 'medium').toLowerCase();
+      html += '<div class="ai-rec-card priority-' + escHtml(pri) + '">' +
+        '<div class="ai-rec-header">' +
+          '<span class="ai-rec-priority">' + pri.toUpperCase() + '</span>' +
+          '<div>' +
+            (rec.territory ? '<div class="ai-rec-territory">📍 ' + escHtml(rec.territory) + '</div>' : '') +
+            '<div class="ai-rec-action">' + escHtml(rec.action) + '</div>' +
+          '</div>' +
+        '</div>' +
+        (rec.reasoning ? '<div class="ai-rec-detail">' + escHtml(rec.reasoning) + '</div>' : '') +
+      '</div>';
+    });
+    html += '</div>';
+  }
+
+  // ── Insights ───────────────────────────────────────────
+  if (r.insights && r.insights.length) {
+    html += '<div class="ai-section">' +
+      '<div class="ai-section-head">💡 Key Insights</div>';
+    r.insights.forEach(function(ins) {
+      html += '<div class="ai-insight-row">' +
+        '<span class="ai-insight-icon">' + escHtml(ins.icon || '▸') + '</span>' +
+        '<span>' + escHtml(ins.text) + '</span>' +
+      '</div>';
+    });
+    html += '</div>';
+  }
+
+  // ── Rep coaching ───────────────────────────────────────
+  if (r.repCoaching && r.repCoaching.length) {
+    html += '<div class="ai-section">' +
+      '<div class="ai-section-head">👤 Rep Coaching Notes</div>';
+    r.repCoaching.forEach(function(note) {
+      html += '<div class="ai-insight-row">' +
+        '<span class="ai-insight-icon">•</span>' +
+        '<span><strong>' + escHtml(note.rep) + '</strong> — ' + escHtml(note.note) + '</span>' +
+      '</div>';
+    });
+    html += '</div>';
+  }
+
+  // ── Today's focus ──────────────────────────────────────
+  if (r.todaysFocus) {
+    html += '<div class="ai-section">' +
+      '<div class="ai-section-head">⚡ Today\'s Focus</div>' +
+      '<div style="background:rgba(0,86,150,.1);border:1px solid rgba(0,86,150,.25);border-radius:10px;padding:14px 16px;font-size:13px;color:var(--text);line-height:1.6">' +
+        escHtml(r.todaysFocus) +
+      '</div>' +
+    '</div>';
+  }
+
+  output.innerHTML = html || '<div class="ai-output-placeholder"><div class="ai-placeholder-icon">✅</div>Analysis complete but no structured output returned. Check Apps Script logs.</div>';
+}
+
+function renderAIError(msg) {
+  var output = document.getElementById('ai-output');
+  if (output) {
+    output.className = 'ai-output-active';
+    output.innerHTML = '<div class="ai-error-box">⚠ ' + escHtml(msg) + '</div>';
+    output.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+}

@@ -89,17 +89,17 @@
     <div class="step">
       <div class="slabel">Step 1 — Your Name</div>
       <input class="txt-in" type="text" id="rep-name" placeholder="e.g. John Smith" oninput="validateRepName()" autocomplete="name">
-      <div id="rep-name-hint" style="font-size:11px;color:var(--muted);margin-top:6px;font-family:'Space Mono',monospace;display:none;">⚠ Please enter your first and last name</div>
-      <div id="rep-profile-status" style="font-size:12px;margin-top:8px;min-height:18px;"></div>
+      <div id="rep-name-hint">⚠ Please enter your first and last name</div>
+      <div id="rep-profile-status"></div>
     </div>
 
     <div class="step">
-      <div class="slabel">Step 2 — Load Addresses <span style="color:var(--danger)">*Required</span></div>
+      <div class="slabel">Step 2 — Load Addresses <span class="text-danger">*Required</span></div>
       <p class="shint">Addresses are loaded automatically once you click Load Addresses. Click the button below to fetch them — or upload a CSV as a backup.</p>
       <button class="btn-fetch-addr" id="btn-fetch-addr" onclick="fetchAddressesFromSheet()">
         <span id="fetch-addr-icon">📋</span> Load Addresses
       </button>
-      <div id="fetch-addr-status" class="dz-status" style="margin-top:8px"></div>
+      <div id="fetch-addr-status" class="dz-status"></div>
 
       <div class="dz-or">— or upload CSV backup —</div>
       <div class="dropzone" id="dz-csv">
@@ -111,13 +111,13 @@
     </div>
 
     <div class="step">
-      <div class="slabel">Step 3 — Territory KMZ Files <span style="color:var(--muted)">(optional)</span></div>
+      <div class="slabel">Step 3 — Territory KMZ Files <span class="text-muted">(optional)</span></div>
       <p class="shint">Upload one or more KMZ files to draw territory polygons on the map.</p>
       <div class="dropzone" id="dz-kml">
         <input type="file" id="kml-file" accept=".kml,.kmz" multiple>
         <div class="dz-icon">🗺️</div>
         <div class="dz-label">Drop KMZ files here or <strong>click to browse</strong></div>
-        <div class="dz-label" style="font-size:11px;color:var(--muted);margin-top:2px">Multiple files supported</div>
+        <div class="dz-label small-muted">Multiple files supported</div>
       </div>
       <div id="kml-file-list"></div>
     </div>
@@ -130,21 +130,25 @@
 <div id="page-app">
   <div id="topbar">
     <div class="tb-logo">
-      <img src="https://www.zitomedia.net/wp-content/uploads/2025/03/Untitled-design-6.png" alt="Logo" style="height:30px;width:auto;">
+      <img src="https://www.zitomedia.net/wp-content/uploads/2025/03/Untitled-design-6.png" alt="Logo" class="topbar-logo-img">
     </div>
     <div class="tb-sep"></div>
     <div class="tb-stat">Homes Passed: <strong id="st-total">0</strong></div>
-    <div class="tb-stat" style="color:#059669">✅ Scheduled: <strong id="st-sched">0</strong></div>
+    <div class="tb-stat sched">✅ Scheduled: <strong id="st-sched">0</strong></div>
     <div class="tb-stat">Pending: <strong id="st-pend">0</strong></div>
-    <div class="ml-auto" style="display:flex;align-items:center;gap:8px;">
+    <div class="tb-actions">
       <button id="btn-drop-pin-top" class="tb-btn" title="Drop a pin / add an address">📍 Drop Pin</button>
+      <button id="btn-draw-zone-top" class="tb-btn tb-btn-zone" onclick="toggleDrawZoneMode()" title="Draw a polygon and auto-add every house inside it">🏘 Draw Zone</button>
       <div id="tb-status-pill" class="is-offline" onclick="openBadge()" title="View my badge">
         <span class="status-dot"></span>
         <span id="tb-status-label">OFFLINE</span>
       </div>
       <button id="btn-manager" class="tb-btn" onclick="openManagerPanel()">Team</button>
+      <button id="btn-chat" class="tb-btn tb-btn-chat" onclick="openChat()" title="Team Chat">
+        💬 Chat<span id="chat-unread-badge" class="chat-unread-badge hidden"></span>
+      </button>
       <button class="tb-btn" onclick="openBadge()">My Badge</button>
-      <button class="tb-btn" onclick="openSignOutConfirm()" title="Sign out" style="color:#f87171;border-color:rgba(239,68,68,.3);">Log Out</button>
+      <button class="tb-btn btn-logout" onclick="openSignOutConfirm()" title="Sign out">Log Out</button>
     </div>
   </div>
 
@@ -227,11 +231,12 @@
 
       <!-- Tab nav -->
       <div class="mgr-tabs">
-        <button class="mgr-tab active" onclick="switchMgrTab('team',this)">👥 Team</button>
-        <button class="mgr-tab" onclick="switchMgrTab('analytics',this)">📊 Analytics</button>
-        <button class="mgr-tab" onclick="switchMgrTab('coverage',this)">🗺 Coverage</button>
-        <button class="mgr-tab" onclick="switchMgrTab('forecast',this)">💰 Forecast</button>
-        <button class="mgr-tab" onclick="switchMgrTab('territory',this)">🎯 Territory</button>
+        <button class="mgr-tab active" onclick="switchMgrTab('team',this)"><span class="tab-emoji">👥</span><span class="tab-label">Team</span></button>
+        <button class="mgr-tab" onclick="switchMgrTab('analytics',this)"><span class="tab-emoji">📊</span><span class="tab-label">Analytics</span></button>
+        <button class="mgr-tab" onclick="switchMgrTab('coverage',this)"><span class="tab-emoji">🗺</span><span class="tab-label">Coverage</span></button>
+        <button class="mgr-tab" onclick="switchMgrTab('forecast',this)"><span class="tab-emoji">💰</span><span class="tab-label">Forecast</span></button>
+        <button class="mgr-tab" onclick="switchMgrTab('territory',this)"><span class="tab-emoji">🎯</span><span class="tab-label">Territory</span></button>
+        <button class="mgr-tab mgr-tab-ai" onclick="switchMgrTab('ai',this)"><span class="tab-emoji">🤖</span><span class="tab-label">AI</span></button>
         <!-- AI Coach removed -->
       </div>
 
@@ -307,7 +312,7 @@
 
         <div class="mgr-two-col">
           <div class="ana-card">
-            <div class="ana-card-head" style="display:flex;align-items:center;justify-content:space-between;">
+            <div class="ana-card-head card-head-flex">
               <span>Territory Coverage</span>
               <button class="heat-btn" id="btn-heat-map" onclick="toggleHeatMap()">🌡 Coverage Map</button>
             </div>
@@ -318,14 +323,14 @@
           <div class="ana-card">
             <div class="ana-card-head">📍 Coverage Legend</div>
             <div class="cov-legend">
-              <div class="cov-leg-row"><span class="cov-swatch" style="background:#8b5cf6"></span>Mega Sale</div>
-              <div class="cov-leg-row"><span class="cov-swatch" style="background:#10b981"></span>Gig Sale</div>
-              <div class="cov-leg-row"><span class="cov-swatch" style="background:#d97706"></span>Not Home</div>
-              <div class="cov-leg-row"><span class="cov-swatch" style="background:#ef4444"></span>Brightspeed</div>
-              <div class="cov-leg-row"><span class="cov-swatch" style="background:#818cf8"></span>In Contract</div>
-              <div class="cov-leg-row"><span class="cov-swatch" style="background:#dc2626"></span>Not Interested</div>
-              <div class="cov-leg-row"><span class="cov-swatch" style="background:#06b6d4"></span>Go Back Later</div>
-              <div class="cov-leg-row"><span class="cov-swatch" style="background:#6b7280"></span>Pending / Untouched</div>
+              <div class="cov-leg-row"><span class="cov-swatch mega"></span>Mega Sale</div>
+              <div class="cov-leg-row"><span class="cov-swatch gig"></span>Gig Sale</div>
+              <div class="cov-leg-row"><span class="cov-swatch nothome"></span>Not Home</div>
+              <div class="cov-leg-row"><span class="cov-swatch brightspeed"></span>Brightspeed</div>
+              <div class="cov-leg-row"><span class="cov-swatch incontract"></span>In Contract</div>
+              <div class="cov-leg-row"><span class="cov-swatch notinterested"></span>Not Interested</div>
+              <div class="cov-leg-row"><span class="cov-swatch goback"></span>Go Back Later</div>
+              <div class="cov-leg-row"><span class="cov-swatch pending"></span>Pending / Untouched</div>
             </div>
           </div>
         </div>
@@ -390,6 +395,49 @@
 
       <!-- AI Coach tab removed -->
 
+      <!-- ── TAB: AI ANALYSIS ── -->
+      <div id="mgr-tab-ai" class="mgr-tab-panel">
+
+        <!-- API Key row -->
+        <div class="ai-key-row" id="ai-key-row">
+          <div class="ai-key-label">Anthropic API Key</div>
+          <div class="ai-key-input-wrap">
+            <input class="ai-key-input" id="ai-key-input" type="password"
+              placeholder="sk-ant-api03-…"
+              oninput="aiKeySave()"
+              autocomplete="off" spellcheck="false">
+            <button class="ai-key-toggle" onclick="aiKeyToggle()" title="Show/hide key">👁</button>
+          </div>
+          <div class="ai-key-hint" id="ai-key-hint">Saved in your browser only — never sent to the sheet</div>
+        </div>
+
+        <div class="ai-hero-card">
+          <div class="ai-hero-left">
+            <div class="ai-hero-title">🤖 Field Intelligence Briefing</div>
+            <div class="ai-hero-sub">Claude analyses all live territory, rep, competitor, and forecast data to give you actionable deployment recommendations.</div>
+          </div>
+          <button class="ai-run-btn" id="ai-run-btn" onclick="runAIAnalysis()">
+            <span id="ai-run-btn-label">▶ Run Analysis</span>
+          </button>
+        </div>
+
+        <!-- Context pills — what data is being sent -->
+        <div class="ai-context-pills" id="ai-context-pills"></div>
+
+        <!-- Output area -->
+        <div id="ai-output" class="ai-output-idle">
+          <div class="ai-output-placeholder">
+            <div class="ai-placeholder-icon">🧠</div>
+            <div>Enter your API key above, then hit <strong>Run Analysis</strong>.<br>
+            Takes about 10–15 seconds.</div>
+          </div>
+        </div>
+
+        <!-- Timestamp -->
+        <div class="ai-timestamp" id="ai-timestamp"></div>
+
+      </div>
+
       <button class="mgr-close-btn" onclick="closeManagerPanel()">Close</button>
     </div>
   </div>
@@ -449,12 +497,12 @@
       <div class="add-addr-sub">Enter a home not in the current list. It will be added to your session and saved to the Addresses tab in Google Sheets.</div>
 
       <div class="fg">
-        <label class="fl">Street Address <span style="color:var(--danger)">*</span></label>
+        <label class="fl">Street Address <span class="text-danger">*</span></label>
         <input class="fi" type="text" id="new-addr-street" placeholder="e.g. 123 Oak St" oninput="checkNewAddrReady()">
       </div>
       <div class="fg-row">
         <div>
-          <label class="fl">City <span style="color:var(--danger)">*</span></label>
+          <label class="fl">City <span class="text-danger">*</span></label>
           <input class="fi" type="text" id="new-addr-city" placeholder="e.g. Burnsville" oninput="checkNewAddrReady()">
         </div>
         <div>
@@ -481,6 +529,36 @@
   <!-- Pin Drop banner — visible while pin mode is active -->
   <div id="pin-drop-banner">📍 Tap a home on the map to add it</div>
 
+  <!-- Draw Zone banner — visible while polygon drawing is active -->
+  <div id="draw-zone-banner">
+    <span id="draw-zone-banner-text">✏️ Tap to place corners — double-tap or tap ● to close</span>
+    <button class="dz-banner-cancel" onclick="cancelDrawZone()">✕ Cancel</button>
+  </div>
+
+  <!-- Draw Zone Confirm Modal -->
+  <div id="draw-zone-confirm-modal" onclick="if(event.target===this)closeDrawZoneConfirm()">
+    <div class="dz-confirm-box">
+      <div class="dz-confirm-header">
+        <div class="dz-confirm-title">🏘 Zone Scan Complete</div>
+        <button class="dz-confirm-close" onclick="closeDrawZoneConfirm()">✕</button>
+      </div>
+      <div class="dz-confirm-count">
+        <div class="dz-count-num" id="dz-count-big">0</div>
+        <div class="dz-count-label">homes found in zone</div>
+      </div>
+      <div id="dz-breakdown" class="dz-breakdown"></div>
+      <div id="dz-geocode-time" class="dz-geocode-time"></div>
+      <div class="dz-territory-row">
+        <label class="dz-terr-label">Assign territory name</label>
+        <input class="dz-terr-input" id="dz-territory-input" type="text" placeholder="e.g. Palestine_TX">
+      </div>
+      <div class="dz-confirm-actions">
+        <button class="dz-btn-confirm" onclick="confirmAddZoneBuildings()">✅ Add All Homes</button>
+        <button class="dz-btn-cancel"  onclick="closeDrawZoneConfirm()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Drop Pin FAB — mobile only, replaces the topbar button which overflows on small screens -->
   <button id="btn-drop-pin-fab" onclick="togglePinDropMode()" title="Drop a pin / add an address">
     📍 Drop Pin
@@ -498,13 +576,10 @@
   </div>
 
   <!-- Geocoding progress bar -->
-  <div id="geocode-bar" style="display:none;position:absolute;bottom:20px;left:50%;transform:translateX(-50%);
-    background:#fff;border:1px solid #d1d5db;border-radius:10px;padding:12px 20px;
-    min-width:300px;box-shadow:0 4px 16px rgba(0,0,0,.15);z-index:999;
-    flex-direction:column;gap:8px;font-family:'Syne',sans-serif;">
-    <div id="gc-text" style="font-size:12px;font-weight:600;color:#374151;text-align:center"></div>
-    <div style="background:#e5e7eb;border-radius:4px;height:6px;overflow:hidden;">
-      <div id="gc-fill" style="height:100%;background:#2563eb;border-radius:4px;transition:width .4s ease;width:0%"></div>
+  <div id="geocode-bar" class="hidden">
+    <div id="gc-text"></div>
+    <div class="gc-track">
+      <div id="gc-fill"></div>
     </div>
   </div>
 
@@ -520,7 +595,7 @@
     <div class="pf-body">
 
       <!-- Active customer notice (shown instead of sales form) -->
-      <div id="active-notice" style="display:none">
+      <div id="active-notice" class="hidden">
         <div class="active-notice-box">
           <div class="active-notice-icon">⚡</div>
           <div class="active-notice-title">Active Customer</div>
@@ -532,13 +607,13 @@
       <div id="sales-form-body">
 
       <!-- Previous disposition banner — shown when address has been visited before -->
-      <div id="prev-disposition" style="display:none">
+      <div id="prev-disposition" class="hidden">
         <div class="prev-disp-label">Previous Disposition</div>
         <div class="prev-disp-row">
           <span class="prev-disp-status" id="prev-disp-status"></span>
           <span class="prev-disp-clear" onclick="clearPrevDisposition()" title="Clear disposition">✕ Clear</span>
         </div>
-        <div class="prev-disp-note" id="prev-disp-note" style="display:none"></div>
+        <div class="prev-disp-note hidden" id="prev-disp-note"></div>
       </div>
 
       <div class="sec-head">Customer Info</div>
@@ -578,18 +653,18 @@
       </div>
 
       <!-- Pricing Breakdown (shown after package selected) -->
-      <div id="pricing-box" style="display:none">
+      <div id="pricing-box" class="hidden">
 
         <div class="sec-head">Schedule Install</div>
 
         <!-- Schedule picker -->
         <div id="sched-wrap">
-          <div id="sched-loading" style="display:none" class="sched-msg">
+          <div id="sched-loading" class="sched-msg hidden">
             <div class="sched-spinner"></div><span>Loading schedule…</span>
           </div>
-          <div id="sched-error" style="display:none" class="sched-err"></div>
+          <div id="sched-error" class="sched-err hidden"></div>
 
-          <div id="sched-picker" style="display:none">
+          <div id="sched-picker" class="hidden">
             <div class="sched-nav">
               <button class="sched-nav-btn" onclick="schedShiftWeek(-1)">&#8592;</button>
               <span class="sched-week-label" id="sched-week-label"></span>
@@ -599,7 +674,7 @@
           </div>
 
           <!-- Confirmed slot -->
-          <div id="sched-confirmed" style="display:none" class="sched-confirmed">
+          <div id="sched-confirmed" class="sched-confirmed hidden">
             <div class="sched-conf-check">✅</div>
             <div class="sched-conf-body">
               <div class="sched-conf-label">Install Scheduled</div>
@@ -623,22 +698,22 @@
           <div class="price-row"><span>Payment Processing Fee</span><span>$1.00</span></div>
           <div class="price-row price-total"><span>Monthly Total</span><span id="pr-monthly">—</span></div>
 
-          <div class="price-section-label" style="margin-top:14px">First Month Bill (promo: internet is free)</div>
+          <div class="price-section-label mt-14">First Month Bill (promo: internet is free)</div>
           <div class="price-row promo-row"><span>Internet Service</span><span class="free-tag">FREE</span></div>
            <div class="price-row"><span>Modem Fee</span><span>$10.00</span></div>
           <div class="price-row"><span>eero 6+ WiFi Router</span><span>$5.00</span></div>
           <div class="price-row"><span>Payment Processing Fee</span><span>$1.00</span></div>
           <div class="price-row price-total"><span>First Month Bill (fees only)</span><span id="pr-firstbill-fees">$16.00</span></div>
-           <div class="price-row"><span style="opacity:.85">+ Estimated Proration (below)</span><span style="opacity:.85">—</span></div>
+           <div class="price-row"><span class="opacity-85">+ Estimated Proration (below)</span><span class="opacity-85">—</span></div>
            <div class="price-row price-total"><span>Estimated First Bill Total</span><span id="pr-firstbill-total">—</span></div>
 
-          <div id="proration-section" style="display:none">
-            <div class="price-section-label" style="margin-top:14px">Estimated Proration (install → 1st of next month)</div>
+          <div id="proration-section" class="hidden">
+            <div class="price-section-label mt-14">Estimated Proration (install → 1st of next month)</div>
             <div class="price-row"><span id="pr-prorate-label">Internet</span><span id="pr-prorate-internet">—</span></div>
             <div class="price-row"><span id="pr-prorate-eero-label">eero 6+</span><span id="pr-prorate-eero">—</span></div>
             <div class="price-row"><span>Payment Processing Fee</span><span>$1.00</span></div>
             <div class="price-row price-total"><span>Estimated Proration Total</span><span id="pr-prorate-total">—</span></div>
-             <div class="price-note" style="margin-top:10px">
+             <div class="price-note mt-10">
                ✅ <strong>No payment is collected at install.</strong> Estimated proration is added to the first bill.
              </div>
           </div>
@@ -666,7 +741,7 @@
       </div>
       
       <!-- No Sale Disposition Note (only for Not Home / Not Interested / Go Back Later) -->
-      <div class="fg" id="ns-note-wrap" style="display:none;">
+      <div class="fg hidden" id="ns-note-wrap">
         <label class="fl" for="ns-note">Disposition Note</label>
         <textarea class="fi" id="ns-note" rows="3" placeholder="Quick note (optional)"></textarea>
       </div>
@@ -674,6 +749,26 @@
 <button class="btn-log" onclick="submitStatus()">Log Status (no sale)</button>
 
       </div><!-- end sales-form-body -->
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ CHAT MODAL ═══════════════════ -->
+<div id="chat-modal" onclick="if(event.target===this)closeChat()">
+  <div class="chat-wrap">
+    <div class="chat-header">
+      <div class="chat-header-left">
+        <div class="chat-title">💬 Team Chat</div>
+        <div class="chat-subtitle" id="chat-subtitle">Loading…</div>
+      </div>
+      <button class="chat-close-btn" onclick="closeChat()">✕</button>
+    </div>
+    <div class="chat-messages" id="chat-messages">
+      <div class="chat-loading"><div class="chat-spinner"></div> Loading messages…</div>
+    </div>
+    <div class="chat-input-row">
+      <input class="chat-input" id="chat-input" type="text" placeholder="Message the team…" maxlength="500" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChatMessage();}">
+      <button class="chat-send-btn" onclick="sendChatMessage()">Send</button>
     </div>
   </div>
 </div>
@@ -725,6 +820,15 @@
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <!-- App logic — bump ?v= whenever you push a new version of app.js -->
 <script defer src="app.js"></script>
+<!-- Supabase client (optional) -->
+<script type="module">
+  import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+  window.supabase = createClient(
+    "YOUR_SUPABASE_URL",
+    "YOUR_SUPABASE_ANON_KEY"
+  );
+</script>
 <!-- Service worker: caches app shell + tiles so the app loads fast on weak signal -->
 <script>
   if ('serviceWorker' in navigator) {
