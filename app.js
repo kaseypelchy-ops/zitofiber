@@ -8,8 +8,8 @@
 // ──────────────────────────────────────────────────────────
 var APP_NAME    = 'Zito FieldOS';
 var APP_TAGLINE = 'Field Operations & Sales Intelligence';
-var APP_VERSION = '2.0.1';
-var BUILD_ID    = '2026.03.03';
+var APP_VERSION = '1.0.3';
+var BUILD_ID    = '2026.02.22';
 var APP_ENV     = 'Production';
 
 var addresses  = [];
@@ -964,7 +964,7 @@ function geocodeAll() {
     fetch(webhookURL, {
       method: 'POST',
       mode: 'no-cors',
-      headers: { 'Content-Type': 'text/plain' },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         type:     'save_coords',
         sheetRow: a.sheetRow,
@@ -1562,7 +1562,7 @@ function schedBookSlot(date, time, customerName, address) {
   fetch(SCHED_URL, {
     method: 'POST',
     mode: 'no-cors',
-    headers: { 'Content-Type': 'text/plain' },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ type:'booking', date:date, time:time, name:customerName, address:address })
   }).catch(function(){});
 
@@ -1652,7 +1652,7 @@ function maybeWriteNewAddrToSheet(addr) {
   fetch(webhookURL, {
     method: 'POST',
     mode: 'no-cors',
-    headers: { 'Content-Type': 'text/plain' },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       type:      'add_address',
       address:   addr.address,
@@ -1783,7 +1783,7 @@ function updateAddressStatus(addr, status, note) {
   fetch(webhookURL, {
     method: 'POST',
     mode: 'no-cors',
-    headers: { 'Content-Type': 'text/plain' },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       type:            'status_update',
       territory:       (addr.territory || activeTerritory || ''),
@@ -1806,7 +1806,7 @@ function sendData(payload) {
   fetch(webhookURL, {
     method: 'POST',
     mode: 'no-cors',
-    headers: { 'Content-Type': 'text/plain' },
+    headers: { 'Content-Type':'application/json' },
     body: JSON.stringify(payload)
   }).catch(function() {});
 }
@@ -1873,7 +1873,7 @@ function sendHeartbeat(statusOverride) {
   try { firstSeen = localStorage.getItem('fieldos_session_start') || ''; } catch(e) {}
   fetch(webhookURL, {
     method: 'POST', mode: 'no-cors',
-    headers: { 'Content-Type': 'text/plain' },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       type:        'rep_heartbeat',
       salesperson: repName,
@@ -2070,7 +2070,6 @@ function switchMgrTab(tab, btn) {
   if (tab === 'coverage')  renderCoverageTab();
   if (tab === 'forecast')  renderForecastTab();
   if (tab === 'territory') renderTerritoryTab();
-  if (tab === 'ai')        renderAITab();
 }
 function refreshManagerPanel() {
   var btn = document.getElementById('mgr-refresh-btn');
@@ -3301,7 +3300,7 @@ function pingNearbyAddresses() {
 
   fetch(webhookURL, {
     method: 'POST',
-    headers: { 'Content-Type': 'text/plain' },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       type: 'rep_location',
       repName: repName,
@@ -3316,10 +3315,6 @@ function pingNearbyAddresses() {
     if (!json || json.status !== 'ok') return;
 
     activeTerritory = (json.territory || '').trim();
-
-    // If GPS radius returned no rows, the rep is just not near any addresses
-    // right now — keep the existing loaded addresses rather than wiping them.
-    if (!json.rows || json.rows.length === 0) return;
 
     // ── Snapshot current rep-set dispositions before overwriting ──
     // This ensures that a sale/no-sale the rep already logged (on ANY address,
@@ -3675,710 +3670,3 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // (AI Coach removed)
-
-// ══════════════════════════════════════════════════════════
-//  TEAM CHAT
-// ══════════════════════════════════════════════════════════
-//  GET  ?action=getChat&since=ISO_TIMESTAMP  → {messages:[…]}
-//  POST { type:'chat_message', sender, text, ts } → {result:'ok'}
-//  Chat tab in Google Sheet: Col A=Timestamp, B=Sender, C=Message
-// ──────────────────────────────────────────────────────────
-
-var chatOpen        = false;
-var chatMessages    = [];
-var chatLastTS      = null;
-var chatPollTimer   = null;
-var chatUnreadCount = 0;
-var chatSending     = false;
-
-var CHAT_POLL_OPEN   = 5000;   // poll every 5 s while panel is visible
-var CHAT_POLL_CLOSED = 30000;  // poll every 30 s in background
-
-function openChat() {
-  document.getElementById('chat-modal').classList.add('open');
-  chatOpen = true;
-  chatUnreadCount = 0;
-  updateChatBadge();
-  renderChatMessages();
-  if (chatMessages.length === 0) fetchChatMessages(true);
-  startChatPoll();
-  setTimeout(scrollChatBottom, 80);
-  document.getElementById('chat-input').focus();
-}
-
-function closeChat() {
-  document.getElementById('chat-modal').classList.remove('open');
-  chatOpen = false;
-  stopChatPoll();
-  startChatPoll(); // restart at slow background rate
-}
-
-function startChatPoll() {
-  stopChatPoll();
-  var interval = chatOpen ? CHAT_POLL_OPEN : CHAT_POLL_CLOSED;
-  chatPollTimer = setInterval(function() { fetchChatMessages(false); }, interval);
-}
-function stopChatPoll() {
-  if (chatPollTimer) { clearInterval(chatPollTimer); chatPollTimer = null; }
-}
-
-function fetchChatMessages(isInitial) {
-  if (!webhookURL) return;
-  var url = webhookURL + '?action=getChat&_t=' + Date.now();
-  if (!isInitial && chatLastTS) url += '&since=' + encodeURIComponent(chatLastTS);
-
-  fetch(url)
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-      var msgs = data.messages || [];
-      if (msgs.length === 0) { if (isInitial) renderChatMessages(); return; }
-
-      var wasAtBottom = isChatScrolledToBottom();
-      if (isInitial) {
-        chatMessages = msgs;
-      } else {
-        msgs.forEach(function(m) {
-          var key = m.ts + '|' + m.sender;
-          var exists = chatMessages.some(function(x) { return (x.ts + '|' + x.sender) === key; });
-          if (!exists) { chatMessages.push(m); if (!chatOpen) chatUnreadCount++; }
-        });
-        chatMessages.sort(function(a, b) { return a.ts < b.ts ? -1 : 1; });
-      }
-      if (chatMessages.length) chatLastTS = chatMessages[chatMessages.length - 1].ts;
-      updateChatBadge();
-      if (chatOpen) { renderChatMessages(); if (wasAtBottom || isInitial) scrollChatBottom(); }
-    })
-    .catch(function() {}); // silently retry next poll
-}
-
-function sendChatMessage() {
-  if (chatSending) return;
-  var input = document.getElementById('chat-input');
-  var text  = (input.value || '').trim();
-  if (!text) return;
-  if (!webhookURL) { toast('⚠ No webhook configured', 't-err'); return; }
-
-  var ts   = new Date().toISOString();
-  var name = repName || 'Rep';
-
-  // Optimistic UI
-  chatMessages.push({ ts: ts, sender: name, text: text, _pending: true });
-  chatLastTS = ts;
-  renderChatMessages();
-  scrollChatBottom();
-  input.value = '';
-
-  chatSending = true;
-  var sendBtn = document.querySelector('.chat-send-btn');
-  if (sendBtn) sendBtn.disabled = true;
-
-  // Using text/plain avoids the CORS preflight that blocks application/json
-  // Apps Script receives the body identically via e.postData.contents either way
-  fetch(webhookURL, {
-    method:  'POST',
-    headers: { 'Content-Type': 'text/plain' },
-    body:    JSON.stringify({ type: 'chat_message', sender: name, text: text, ts: ts })
-  })
-  .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-  .then(function(data) {
-    if (data && data.result === 'ok') {
-      chatMessages.forEach(function(m) {
-        if (m._pending && m.ts === ts && m.sender === name) delete m._pending;
-      });
-      renderChatMessages();
-      setTimeout(function() { fetchChatMessages(false); }, 500);
-    } else {
-      throw new Error(data && data.msg ? data.msg : 'Apps Script returned: ' + JSON.stringify(data));
-    }
-  })
-  .catch(function(err) {
-    console.error('[Chat] Send failed:', err);
-    var errMsg = String(err.message || err);
-    if (errMsg.indexOf('Chat sheet not found') >= 0) {
-      toast('⚠ Run setupChatSheet() in Apps Script first', 't-err');
-    } else {
-      toast('⚠ ' + errMsg.substring(0, 60), 't-err');
-    }
-    chatMessages = chatMessages.filter(function(m) {
-      return !(m._pending && m.ts === ts && m.sender === name);
-    });
-    renderChatMessages();
-    input.value = text;
-  })
-  .finally(function() {
-    chatSending = false;
-    if (sendBtn) sendBtn.disabled = false;
-    input.focus();
-  });
-}
-
-function renderChatMessages() {
-  var el = document.getElementById('chat-messages');
-  if (!el) return;
-
-  if (chatMessages.length === 0) {
-    el.innerHTML =
-      '<div class="chat-empty"><div class="chat-empty-icon">💬</div>' +
-      'No messages yet. Say hello to the team!</div>';
-    updateChatSubtitle();
-    return;
-  }
-
-  var myName      = repName || 'Rep';
-  var html        = '';
-  var lastDateStr = '';
-
-  chatMessages.forEach(function(m) {
-    var isMine  = m.sender === myName;
-    var msgDate = new Date(m.ts);
-    var dateStr = msgDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-    var timeStr = msgDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-    var today   = new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-
-    if (dateStr !== lastDateStr) {
-      html += '<div class="chat-date-sep">' + (dateStr === today ? 'Today' : dateStr) + '</div>';
-      lastDateStr = dateStr;
-    }
-
-    html += '<div class="chat-msg ' + (isMine ? 'mine' : 'theirs') + '">' +
-      '<div class="chat-msg-meta">' +
-        (isMine ? '' : '<span class="chat-msg-sender">' + escHtml(m.sender) + '</span> · ') +
-        '<span>' + timeStr + '</span>' +
-        (m._pending ? ' · <span style="opacity:.5">sending…</span>' : '') +
-      '</div>' +
-      '<div class="chat-bubble">' + escHtml(m.text) + '</div>' +
-    '</div>';
-  });
-
-  el.innerHTML = html;
-  updateChatSubtitle();
-}
-
-function updateChatSubtitle() {
-  var el = document.getElementById('chat-subtitle');
-  if (!el) return;
-  var n = chatMessages.length;
-  el.textContent = n === 0 ? 'Be the first to message' : n + ' message' + (n === 1 ? '' : 's');
-}
-
-function updateChatBadge() {
-  var badge = document.getElementById('chat-unread-badge');
-  if (!badge) return;
-  if (chatUnreadCount > 0) {
-    badge.textContent = chatUnreadCount > 99 ? '99+' : String(chatUnreadCount);
-    badge.classList.remove('hidden');
-  } else {
-    badge.classList.add('hidden');
-  }
-}
-
-function isChatScrolledToBottom() {
-  var el = document.getElementById('chat-messages');
-  return el ? (el.scrollHeight - el.scrollTop - el.clientHeight < 60) : true;
-}
-function scrollChatBottom() {
-  var el = document.getElementById('chat-messages');
-  if (el) el.scrollTop = el.scrollHeight;
-}
-
-// Start background polling once the app page is live
-document.addEventListener('DOMContentLoaded', function() {
-  var observer = new MutationObserver(function() {
-    var appPage = document.getElementById('page-app');
-    if (appPage && appPage.style.display !== 'none' && appPage.style.display !== '') {
-      observer.disconnect();
-      setTimeout(function() { fetchChatMessages(true); startChatPoll(); }, 2000);
-    }
-  });
-  var appPage = document.getElementById('page-app');
-  if (appPage) observer.observe(appPage, { attributes: true, attributeFilter: ['style', 'class'] });
-});
-
-// ══════════════════════════════════════════════════════════
-//  AI FIELD ANALYSIS
-// ══════════════════════════════════════════════════════════
-
-var aiLastResult = null;   // cache last result so tab re-opens instantly
-
-function renderAITab() {
-  // Load saved key into the input
-  var saved = localStorage.getItem('fieldos_ai_key') || '';
-  var input = document.getElementById('ai-key-input');
-  if (input && saved) {
-    input.value = saved;
-    var hint = document.getElementById('ai-key-hint');
-    if (hint) { hint.textContent = '✓ Key saved in this browser'; hint.className = 'ai-key-hint saved'; }
-  }
-  renderAIContextPills();
-  if (aiLastResult) renderAIResult(aiLastResult);
-}
-
-function aiKeySave() {
-  var input = document.getElementById('ai-key-input');
-  var hint  = document.getElementById('ai-key-hint');
-  if (!input) return;
-  var val = input.value.trim();
-  if (val) {
-    localStorage.setItem('fieldos_ai_key', val);
-    if (hint) { hint.textContent = '✓ Key saved in this browser'; hint.className = 'ai-key-hint saved'; }
-  } else {
-    localStorage.removeItem('fieldos_ai_key');
-    if (hint) { hint.textContent = 'Saved in your browser only — never sent to the sheet'; hint.className = 'ai-key-hint'; }
-  }
-}
-
-function aiKeyToggle() {
-  var input = document.getElementById('ai-key-input');
-  if (input) input.type = (input.type === 'password') ? 'text' : 'password';
-}
-
-function renderAIContextPills() {
-  var el = document.getElementById('ai-context-pills');
-  if (!el) return;
-  var terrMap   = buildTerrMap();
-  var territories = Object.keys(terrMap);
-  var knockable = addresses.filter(isKnockable);
-  var worked    = knockable.filter(function(a){
-    var s = (a.status||'pending').toLowerCase();
-    return s !== 'pending' && s !== '' && s !== 'homes passed';
-  }).length;
-  var totalSales = knockable.filter(function(a){
-    return a.status === 'mega' || a.status === 'gig';
-  }).length;
-  var staleCount = getStaleAddresses ? getStaleAddresses().length : 0;
-
-  var pills = [
-    { dot: 'default', label: territories.length + ' territor' + (territories.length===1?'y':'ies') },
-    { dot: 'default', label: knockable.length + ' homes' },
-    { dot: 'default', label: worked + ' knocked' },
-    { dot: totalSales > 0 ? 'default' : 'dim', label: totalSales + ' sales' },
-    { dot: staleCount > 5 ? 'warn' : 'default', label: staleCount + ' follow-ups' }
-  ];
-
-  el.innerHTML = pills.map(function(p) {
-    return '<div class="ai-pill">' +
-      '<div class="ai-pill-dot ' + (p.dot !== 'default' ? p.dot : '') + '"></div>' +
-      p.label +
-    '</div>';
-  }).join('');
-}
-
-// ── Build the full data payload ────────────────────────────
-function buildAIPayload() {
-  var terrMap   = buildTerrMap();
-  var knockable = addresses.filter(isKnockable);
-
-  // --- Rep performance from the last manager fetch ---
-  var repListEl   = document.getElementById('mgr-rep-list');
-  var repCards    = repListEl ? repListEl.querySelectorAll('.mgr-rep-card') : [];
-  var repSummary  = [];
-  repCards.forEach(function(card) {
-    var nameEl  = card.querySelector('.mgr-rep-name');
-    var salesEl = card.querySelector('.mgr-rep-sales');
-    var isOnline = card.classList.contains('rep-online');
-    if (nameEl) {
-      repSummary.push({
-        name:   nameEl.textContent.trim(),
-        online: isOnline,
-        sales:  salesEl ? salesEl.textContent.trim() : '0 sales'
-      });
-    }
-  });
-
-  // --- Territory stats ---
-  var territoryStats = Object.keys(terrMap).map(function(t) {
-    var d  = terrMap[t];
-    var cr = d.worked > 0 ? (d.sales / d.worked) : 0;
-    var cov = d.total > 0 ? (d.worked / d.total) : 0;
-    return {
-      name:            t,
-      totalHomes:      d.total,
-      knocked:         d.worked,
-      pending:         d.pending,
-      coveragePct:     Math.round(cov * 100),
-      sales:           d.sales,
-      mega:            d.mega,
-      gig:             d.gig,
-      closeRatePct:    Math.round(cr * 100),
-      notHome:         d.nothome,
-      brightspeed:     d.brightspeed,
-      inContract:      d.incontract,
-      goBack:          d.goback,
-      notInterested:   d.notinterested,
-      vacant:          d.vacant,
-      business:        d.business,
-      existingCustomers: d.existingCustomers
-    };
-  });
-
-  // --- Overall metrics ---
-  var totalWorked = knockable.filter(function(a){
-    var s = (a.status||'pending').toLowerCase();
-    return s !== 'pending' && s !== '' && s !== 'homes passed';
-  }).length;
-  var totalSold = knockable.filter(function(a){
-    return a.status === 'mega' || a.status === 'gig';
-  }).length;
-  var totalMega = knockable.filter(function(a){ return a.status === 'mega'; }).length;
-  var totalGig  = knockable.filter(function(a){ return a.status === 'gig';  }).length;
-  var pending   = knockable.filter(function(a){
-    var s = (a.status||'pending').toLowerCase();
-    return !s || s === 'pending';
-  }).length;
-  var globalCR  = totalWorked > 0 ? totalSold / totalWorked : 0;
-  var gigMix    = totalSold   > 0 ? totalGig  / totalSold   : 0;
-
-  // --- Stale follow-up summary ---
-  var stale = typeof getStaleAddresses === 'function' ? getStaleAddresses() : [];
-  var staleByTerritory = {};
-  stale.forEach(function(a) {
-    var t = (a.territory || 'Unknown').trim();
-    if (!staleByTerritory[t]) staleByTerritory[t] = { goBack: 0, notHome: 0 };
-    if (a.status === 'goback')   staleByTerritory[t].goBack++;
-    else                         staleByTerritory[t].notHome++;
-  });
-
-  // --- Forecast ---
-  var MEGA_MRR = 29.95 + 5.00 + 1.00;
-  var GIG_MRR  = 39.95 + 5.00 + 1.00;
-  var currentMRR  = (totalMega * MEGA_MRR) + (totalGig * GIG_MRR);
-  var projSales   = Math.round(pending * globalCR);
-  var projGig     = Math.round(projSales * (gigMix || 0.40));
-  var projMega    = projSales - projGig;
-  var projMRR     = currentMRR + (projMega * MEGA_MRR) + (projGig * GIG_MRR);
-
-  return {
-    generatedAt:     new Date().toISOString(),
-    summary: {
-      totalKnockableHomes: knockable.length,
-      totalKnocked:        totalWorked,
-      totalPending:        pending,
-      totalSales:          totalSold,
-      megaSales:           totalMega,
-      gigSales:            totalGig,
-      globalCloseRatePct:  Math.round(globalCR * 100),
-      gigMixPct:           Math.round(gigMix * 100),
-      currentMRR:          Math.round(currentMRR),
-      projectedMRR:        Math.round(projMRR),
-      projectedAdditionalSales: projSales,
-      totalFollowUps:      stale.length,
-      onlineReps:          repSummary.filter(function(r){ return r.online; }).length,
-      totalReps:           repSummary.length
-    },
-    territories:     territoryStats,
-    reps:            repSummary,
-    followUpsByTerritory: staleByTerritory
-  };
-}
-
-// ── Run the analysis ───────────────────────────────────────
-function runAIAnalysis() {
-  var btn    = document.getElementById('ai-run-btn');
-  var label  = document.getElementById('ai-run-btn-label');
-  var output = document.getElementById('ai-output');
-
-  function resetBtn(txt) {
-    if (btn)   btn.disabled = false;
-    if (label) label.textContent = txt || '↻ Re-run Analysis';
-  }
-
-  // ── Get API key ────────────────────────────────────────
-  var apiKey = (document.getElementById('ai-key-input') || {}).value;
-  if (!apiKey) apiKey = localStorage.getItem('fieldos_ai_key') || '';
-  apiKey = apiKey.trim();
-
-  if (!apiKey) {
-    renderAIError('Enter your Anthropic API key in the field above first.');
-    return;
-  }
-
-  // ── Disable button & show loading ──────────────────────
-  if (btn)   btn.disabled = true;
-  if (label) label.textContent = '⏳ Analysing…';
-
-  if (output) {
-    output.className = 'ai-output-loading';
-    output.innerHTML =
-      '<div class="ai-loading-orb"></div>' +
-      '<div class="ai-loading-label">Analysing field data…</div>' +
-      '<div class="ai-loading-steps" id="ai-loading-step">Building territory snapshot</div>';
-  }
-
-  var steps = [
-    'Building territory snapshot',
-    'Computing close rates & coverage',
-    'Scanning competitor landscape',
-    'Evaluating follow-up queue',
-    'Generating deployment recommendations',
-    'Writing briefing…'
-  ];
-  var stepIdx = 0;
-  var stepTimer = setInterval(function() {
-    stepIdx = (stepIdx + 1) % steps.length;
-    var el = document.getElementById('ai-loading-step');
-    if (el) el.textContent = steps[stepIdx];
-  }, 1800);
-
-  // ── Build payload ──────────────────────────────────────
-  var payload;
-  try {
-    payload = buildAIPayload();
-  } catch (buildErr) {
-    clearInterval(stepTimer);
-    renderAIError('Failed to build data payload: ' + buildErr.message);
-    resetBtn('▶ Run Analysis');
-    return;
-  }
-
-  // ── Assemble prompt ────────────────────────────────────
-  var s = payload.summary || {};
-  var summaryLines = [
-    'Total knockable homes: '          + s.totalKnockableHomes,
-    'Total knocked: '                  + s.totalKnocked,
-    'Pending (untouched): '            + s.totalPending,
-    'Total sales today: '              + s.totalSales + ' (' + s.megaSales + ' Mega, ' + s.gigSales + ' Gig)',
-    'Global close rate: '              + s.globalCloseRatePct + '%',
-    'Gig mix: '                        + s.gigMixPct + '%',
-    'Current MRR: $'                   + s.currentMRR,
-    'Projected full-territory MRR: $'  + s.projectedMRR,
-    'Projected additional sales: '     + s.projectedAdditionalSales,
-    'Open follow-up contacts: '        + s.totalFollowUps,
-    'Online reps: '                    + s.onlineReps + ' of ' + s.totalReps
-  ].join('\n');
-
-  var terrLines = (payload.territories || []).map(function(t) {
-    return '  • ' + t.name + ': ' + t.coveragePct + '% coverage, ' +
-      t.closeRatePct + '% close rate, ' + t.sales + ' sales, ' + t.pending + ' pending | ' +
-      'Brightspeed=' + t.brightspeed + ' InContract=' + t.inContract +
-      ' NotHome=' + t.notHome + ' GoBack=' + t.goBack;
-  }).join('\n') || '  No territory data';
-
-  var repLines = (payload.reps || []).map(function(r) {
-    return '  • ' + r.name + ' [' + (r.online ? 'ONLINE' : 'offline') + '] — ' + r.sales;
-  }).join('\n') || '  No rep data';
-
-  var followUpLines = Object.keys(payload.followUpsByTerritory || {}).map(function(t) {
-    var f = payload.followUpsByTerritory[t];
-    return '  • ' + t + ': ' + f.goBack + ' Go Back, ' + f.notHome + ' Not Home';
-  }).join('\n') || '  None';
-
-  var systemPrompt =
-    'You are a field sales operations analyst for Zito Media, a fiber internet company. ' +
-    'You receive real-time door-knocking data and produce a concise, actionable daily briefing for the sales manager. ' +
-    'Be direct and specific. Use exact numbers. Avoid generic advice. ' +
-    'Prioritize actions by urgency and revenue impact. ' +
-    'Gig Speed ($54.95/mo) is higher value than Mega Speed ($44.95/mo). ' +
-    'Respond ONLY with a valid JSON object — no markdown fences, no preamble. ' +
-    'Schema:\n' +
-    '{\n' +
-    '  "headline": "one punchy sentence",\n' +
-    '  "situation": "2-3 sentences on where things stand",\n' +
-    '  "metrics": [{"label":"Close Rate","value":"12%"}, {"label":"Gig Mix","value":"43%"}, {"label":"Proj. MRR","value":"$4,820"}],\n' +
-    '  "recommendations": [{"priority":"high|medium|low","territory":"name or null","action":"specific action","reasoning":"why, citing data"}],\n' +
-    '  "insights": [{"icon":"📊","text":"insight"}],\n' +
-    '  "repCoaching": [{"rep":"Name","note":"specific note"}],\n' +
-    '  "todaysFocus": "one paragraph: the single most important thing right now"\n' +
-    '}';
-
-  var userPrompt =
-    '── OVERALL SUMMARY ──\n' + summaryLines +
-    '\n\n── TERRITORY BREAKDOWN ──\n' + terrLines +
-    '\n\n── REP STATUS ──\n' + repLines +
-    '\n\n── FOLLOW-UP QUEUE ──\n' + followUpLines +
-    '\n\nProduce the JSON briefing now.';
-
-  // ── Call Anthropic with auto-retry on 529 overloaded ──
-  var MAX_RETRIES = 3;
-  var retryCount  = 0;
-
-  var requestBody = JSON.stringify({
-    model:      'claude-sonnet-4-6',
-    max_tokens: 4000,
-    system:     systemPrompt,
-    messages:   [{ role: 'user', content: userPrompt }]
-  });
-
-  function attemptFetch() {
-    var controller = new AbortController();
-    var timeoutId  = setTimeout(function() { controller.abort(); }, 45000);
-
-    fetch('https://api.anthropic.com/v1/messages', {
-      method:  'POST',
-      signal:  controller.signal,
-      headers: {
-        'Content-Type':      'application/json',
-        'x-api-key':         apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: requestBody
-    })
-    .then(function(r) {
-      clearTimeout(timeoutId);
-      if (r.status === 529 || r.status === 503) {
-        retryCount++;
-        if (retryCount <= MAX_RETRIES) {
-          var delay = retryCount * 8000;
-          var stepEl = document.getElementById('ai-loading-step');
-          if (stepEl) stepEl.textContent = 'API busy — retrying in ' + (delay/1000) + 's (' + retryCount + '/' + MAX_RETRIES + ')';
-          setTimeout(attemptFetch, delay);
-          return null;
-        }
-        return r.text().then(function() {
-          throw new Error('Anthropic API is overloaded. Wait 30–60 seconds and try again.');
-        });
-      }
-      if (!r.ok) return r.text().then(function(t) { throw new Error('HTTP ' + r.status + ': ' + t.substring(0, 200)); });
-      return r.json();
-    })
-    .then(function(apiResult) {
-      if (!apiResult) return;
-      clearInterval(stepTimer);
-      var rawText = apiResult.content && apiResult.content[0] && apiResult.content[0].text
-        ? apiResult.content[0].text.trim() : '';
-      if (!rawText) throw new Error('Empty response from Claude.');
-      // Strip markdown fences
-      rawText = rawText.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
-
-      // Extract just the JSON object if there's surrounding text
-      var braceStart = rawText.indexOf('{');
-      var braceEnd   = rawText.lastIndexOf('}');
-      if (braceStart > 0 || (braceEnd > 0 && braceEnd < rawText.length - 1)) {
-        rawText = rawText.substring(braceStart, braceEnd + 1);
-      }
-
-      var analysis;
-      try {
-        analysis = JSON.parse(rawText);
-      } catch (parseErr) {
-        // Claude occasionally uses single-quoted keys or trailing commas — fix and retry
-        var fixed = rawText
-          .replace(/,\s*([}\]])/g, '$1')                          // trailing commas
-          .replace(/([{,]\s*)'([^']+)'(\s*:)/g, '$1"$2"$3')      // single-quoted keys
-          .replace(/:\s*'([^']*)'/g, ': "$1"');                   // single-quoted string values
-        try {
-          analysis = JSON.parse(fixed);
-        } catch (e2) {
-          throw new Error('Could not parse Claude response as JSON. Raw: ' + rawText.substring(0, 120));
-        }
-      }
-      aiLastResult = { status: 'ok', analysis: analysis };
-      renderAIResult(aiLastResult);
-      var ts = document.getElementById('ai-timestamp');
-      if (ts) ts.textContent = 'Generated ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      resetBtn('\u21bb Re-run Analysis');
-    })
-    .catch(function(err) {
-      clearInterval(stepTimer);
-      clearTimeout(timeoutId);
-      renderAIError(err.name === 'AbortError'
-        ? 'Request timed out after 45 s. Check your API key and try again.'
-        : String(err.message || err));
-      resetBtn('\u21bb Re-run Analysis');
-    });
-  }
-
-  attemptFetch();
-}
-
-// ── Render the structured result ───────────────────────────
-function renderAIResult(data) {
-  var output = document.getElementById('ai-output');
-  if (!output) return;
-  output.className = 'ai-output-active';
-
-  var r = data.analysis || {};
-  var html = '';
-
-  // ── Summary grid ───────────────────────────────────────
-  if (r.headline) {
-    html += '<div class="ai-section">' +
-      '<div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:8px;line-height:1.4">' +
-        escHtml(r.headline) +
-      '</div>';
-    if (r.situation) {
-      html += '<div style="font-size:12.5px;color:var(--muted);line-height:1.6;margin-bottom:10px">' +
-        escHtml(r.situation) + '</div>';
-    }
-    html += '</div>';
-  }
-
-  // ── Key metrics row ────────────────────────────────────
-  if (r.metrics && r.metrics.length) {
-    html += '<div class="ai-summary-grid">';
-    r.metrics.forEach(function(m) {
-      html += '<div class="ai-summary-cell">' +
-        '<div class="ai-summary-val">' + escHtml(String(m.value)) + '</div>' +
-        '<div class="ai-summary-lbl">' + escHtml(m.label) + '</div>' +
-      '</div>';
-    });
-    html += '</div>';
-  }
-
-  // ── Deployment recommendations ─────────────────────────
-  if (r.recommendations && r.recommendations.length) {
-    html += '<div class="ai-section">' +
-      '<div class="ai-section-head">🎯 Deployment Recommendations</div>';
-    r.recommendations.forEach(function(rec) {
-      var pri = (rec.priority || 'medium').toLowerCase();
-      html += '<div class="ai-rec-card priority-' + escHtml(pri) + '">' +
-        '<div class="ai-rec-header">' +
-          '<span class="ai-rec-priority">' + pri.toUpperCase() + '</span>' +
-          '<div>' +
-            (rec.territory ? '<div class="ai-rec-territory">📍 ' + escHtml(rec.territory) + '</div>' : '') +
-            '<div class="ai-rec-action">' + escHtml(rec.action) + '</div>' +
-          '</div>' +
-        '</div>' +
-        (rec.reasoning ? '<div class="ai-rec-detail">' + escHtml(rec.reasoning) + '</div>' : '') +
-      '</div>';
-    });
-    html += '</div>';
-  }
-
-  // ── Insights ───────────────────────────────────────────
-  if (r.insights && r.insights.length) {
-    html += '<div class="ai-section">' +
-      '<div class="ai-section-head">💡 Key Insights</div>';
-    r.insights.forEach(function(ins) {
-      html += '<div class="ai-insight-row">' +
-        '<span class="ai-insight-icon">' + escHtml(ins.icon || '▸') + '</span>' +
-        '<span>' + escHtml(ins.text) + '</span>' +
-      '</div>';
-    });
-    html += '</div>';
-  }
-
-  // ── Rep coaching ───────────────────────────────────────
-  if (r.repCoaching && r.repCoaching.length) {
-    html += '<div class="ai-section">' +
-      '<div class="ai-section-head">👤 Rep Coaching Notes</div>';
-    r.repCoaching.forEach(function(note) {
-      html += '<div class="ai-insight-row">' +
-        '<span class="ai-insight-icon">•</span>' +
-        '<span><strong>' + escHtml(note.rep) + '</strong> — ' + escHtml(note.note) + '</span>' +
-      '</div>';
-    });
-    html += '</div>';
-  }
-
-  // ── Today's focus ──────────────────────────────────────
-  if (r.todaysFocus) {
-    html += '<div class="ai-section">' +
-      '<div class="ai-section-head">⚡ Today\'s Focus</div>' +
-      '<div style="background:rgba(0,86,150,.1);border:1px solid rgba(0,86,150,.25);border-radius:10px;padding:14px 16px;font-size:13px;color:var(--text);line-height:1.6">' +
-        escHtml(r.todaysFocus) +
-      '</div>' +
-    '</div>';
-  }
-
-  output.innerHTML = html || '<div class="ai-output-placeholder"><div class="ai-placeholder-icon">✅</div>Analysis complete but no structured output returned. Check Apps Script logs.</div>';
-}
-
-function renderAIError(msg) {
-  var output = document.getElementById('ai-output');
-  if (output) {
-    output.className = 'ai-output-active';
-    output.innerHTML = '<div class="ai-error-box">⚠ ' + escHtml(msg) + '</div>';
-    output.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  }
-}
