@@ -1235,12 +1235,12 @@ function openForm(id) {
   document.getElementById('btn-gig').disabled   = true;
   document.getElementById('btn-mega').textContent = '⚡ Submit — Mega Speed';
   document.getElementById('btn-gig').textContent  = '🚀 Submit — Gig Speed';
-  document.getElementById('pricing-box').style.display        = 'none';
-  document.getElementById('proration-section').style.display  = 'none';
-  document.getElementById('sched-confirmed').style.display    = 'none';
-  document.getElementById('sched-picker').style.display       = 'none';
-  document.getElementById('sched-loading').style.display      = 'none';
-  document.getElementById('sched-error').style.display        = 'none';
+  document.getElementById('pricing-box').classList.add('hidden');
+  document.getElementById('proration-section').classList.add('hidden');
+  document.getElementById('sched-confirmed').classList.add('hidden');
+  document.getElementById('sched-picker').classList.add('hidden');
+  document.getElementById('sched-loading').classList.add('hidden');
+  document.getElementById('sched-error').classList.add('hidden');
   document.getElementById('f-install-date').value = '';
   document.getElementById('f-install-time').value = '';
   selSlot = null;
@@ -1374,7 +1374,7 @@ function setFormCollapsed(collapsed) {
   var body = document.querySelector('#panel-form .pf-body');
   var btn  = document.getElementById('pf-collapse-btn');
   if (!body || !btn) return;
-  body.style.display = formCollapsed ? 'none' : '';
+  body.style.display = formCollapsed ? 'none' : 'block';
   btn.textContent = formCollapsed ? '▸' : '▾';
   btn.setAttribute('aria-expanded', String(!formCollapsed));
 }
@@ -1389,17 +1389,9 @@ function pickPkg(p) {
   document.getElementById('pkg-gig').className  = 'pkg-card gig-card'  + (p === 'gig'  ? ' active' : '');
   document.getElementById('btn-mega').disabled  = (p !== 'mega');
   document.getElementById('btn-gig').disabled   = (p !== 'gig');
-  document.getElementById('pricing-box').style.display = 'block';
+  document.getElementById('pricing-box').classList.remove('hidden');
   schedShow();
   calcPricing();
-  // Scroll the pricing section into view on mobile so user doesn't miss it
-  setTimeout(function() {
-    var box = document.getElementById('pricing-box');
-    var body = document.querySelector('#panel-form .pf-body');
-    if (box && body) {
-      body.scrollTo({ top: box.offsetTop - 12, behavior: 'smooth' });
-    }
-  }, 100);
 }
 
 // ──────────────────────────────────────────────────────────
@@ -1466,20 +1458,20 @@ function schedFetch(callback) {
 }
 
 function schedShow() {
-  document.getElementById('sched-loading').style.display = 'flex';
-  document.getElementById('sched-picker').style.display  = 'none';
-  document.getElementById('sched-error').style.display   = 'none';
-  document.getElementById('sched-confirmed').style.display = 'none';
+  document.getElementById('sched-loading').classList.remove('hidden');
+  document.getElementById('sched-picker').classList.add('hidden');
+  document.getElementById('sched-error').classList.add('hidden');
+  document.getElementById('sched-confirmed').classList.add('hidden');
   schedWeekOff = 0;
 
   schedFetch(function(ok){
-    document.getElementById('sched-loading').style.display = 'none';
+    document.getElementById('sched-loading').classList.add('hidden');
     if (!ok) {
-      document.getElementById('sched-error').style.display  = 'block';
+      document.getElementById('sched-error').classList.remove('hidden');
       document.getElementById('sched-error').textContent    = '⚠ Could not load schedule.';
       return;
     }
-    document.getElementById('sched-picker').style.display = 'block';
+    document.getElementById('sched-picker').classList.remove('hidden');
     schedRenderWeek();
   });
 }
@@ -1556,8 +1548,8 @@ function schedPickSlot(date, time) {
   document.getElementById('sched-conf-date').textContent = DAYS[d.getDay()]+', '+MO[d.getMonth()]+' '+d.getDate()+', '+d.getFullYear();
   document.getElementById('sched-conf-time').textContent = '🕐 '+time;
 
-  document.getElementById('sched-picker').style.display    = 'none';
-  document.getElementById('sched-confirmed').style.display = 'flex';
+  document.getElementById('sched-picker').classList.add('hidden');
+  document.getElementById('sched-confirmed').classList.remove('hidden');
 
   var mo = MO[d.getMonth()];
   document.getElementById('btn-mega').textContent = '⚡ Submit Mega — '+mo+' '+d.getDate()+' @ '+time;
@@ -1568,9 +1560,9 @@ function schedClearSlot() {
   selSlot = null;
   document.getElementById('f-install-date').value = '';
   document.getElementById('f-install-time').value = '';
-  document.getElementById('sched-confirmed').style.display = 'none';
-  document.getElementById('sched-picker').style.display    = 'block';
-  document.getElementById('proration-section').style.display = 'none';
+  document.getElementById('sched-confirmed').classList.add('hidden');
+  document.getElementById('sched-picker').classList.remove('hidden');
+  document.getElementById('proration-section').classList.add('hidden');
   document.getElementById('btn-mega').textContent = '⚡ Submit — Mega Speed';
   document.getElementById('btn-gig').textContent  = '🚀 Submit — Gig Speed';
   schedRenderWeek();
@@ -1606,7 +1598,7 @@ function calcPricing() {
 
   var dateEl = document.getElementById('f-install-date');
   var proSection = document.getElementById('proration-section');
-  if (!dateEl.value) { proSection.style.display = 'none'; return; }
+  if (!dateEl.value) { proSection.classList.add('hidden'); return; }
 
   var install = new Date(dateEl.value + 'T12:00:00');
   var nextFirst = new Date(install.getFullYear(), install.getMonth() + 1, 1);
@@ -1627,7 +1619,7 @@ function calcPricing() {
   var firstBillFeesOnly = MODEM + EERO + PROC;
   document.getElementById('pr-firstbill-total').textContent   = '$' + (firstBillFeesOnly + prorateToFirstBill).toFixed(2);
   document.getElementById('pr-firstbill-fees').textContent    = '$' + firstBillFeesOnly.toFixed(2);
-  proSection.style.display = 'block';
+  proSection.classList.remove('hidden');
 }
 
 function pickStatus(s) {
