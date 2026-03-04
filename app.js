@@ -8,8 +8,8 @@
 // ──────────────────────────────────────────────────────────
 var APP_NAME    = 'Zito FieldOS';
 var APP_TAGLINE = 'Field Operations & Sales Intelligence';
-var APP_VERSION = '1.0.3';
-var BUILD_ID    = '2026.02.22';
+var APP_VERSION = '2.0.1';
+var BUILD_ID    = '2026.03.04';
 var APP_ENV     = 'Production';
 
 var addresses  = [];
@@ -1235,12 +1235,12 @@ function openForm(id) {
   document.getElementById('btn-gig').disabled   = true;
   document.getElementById('btn-mega').textContent = '⚡ Submit — Mega Speed';
   document.getElementById('btn-gig').textContent  = '🚀 Submit — Gig Speed';
-  document.getElementById('pricing-box').classList.add('hidden');
+  document.getElementById('pricing-box').style.display        = 'none';
   document.getElementById('proration-section').style.display  = 'none';
-  document.getElementById('sched-confirmed').classList.add('hidden');
-  document.getElementById('sched-picker').classList.add('hidden');
-  document.getElementById('sched-loading').classList.add('hidden');
-  document.getElementById('sched-error').classList.add('hidden');
+  document.getElementById('sched-confirmed').style.display    = 'none';
+  document.getElementById('sched-picker').style.display       = 'none';
+  document.getElementById('sched-loading').style.display      = 'none';
+  document.getElementById('sched-error').style.display        = 'none';
   document.getElementById('f-install-date').value = '';
   document.getElementById('f-install-time').value = '';
   selSlot = null;
@@ -1389,7 +1389,7 @@ function pickPkg(p) {
   document.getElementById('pkg-gig').className  = 'pkg-card gig-card'  + (p === 'gig'  ? ' active' : '');
   document.getElementById('btn-mega').disabled  = (p !== 'mega');
   document.getElementById('btn-gig').disabled   = (p !== 'gig');
-  document.getElementById('pricing-box').classList.remove('hidden');
+  document.getElementById('pricing-box').style.display = 'block';
   schedShow();
   calcPricing();
 }
@@ -1458,20 +1458,20 @@ function schedFetch(callback) {
 }
 
 function schedShow() {
-  document.getElementById('sched-loading').classList.remove('hidden');
-  document.getElementById('sched-picker').classList.add('hidden');
-  document.getElementById('sched-error').classList.add('hidden');
-  document.getElementById('sched-confirmed').classList.add('hidden');
+  document.getElementById('sched-loading').style.display = 'flex';
+  document.getElementById('sched-picker').style.display  = 'none';
+  document.getElementById('sched-error').style.display   = 'none';
+  document.getElementById('sched-confirmed').style.display = 'none';
   schedWeekOff = 0;
 
   schedFetch(function(ok){
-    document.getElementById('sched-loading').classList.add('hidden');
+    document.getElementById('sched-loading').style.display = 'none';
     if (!ok) {
-      document.getElementById('sched-error').classList.remove('hidden');
+      document.getElementById('sched-error').style.display  = 'block';
       document.getElementById('sched-error').textContent    = '⚠ Could not load schedule.';
       return;
     }
-    document.getElementById('sched-picker').classList.remove('hidden');
+    document.getElementById('sched-picker').style.display = 'block';
     schedRenderWeek();
   });
 }
@@ -1548,8 +1548,8 @@ function schedPickSlot(date, time) {
   document.getElementById('sched-conf-date').textContent = DAYS[d.getDay()]+', '+MO[d.getMonth()]+' '+d.getDate()+', '+d.getFullYear();
   document.getElementById('sched-conf-time').textContent = '🕐 '+time;
 
-  document.getElementById('sched-picker').classList.add('hidden');
-  document.getElementById('sched-confirmed').classList.remove('hidden');
+  document.getElementById('sched-picker').style.display    = 'none';
+  document.getElementById('sched-confirmed').style.display = 'flex';
 
   var mo = MO[d.getMonth()];
   document.getElementById('btn-mega').textContent = '⚡ Submit Mega — '+mo+' '+d.getDate()+' @ '+time;
@@ -1560,8 +1560,8 @@ function schedClearSlot() {
   selSlot = null;
   document.getElementById('f-install-date').value = '';
   document.getElementById('f-install-time').value = '';
-  document.getElementById('sched-confirmed').classList.add('hidden');
-  document.getElementById('sched-picker').classList.remove('hidden');
+  document.getElementById('sched-confirmed').style.display = 'none';
+  document.getElementById('sched-picker').style.display    = 'block';
   document.getElementById('proration-section').style.display = 'none';
   document.getElementById('btn-mega').textContent = '⚡ Submit — Mega Speed';
   document.getElementById('btn-gig').textContent  = '🚀 Submit — Gig Speed';
@@ -3793,30 +3793,59 @@ function _dzQueryBuildings_(points) {
   // Far better coverage in US residential areas than building footprint tags.
   // SECONDARY: building ways/nodes as a fallback for areas with footprints but no addr tags.
   var query =
-    '[out:json][timeout:45];\n' +
+    '[out:json][timeout:90];\n' +
     '(\n' +
-    // Address nodes with both housenumber and street — highest quality, pin immediately
     '  node["addr:housenumber"]["addr:street"](poly:"' + polyStr + '");\n' +
-    // Address ways (some subdivisions tag the parcel/lot rather than a node)
     '  way["addr:housenumber"]["addr:street"](poly:"' + polyStr + '");\n' +
-    // Building footprints as fallback — will need reverse geocoding
     '  way["building"]["building"!~"^(commercial|industrial|retail|office|warehouse|garage|shed|barn|church|school|hospital|hotel|supermarket|mall|civic|public|construction)$"](poly:"' + polyStr + '");\n' +
     '  node["building"="house"](poly:"' + polyStr + '");\n' +
     '  node["building"="residential"](poly:"' + polyStr + '");\n' +
     ');\n' +
     'out center tags;';
 
-  fetch('https://overpass-api.de/api/interpreter', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: 'data=' + encodeURIComponent(query)
-  })
-  .then(function(r) { if (!r.ok) throw new Error('Overpass returned ' + r.status); return r.json(); })
-  .then(function(data) { _dzProcessBuildings_(data.elements || [], points); })
-  .catch(function(err) {
-    _dzClearVisuals_();
-    toast('⚠ Zone scan failed: ' + String(err.message || err).substring(0, 60), 't-err');
-  });
+  // Try primary endpoint, fall back to mirror on 504/429
+  var OVERPASS_ENDPOINTS = [
+    'https://overpass-api.de/api/interpreter',
+    'https://overpass.kumi.systems/api/interpreter',
+    'https://overpass.private.coffee/api/interpreter'
+  ];
+
+  function tryOverpass(endpoints, idx) {
+    if (idx >= endpoints.length) {
+      _dzClearVisuals_();
+      toast('⚠ Zone scan failed: all Overpass endpoints timed out', 't-err');
+      return;
+    }
+    fetch(endpoints[idx], {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'data=' + encodeURIComponent(query)
+    })
+    .then(function(r) {
+      if (r.status === 504 || r.status === 429 || r.status === 502) {
+        toast('⚠ Overpass endpoint ' + (idx+1) + ' slow, trying backup…', 't-info');
+        tryOverpass(endpoints, idx + 1);
+        return null;
+      }
+      if (!r.ok) throw new Error('Overpass returned ' + r.status);
+      return r.json();
+    })
+    .then(function(data) {
+      if (!data) return;
+      _dzProcessBuildings_(data.elements || [], points);
+    })
+    .catch(function(err) {
+      if (idx + 1 < endpoints.length) {
+        toast('⚠ Overpass endpoint ' + (idx+1) + ' failed, trying backup…', 't-info');
+        tryOverpass(endpoints, idx + 1);
+      } else {
+        _dzClearVisuals_();
+        toast('⚠ Zone scan failed: ' + String(err.message || err).substring(0, 60), 't-err');
+      }
+    });
+  }
+
+  tryOverpass(OVERPASS_ENDPOINTS, 0);
 }
 
 // US Census Bureau geocoder — free, no API key, best for US residential addresses
