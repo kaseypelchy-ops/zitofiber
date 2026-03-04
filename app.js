@@ -8,8 +8,8 @@
 // ──────────────────────────────────────────────────────────
 var APP_NAME    = 'Zito FieldOS';
 var APP_TAGLINE = 'Field Operations & Sales Intelligence';
-var APP_VERSION = '1.0.3';
-var BUILD_ID    = '2026.02.22';
+var APP_VERSION = '2.1.0';
+var BUILD_ID    = '2026.03.04';
 var APP_ENV     = 'Production';
 
 var addresses  = [];
@@ -1235,7 +1235,7 @@ function openForm(id) {
   document.getElementById('btn-gig').disabled   = true;
   document.getElementById('btn-mega').textContent = '⚡ Submit — Mega Speed';
   document.getElementById('btn-gig').textContent  = '🚀 Submit — Gig Speed';
-  document.getElementById('pricing-box').style.display        = 'none';
+  document.getElementById('pricing-box').classList.add('hidden');
   document.getElementById('proration-section').style.display  = 'none';
   document.getElementById('sched-confirmed').style.display    = 'none';
   document.getElementById('sched-picker').style.display       = 'none';
@@ -1389,7 +1389,7 @@ function pickPkg(p) {
   document.getElementById('pkg-gig').className  = 'pkg-card gig-card'  + (p === 'gig'  ? ' active' : '');
   document.getElementById('btn-mega').disabled  = (p !== 'mega');
   document.getElementById('btn-gig').disabled   = (p !== 'gig');
-  document.getElementById('pricing-box').style.display = 'block';
+  document.getElementById('pricing-box').classList.remove('hidden');
   schedShow();
   calcPricing();
 }
