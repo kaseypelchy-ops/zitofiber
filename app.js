@@ -1374,7 +1374,7 @@ function setFormCollapsed(collapsed) {
   var body = document.querySelector('#panel-form .pf-body');
   var btn  = document.getElementById('pf-collapse-btn');
   if (!body || !btn) return;
-  body.style.display = formCollapsed ? 'none' : 'block';
+  body.style.display = formCollapsed ? 'none' : '';
   btn.textContent = formCollapsed ? '▸' : '▾';
   btn.setAttribute('aria-expanded', String(!formCollapsed));
 }
@@ -1392,6 +1392,14 @@ function pickPkg(p) {
   document.getElementById('pricing-box').style.display = 'block';
   schedShow();
   calcPricing();
+  // Scroll the pricing section into view on mobile so user doesn't miss it
+  setTimeout(function() {
+    var box = document.getElementById('pricing-box');
+    var body = document.querySelector('#panel-form .pf-body');
+    if (box && body) {
+      body.scrollTo({ top: box.offsetTop - 12, behavior: 'smooth' });
+    }
+  }, 100);
 }
 
 // ──────────────────────────────────────────────────────────
