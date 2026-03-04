@@ -1434,7 +1434,7 @@ function schedThisMonday() {
 }
 
 function schedFetch(callback) {
-  fetch(SCHED_URL + '?action=schedule&_t=' + Date.now())
+  fetch(SCHED_URL + '?action=schedule&territory=' + encodeURIComponent(activeTerritory || 'Palestine') + '&_t=' + Date.now())
     .then(function(r){ return r.json(); })
     .then(function(json){
       if (!json || !json.rows) { callback(false); return; }
