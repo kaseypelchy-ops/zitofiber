@@ -8,8 +8,8 @@
 // ──────────────────────────────────────────────────────────
 var APP_NAME    = 'Zito FieldOS';
 var APP_TAGLINE = 'Field Operations & Sales Intelligence';
-var APP_VERSION = '2.1.0';
-var BUILD_ID    = '2026.03.04';
+var APP_VERSION = '1.0.3';
+var BUILD_ID    = '2026.02.22';
 var APP_ENV     = 'Production';
 
 var addresses  = [];
@@ -1237,10 +1237,10 @@ function openForm(id) {
   document.getElementById('btn-gig').textContent  = '🚀 Submit — Gig Speed';
   document.getElementById('pricing-box').classList.add('hidden');
   document.getElementById('proration-section').style.display  = 'none';
-  document.getElementById('sched-confirmed').style.display    = 'none';
-  document.getElementById('sched-picker').style.display       = 'none';
-  document.getElementById('sched-loading').style.display      = 'none';
-  document.getElementById('sched-error').style.display        = 'none';
+  document.getElementById('sched-confirmed').classList.add('hidden');
+  document.getElementById('sched-picker').classList.add('hidden');
+  document.getElementById('sched-loading').classList.add('hidden');
+  document.getElementById('sched-error').classList.add('hidden');
   document.getElementById('f-install-date').value = '';
   document.getElementById('f-install-time').value = '';
   selSlot = null;
@@ -1458,20 +1458,20 @@ function schedFetch(callback) {
 }
 
 function schedShow() {
-  document.getElementById('sched-loading').style.display = 'flex';
-  document.getElementById('sched-picker').style.display  = 'none';
-  document.getElementById('sched-error').style.display   = 'none';
-  document.getElementById('sched-confirmed').style.display = 'none';
+  document.getElementById('sched-loading').classList.remove('hidden');
+  document.getElementById('sched-picker').classList.add('hidden');
+  document.getElementById('sched-error').classList.add('hidden');
+  document.getElementById('sched-confirmed').classList.add('hidden');
   schedWeekOff = 0;
 
   schedFetch(function(ok){
-    document.getElementById('sched-loading').style.display = 'none';
+    document.getElementById('sched-loading').classList.add('hidden');
     if (!ok) {
-      document.getElementById('sched-error').style.display  = 'block';
+      document.getElementById('sched-error').classList.remove('hidden');
       document.getElementById('sched-error').textContent    = '⚠ Could not load schedule.';
       return;
     }
-    document.getElementById('sched-picker').style.display = 'block';
+    document.getElementById('sched-picker').classList.remove('hidden');
     schedRenderWeek();
   });
 }
@@ -1548,8 +1548,8 @@ function schedPickSlot(date, time) {
   document.getElementById('sched-conf-date').textContent = DAYS[d.getDay()]+', '+MO[d.getMonth()]+' '+d.getDate()+', '+d.getFullYear();
   document.getElementById('sched-conf-time').textContent = '🕐 '+time;
 
-  document.getElementById('sched-picker').style.display    = 'none';
-  document.getElementById('sched-confirmed').style.display = 'flex';
+  document.getElementById('sched-picker').classList.add('hidden');
+  document.getElementById('sched-confirmed').classList.remove('hidden');
 
   var mo = MO[d.getMonth()];
   document.getElementById('btn-mega').textContent = '⚡ Submit Mega — '+mo+' '+d.getDate()+' @ '+time;
@@ -1560,8 +1560,8 @@ function schedClearSlot() {
   selSlot = null;
   document.getElementById('f-install-date').value = '';
   document.getElementById('f-install-time').value = '';
-  document.getElementById('sched-confirmed').style.display = 'none';
-  document.getElementById('sched-picker').style.display    = 'block';
+  document.getElementById('sched-confirmed').classList.add('hidden');
+  document.getElementById('sched-picker').classList.remove('hidden');
   document.getElementById('proration-section').style.display = 'none';
   document.getElementById('btn-mega').textContent = '⚡ Submit — Mega Speed';
   document.getElementById('btn-gig').textContent  = '🚀 Submit — Gig Speed';
