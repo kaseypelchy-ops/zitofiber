@@ -730,14 +730,8 @@
       <button class="btn-gig"  id="btn-gig"  onclick="submitSale('Gig Speed')"  disabled>🚀 Submit — Gig Speed</button>
 
       <div class="sec-head">No Sale</div>
-      <div class="status-grid">
-        <button class="stbtn" id="sbt-nh"  onclick="pickStatus('Not Home')">🚪 Not Home</button>
-        <button class="stbtn" id="sbt-bs"  onclick="pickStatus('Brightspeed')">⚡ Brightspeed</button>
-        <button class="stbtn" id="sbt-ic"  onclick="pickStatus('In Contract')">📋 In Contract</button>
-        <button class="stbtn" id="sbt-ni"  onclick="pickStatus('Not Interested')">❌ Not Interested</button>
-        <button class="stbtn" id="sbt-gbl" onclick="pickStatus('Go Back Later')">🔄 Go Back Later</button>
-        <button class="stbtn" id="sbt-vac" onclick="pickStatus('Vacant')">🏚️ Vacant</button>
-        <button class="stbtn" id="sbt-biz" onclick="pickStatus('Business')">🏢 Business</button>
+      <div class="status-grid" id="status-grid">
+        <!-- Populated dynamically by renderDispositionButtons() based on territory -->
       </div>
       
       <!-- No Sale Disposition Note (only for Not Home / Not Interested / Go Back Later) -->

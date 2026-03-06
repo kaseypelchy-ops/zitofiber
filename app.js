@@ -46,7 +46,13 @@ var COLORS = {
   notinterested: '#dc2626',
   goback:        '#06b6d4',
   vacant:        '#ca8a04',
-  business:      '#6366f1'
+  business:      '#6366f1',
+  // Bryson City extras
+  nothome2:      '#b45309',
+  nothome3:      '#92400e',
+  nothome4:      '#ef4444',
+  competitor:    '#dc2626',
+  activecustomer:'#facc15'
 };
 var COLOR_ACTIVE = '#facc15';
 
@@ -627,12 +633,17 @@ var HEAT_COLORS = {
   mega:          { fill: '#8b5cf6', opacity: 0.55 },
   gig:           { fill: '#10b981', opacity: 0.55 },
   nothome:       { fill: '#d97706', opacity: 0.40 },
+  nothome2:      { fill: '#b45309', opacity: 0.45 },
+  nothome3:      { fill: '#92400e', opacity: 0.50 },
+  nothome4:      { fill: '#ef4444', opacity: 0.55 },
   brightspeed:   { fill: '#ef4444', opacity: 0.45 },
+  competitor:    { fill: '#dc2626', opacity: 0.45 },
   incontract:    { fill: '#818cf8', opacity: 0.40 },
   notinterested: { fill: '#dc2626', opacity: 0.45 },
   goback:        { fill: '#06b6d4', opacity: 0.40 },
   vacant:        { fill: '#ca8a04', opacity: 0.35 },
   business:      { fill: '#6366f1', opacity: 0.40 },
+  activecustomer:{ fill: '#facc15', opacity: 0.50 },
   pending:       { fill: '#6b7280', opacity: 0.20 }
 };
 
@@ -850,7 +861,7 @@ function getMarkerShape(addr) {
   // fall through to the `if (ac && ac !== '') return 'bolt'` catch-all below,
   // incorrectly showing "Active Customer" after Go Back Later / Not Interested /
   // Brightspeed etc. are submitted.
-  var REP_LOGGED = ['nothome','brightspeed','incontract','notinterested','goback','vacant','business'];
+  var REP_LOGGED = ['nothome','nothome2','nothome3','nothome4','brightspeed','incontract','notinterested','goback','vacant','business','competitor','activecustomer'];
   if (REP_LOGGED.indexOf(s) >= 0) return 'dot';
 
   // Sheet-driven status / activeCount checks (untouched addresses only)
@@ -1069,8 +1080,69 @@ var TAG_HTML  = {
   notinterested: '<span class="ar-tag tag-ni">❌ Not Int.</span>',
   goback:        '<span class="ar-tag tag-gbl">🔄 Go Back</span>',
   vacant:        '<span class="ar-tag tag-vac">🏚️ Vacant</span>',
-  business:      '<span class="ar-tag tag-biz">🏢 Business</span>'
+  business:      '<span class="ar-tag tag-biz">🏢 Business</span>',
+  // Bryson City extras
+  nothome2:      '<span class="ar-tag tag-nh">🚪 NH ×2</span>',
+  nothome3:      '<span class="ar-tag tag-nh">🚪 NH ×3</span>',
+  nothome4:      '<span class="ar-tag tag-nh">🚪 NH ×4</span>',
+  competitor:    '<span class="ar-tag tag-bs">🔌 Competitor</span>',
+  activecustomer:'<span class="ar-tag tag-mega">⚡ Active Cust.</span>'
 };
+
+// ──────────────────────────────────────────────────────────
+//  DISPOSITION CONFIGS — per-territory button sets
+// ──────────────────────────────────────────────────────────
+
+// Each entry: { label, id, status, cls, icon, needsNote, notePlaceholder }
+var DEFAULT_DISPOSITIONS = [
+  { label:'Not Home',       id:'sbt-nh',   status:'nothome',        cls:'act-nc', icon:'🚪', needsNote:true,  notePlaceholder:'Example: will return after 5pm / left flyer' },
+  { label:'Brightspeed',    id:'sbt-bs',   status:'brightspeed',    cls:'act-ni', icon:'⚡', needsNote:false },
+  { label:'In Contract',    id:'sbt-ic',   status:'incontract',     cls:'act-vm', icon:'📋', needsNote:false },
+  { label:'Not Interested', id:'sbt-ni',   status:'notinterested',  cls:'act-ni', icon:'❌', needsNote:true,  notePlaceholder:'Example: not interested — already has provider' },
+  { label:'Go Back Later',  id:'sbt-gbl',  status:'goback',         cls:'act-cb', icon:'🔄', needsNote:true,  notePlaceholder:'Example: customer asked to come back Friday' },
+  { label:'Vacant',         id:'sbt-vac',  status:'vacant',         cls:'act-nc', icon:'🏚️', needsNote:false },
+  { label:'Business',       id:'sbt-biz',  status:'business',       cls:'act-vm', icon:'🏢', needsNote:false }
+];
+
+var BRYSON_CITY_DISPOSITIONS = [
+  { label:'Not Home x1',    id:'sbt-nh1',  status:'nothome',        cls:'act-nc', icon:'🚪',    needsNote:true,  notePlaceholder:'Example: will return after 5pm / left flyer' },
+  { label:'Not Home x2',    id:'sbt-nh2',  status:'nothome2',       cls:'act-nc', icon:'🚪🚪',  needsNote:false },
+  { label:'Not Home x3',    id:'sbt-nh3',  status:'nothome3',       cls:'act-nc', icon:'🚪×3',  needsNote:false },
+  { label:'Not Home x4',    id:'sbt-nh4',  status:'nothome4',       cls:'act-ni', icon:'🚪×4',  needsNote:false },
+  { label:'Vacant',         id:'sbt-vac',  status:'vacant',         cls:'act-nc', icon:'🏚️',   needsNote:false },
+  { label:'Not Interested', id:'sbt-ni',   status:'notinterested',  cls:'act-ni', icon:'❌',    needsNote:true,  notePlaceholder:'Example: not interested — already has provider' },
+  { label:'Business',       id:'sbt-biz',  status:'business',       cls:'act-vm', icon:'🏢',   needsNote:false },
+  { label:'In Contract',    id:'sbt-ic',   status:'incontract',     cls:'act-vm', icon:'📋',   needsNote:false },
+  { label:'Competitor',     id:'sbt-comp', status:'competitor',     cls:'act-ni', icon:'🔌',   needsNote:false },
+  { label:'Active Customer',id:'sbt-ac',   status:'activecustomer', cls:'act-vm', icon:'⚡',   needsNote:false },
+  { label:'Go Back Later',  id:'sbt-gbl',  status:'goback',         cls:'act-cb', icon:'🔄',   needsNote:true,  notePlaceholder:'Example: customer asked to come back Friday' }
+];
+
+// Returns the correct disposition config for a given address
+function getDispositions(addr) {
+  var terr = ((addr && addr.territory) || activeTerritory || '').trim().toLowerCase().replace(/\s+/g,'_');
+  if (terr === 'bryson_city_nc') return BRYSON_CITY_DISPOSITIONS;
+  return DEFAULT_DISPOSITIONS;
+}
+
+// Returns the disposition entry whose status matches, searching the given config
+function findDispByStatus(status, config) {
+  for (var i = 0; i < config.length; i++) {
+    if (config[i].status === status) return config[i];
+  }
+  return null;
+}
+
+// Render the No Sale buttons into #status-grid for the given address
+function renderDispositionButtons(addr) {
+  var grid = document.getElementById('status-grid');
+  if (!grid) return;
+  var config = getDispositions(addr);
+  grid.innerHTML = config.map(function(d) {
+    return '<button class="stbtn" id="' + d.id + '" onclick="pickStatus(\'' + d.label.replace(/'/g,"\\'") + '\')">' +
+      d.icon + ' ' + d.label + '</button>';
+  }).join('');
+}
 
 // Single delegated click listener on the address list container.
 // Attached once at startup — never recreated on buildList() calls.
@@ -1246,37 +1318,13 @@ function openForm(id) {
   selSlot = null;
 
   ['sbt-nh','sbt-bs','sbt-ic','sbt-ni','sbt-gbl','sbt-vac','sbt-biz'].forEach(function(sid) {
-    document.getElementById(sid).className = 'stbtn';
+    var el = document.getElementById(sid); if (el) el.className = 'stbtn';
   });
 
+  // Render the correct set of buttons for this address's territory
+  renderDispositionButtons(addr);
+
   // ── Restore previous disposition if address was already visited ──────────
-  var statusToLabel = {
-    nothome:       'Not Home',
-    brightspeed:   'Brightspeed',
-    incontract:    'In Contract',
-    notinterested: 'Not Interested',
-    goback:        'Go Back Later',
-    vacant:        'Vacant',
-    business:      'Business'
-  };
-  var statusToBtn = {
-    nothome:       'sbt-nh',
-    brightspeed:   'sbt-bs',
-    incontract:    'sbt-ic',
-    notinterested: 'sbt-ni',
-    goback:        'sbt-gbl',
-    vacant:        'sbt-vac',
-    business:      'sbt-biz'
-  };
-  var statusCls = {
-    nothome:       'act-nc',
-    brightspeed:   'act-ni',
-    incontract:    'act-vm',
-    notinterested: 'act-ni',
-    goback:        'act-cb',
-    vacant:        'act-nc',
-    business:      'act-vm'
-  };
   var prevDisp    = document.getElementById('prev-disposition');
   var prevStatus  = document.getElementById('prev-disp-status');
   var prevNote    = document.getElementById('prev-disp-note');
@@ -1284,11 +1332,14 @@ function openForm(id) {
   var nsNote      = document.getElementById('ns-note');
   var curStatus   = (addr.status || '').toLowerCase().trim();
   var curNote     = (addr.note   || '').trim();
-  var prevLabel   = statusToLabel[curStatus];
 
-  if (prevLabel) {
-    // Show the banner
-    prevStatus.textContent = prevLabel;
+  var config      = getDispositions(addr);
+  var prevEntry   = findDispByStatus(curStatus, config);
+  // Also check default config so addresses loaded from sheet restore correctly
+  if (!prevEntry) prevEntry = findDispByStatus(curStatus, DEFAULT_DISPOSITIONS);
+
+  if (prevEntry) {
+    prevStatus.textContent = prevEntry.label;
     prevStatus.className   = 'prev-disp-status s-' + curStatus;
     if (curNote) {
       prevNote.textContent   = '💬 ' + curNote;
@@ -1298,26 +1349,17 @@ function openForm(id) {
     }
     prevDisp.style.display = 'block';
 
-    // Pre-highlight the matching status button
-    selStatus = prevLabel;
-    if (statusToBtn[curStatus]) {
-      document.getElementById(statusToBtn[curStatus]).className = 'stbtn ' + statusCls[curStatus];
-    }
+    selStatus = prevEntry.label;
+    var btnEl = document.getElementById(prevEntry.id);
+    if (btnEl) btnEl.className = 'stbtn ' + prevEntry.cls;
 
-    // Pre-fill note textarea (show it if this status normally has one)
-    var needsNote = (prevLabel === 'Not Home' || prevLabel === 'Not Interested' || prevLabel === 'Go Back Later');
+    var needsNote = !!prevEntry.needsNote;
     if (nsWrap && nsNote) {
       nsWrap.style.display = needsNote ? 'block' : 'none';
       nsNote.value = curNote;
-      if (needsNote) {
-        nsNote.placeholder =
-          (prevLabel === 'Not Home') ? 'Example: will return after 5pm / left flyer' :
-          (prevLabel === 'Go Back Later') ? 'Example: customer asked to come back Friday' :
-          'Example: not interested — already has provider';
-      }
+      if (needsNote && prevEntry.notePlaceholder) nsNote.placeholder = prevEntry.notePlaceholder;
     }
   } else {
-    // No prior no-sale disposition — hide banner, reset note
     prevDisp.style.display = 'none';
     if (nsWrap && nsNote) { nsWrap.style.display = 'none'; nsNote.value = ''; }
   }
@@ -1348,9 +1390,11 @@ function clearPrevDisposition() {
   addr.note   = '';
   // Reset banner
   document.getElementById('prev-disposition').style.display = 'none';
-  // Reset status buttons and note textarea
-  ['sbt-nh','sbt-bs','sbt-ic','sbt-ni','sbt-gbl','sbt-vac','sbt-biz'].forEach(function(sid) {
-    document.getElementById(sid).className = 'stbtn';
+  // Reset all disposition buttons for the current territory
+  var config = getDispositions(addr);
+  config.forEach(function(d) {
+    var el = document.getElementById(d.id);
+    if (el) el.className = 'stbtn';
   });
   selStatus = null;
   var nsWrap = document.getElementById('ns-note-wrap');
@@ -1624,30 +1668,31 @@ function calcPricing() {
 
 function pickStatus(s) {
   selStatus = s;
-  var map = {
-    'Not Home':      { id:'sbt-nh',  cls:'act-nc' },
-    'Brightspeed':   { id:'sbt-bs',  cls:'act-ni' },
-    'In Contract':   { id:'sbt-ic',  cls:'act-vm' },
-    'Not Interested':{ id:'sbt-ni',  cls:'act-ni' },
-    'Go Back Later': { id:'sbt-gbl', cls:'act-cb' },
-    'Vacant':        { id:'sbt-vac', cls:'act-nc' },
-    'Business':      { id:'sbt-biz', cls:'act-vm' }
-  };
-  ['sbt-nh','sbt-bs','sbt-ic','sbt-ni','sbt-gbl','sbt-vac','sbt-biz'].forEach(function(sid) { document.getElementById(sid).className = 'stbtn'; });
-  if (map[s]) document.getElementById(map[s].id).className = 'stbtn ' + map[s].cls;
 
-  var needsNote = (s === 'Not Home' || s === 'Not Interested' || s === 'Go Back Later');
+  // Get the config for the currently open address
+  var addr = getAddr();
+  var config = getDispositions(addr);
+
+  // Reset all buttons in the current grid
+  config.forEach(function(d) {
+    var el = document.getElementById(d.id);
+    if (el) el.className = 'stbtn';
+  });
+
+  // Highlight the selected one
+  var entry = config.find(function(d){ return d.label === s; });
+  if (entry) {
+    var el = document.getElementById(entry.id);
+    if (el) el.className = 'stbtn ' + entry.cls;
+  }
+
+  var needsNote = entry ? !!entry.needsNote : false;
   var wrap = document.getElementById('ns-note-wrap');
   var note = document.getElementById('ns-note');
   if (wrap && note) {
     wrap.style.display = needsNote ? 'block' : 'none';
     if (!needsNote) note.value = '';
-    if (needsNote) {
-      note.placeholder =
-        (s === 'Not Home') ? 'Example: will return after 5pm / left flyer' :
-        (s === 'Go Back Later') ? 'Example: customer asked to come back Friday' :
-        'Example: not interested — already has provider';
-    }
+    if (needsNote && entry && entry.notePlaceholder) note.placeholder = entry.notePlaceholder;
   }
 }
 
@@ -1774,7 +1819,11 @@ function submitStatus() {
   // to write the status + note to the Addresses tab.
   maybeWriteNewAddrToSheet(addr);
 
-  var smap = { 'Not Home':'nothome','Brightspeed':'brightspeed','In Contract':'incontract','Not Interested':'notinterested','Go Back Later':'goback','Vacant':'vacant','Business':'business' };
+  // Build label→status map from both configs so any territory works
+  var smap = {};
+  DEFAULT_DISPOSITIONS.concat(BRYSON_CITY_DISPOSITIONS).forEach(function(d) {
+    smap[d.label] = d.status;
+  });
   addr.status = smap[selStatus] || 'nocontact';
   addr.salesperson = repName;
   addr.note = notes || '';
@@ -2243,7 +2292,13 @@ var STATUS_LABELS = {
   vacant:        'Vacant',
   business:      'Business',
   pending:       'Pending / Untouched',
-  nocontact:     'No Contact'
+  nocontact:     'No Contact',
+  // Bryson City
+  nothome2:      'Not Home ×2',
+  nothome3:      'Not Home ×3',
+  nothome4:      'Not Home ×4',
+  competitor:    'Competitor',
+  activecustomer:'Active Customer'
 };
 
 // ── Analytics Tab ──────────────────────────────────────────
@@ -2963,12 +3018,17 @@ function buildTerrMap() {
     if (s === 'mega')            { d.mega++;          d.sales++; }
     else if (s === 'gig')        { d.gig++;           d.sales++; }
     else if (s === 'nothome')      d.nothome++;
+    else if (s === 'nothome2')     d.nothome++;   // count all NH variants together
+    else if (s === 'nothome3')     d.nothome++;
+    else if (s === 'nothome4')     d.nothome++;
     else if (s === 'brightspeed')  d.brightspeed++;
+    else if (s === 'competitor')   d.brightspeed++; // lump competitor with BS for coverage stats
     else if (s === 'incontract')   d.incontract++;
     else if (s === 'goback')       d.goback++;
     else if (s === 'notinterested') d.notinterested++;
     else if (s === 'vacant')       d.vacant++;
     else if (s === 'business')     d.business++;
+    else if (s === 'activecustomer') d.existingCustomers++; // treat as existing
   });
   return m;
 }
