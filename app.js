@@ -1478,7 +1478,7 @@ function schedThisMonday() {
 }
 
 function schedFetch(callback) {
-  fetch(SCHED_URL + '?action=schedule&territory=' + encodeURIComponent(activeTerritory || 'Palestine') + '&_t=' + Date.now())
+  fetch(SCHED_URL + '?action=schedule&territory=' + encodeURIComponent(activeTerritory || '') + '&_t=' + Date.now())
     .then(function(r){ return r.json(); })
     .then(function(json){
       if (!json || !json.rows) { callback(false); return; }
@@ -1617,7 +1617,7 @@ function schedBookSlot(date, time, customerName, address) {
     method: 'POST',
     mode: 'no-cors',
     headers: { 'Content-Type': 'text/plain' },
-    body: JSON.stringify({ type:'booking', date:date, time:time, name:customerName, address:address })
+    body: JSON.stringify({ type:'booking', date:date, time:time, name:customerName, address:address, territory: activeTerritory || '', salesperson: repName || '' })
   }).catch(function(){});
 
   if (schedData[date] && schedData[date][time]) {
