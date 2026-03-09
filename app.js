@@ -1120,8 +1120,11 @@ var BRYSON_CITY_DISPOSITIONS = [
 
 // Returns the correct disposition config for a given address
 function getDispositions(addr) {
-  var terr = ((addr && addr.territory) || activeTerritory || '').trim().toLowerCase().replace(/\s+/g,'_');
-  if (terr === 'bryson_city_nc') return BRYSON_CITY_DISPOSITIONS;
+  var terr = ((addr && addr.territory) || activeTerritory || '')
+    .trim().toLowerCase()
+    .replace(/,\s*/g, ' ')   // strip commas (e.g. "Bryson City, NC" → "Bryson City NC")
+    .replace(/\s+/g, '_');   // spaces → underscores
+  if (terr === 'bryson_city_nc' || terr === 'bryson_city') return BRYSON_CITY_DISPOSITIONS;
   return DEFAULT_DISPOSITIONS;
 }
 
@@ -1337,6 +1340,8 @@ function openForm(id) {
   var prevEntry   = findDispByStatus(curStatus, config);
   // Also check default config so addresses loaded from sheet restore correctly
   if (!prevEntry) prevEntry = findDispByStatus(curStatus, DEFAULT_DISPOSITIONS);
+  // Also check Bryson City config so territory-specific statuses (nothome2, competitor, etc.) restore their notes
+  if (!prevEntry) prevEntry = findDispByStatus(curStatus, BRYSON_CITY_DISPOSITIONS);
 
   if (prevEntry) {
     prevStatus.textContent = prevEntry.label;
