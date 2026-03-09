@@ -1197,7 +1197,7 @@ var sidebarOpen = true;
 
 // ──────────────────────────────────────────────────────────
 //  SIDEBAR TOGGLE
-// ──────────────────────────────────────────────────────────
+// ──────────────────────────────────���───────────────────────
 function toggleSidebar() {
   sidebarOpen = !sidebarOpen;
   var app = document.getElementById('page-app');
@@ -2295,6 +2295,12 @@ if ('serviceWorker' in navigator) {
   });
 }
 </script>
+
+<!-- Vercel Web Analytics -->
+<script>
+  window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+</script>
+<script defer src="/_vercel/insights/script.js"></script>
 
 </body>
 </html>
