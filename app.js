@@ -1360,13 +1360,19 @@ function openForm(id) {
 
     var needsNote = !!prevEntry.needsNote;
     if (nsWrap && nsNote) {
-      nsWrap.style.display = needsNote ? 'block' : 'none';
+      if (needsNote) {
+        nsWrap.classList.remove('hidden');
+        nsWrap.style.display = '';
+      } else {
+        nsWrap.classList.add('hidden');
+        nsWrap.style.display = '';
+      }
       nsNote.value = curNote;
       if (needsNote && prevEntry.notePlaceholder) nsNote.placeholder = prevEntry.notePlaceholder;
     }
   } else {
     prevDisp.style.display = 'none';
-    if (nsWrap && nsNote) { nsWrap.style.display = 'none'; nsNote.value = ''; }
+    if (nsWrap && nsNote) { nsWrap.classList.add('hidden'); nsWrap.style.display = ''; nsNote.value = ''; }
   }
 
   document.getElementById('panel-form').classList.add('open');
@@ -1404,7 +1410,7 @@ function clearPrevDisposition() {
   selStatus = null;
   var nsWrap = document.getElementById('ns-note-wrap');
   var nsNote = document.getElementById('ns-note');
-  if (nsWrap) nsWrap.style.display = 'none';
+  if (nsWrap) { nsWrap.classList.add('hidden'); nsWrap.style.display = ''; }
   if (nsNote) nsNote.value = '';
   // Update marker and sidebar to reflect cleared status
   if (addr.lat && addr.lng) placeMarker(addr);
@@ -1695,8 +1701,14 @@ function pickStatus(s) {
   var wrap = document.getElementById('ns-note-wrap');
   var note = document.getElementById('ns-note');
   if (wrap && note) {
-    wrap.style.display = needsNote ? 'block' : 'none';
-    if (!needsNote) note.value = '';
+    if (needsNote) {
+      wrap.classList.remove('hidden');
+      wrap.style.display = '';
+    } else {
+      wrap.classList.add('hidden');
+      wrap.style.display = '';
+      note.value = '';
+    }
     if (needsNote && entry && entry.notePlaceholder) note.placeholder = entry.notePlaceholder;
   }
 }
@@ -1808,7 +1820,7 @@ function submitStatus() {
 
   var nsWrap  = document.getElementById('ns-note-wrap');
   var nsNote  = document.getElementById('ns-note');
-  var notes   = (nsWrap && nsWrap.style.display !== 'none' && nsNote)
+  var notes   = (nsWrap && !nsWrap.classList.contains('hidden') && nsNote)
     ? (nsNote.value || '').trim()
     : '';
   var payload = {
