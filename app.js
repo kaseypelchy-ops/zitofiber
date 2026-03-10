@@ -333,7 +333,7 @@ function fetchAddressesFromSheet() {
         var lat = (row.lat !== '' && row.lat != null) ? parseFloat(row.lat) : null;
         var lng = (row.lng !== '' && row.lng != null) ? parseFloat(row.lng) : null;
         return {
-          id:          i,
+          id:          (row.sheetRow != null ? parseInt(row.sheetRow, 10) : i),
           sheetRow:    row.sheetRow,
           territory:   (row.territory || activeTerritory || '').trim(),
           address:     (row.address || '').trim(),
@@ -3427,7 +3427,7 @@ function pingNearbyAddresses() {
     // Build addresses list for UI
     addresses = (json.rows || []).map(function(row, i){
       var addr = {
-        id: i,
+        id: (row.sheetRow != null ? parseInt(row.sheetRow, 10) : (900000 + i)),
         sheetRow: row.sheetRow,
         territory: row.territory,
         address: row.address,
@@ -3468,8 +3468,15 @@ function pingNearbyAddresses() {
     });
 
     updateStats();
-    buildList();
-    refreshMapMarkers();
+
+    // Don't rebuild the sidebar or re-flash map markers while the rep has a
+    // form open — it causes visible jank and scroll-position loss mid-interaction.
+    // buildList() and refreshMapMarkers() are both called by closeForm() anyway,
+    // so the UI will catch up the moment they dismiss the current form.
+    if (activeId === null) {
+      buildList();
+      refreshMapMarkers();
+    }
 
     // Don't forcibly re-center the map on every GPS update — too disruptive
     // while the rep is interacting with the address list or form.
