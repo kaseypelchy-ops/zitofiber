@@ -27,8 +27,8 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.min.css"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.min.css"/>
-<!-- App styles — bump ?v= whenever you update style.css so browsers fetch fresh -->
-<link rel="stylesheet" href="style.css">
+<!-- App styles — auto cache-busted by deploy pipeline via ?v= query string -->
+<link rel="stylesheet" href="style.css?v=2.0.1">
 </head>
 <body>
 
@@ -61,7 +61,7 @@
       <div class="splash-prog-label">Loading session…</div>
     </div>
   </div>
-  <div class="splash-ver">ZITO FIELDOS v1.0.3 • Production • Build 2026.02.22</div>
+  <div class="splash-ver">ZITO FIELDOS v2.0.1 • Production • Build 2026.03.04</div>
 </div>
 
 <!-- ═══════════════════ SIGN-OUT CONFIRM ═══════════════════ -->
@@ -641,14 +641,14 @@
           <div class="pkg-icon">⚡</div>
           <div class="pkg-name">Mega Speed</div>
           <div class="pkg-speed">500 Mbps</div>
-          <div class="pkg-price">$44.95/mo</div>
+          <div class="pkg-price">$45.95/mo</div>
         </div>
         <div class="pkg-card gig-card" id="pkg-gig" onclick="pickPkg('gig')">
           <span class="pkg-check">✓</span>
           <div class="pkg-icon">🚀</div>
           <div class="pkg-name">Gig Speed</div>
           <div class="pkg-speed">1,000 Mbps</div>
-          <div class="pkg-price">$54.95/mo</div>
+          <div class="pkg-price">$55.95/mo</div>
         </div>
       </div>
 
@@ -812,17 +812,8 @@
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.min.js"></script>
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<!-- App logic — bump ?v= whenever you push a new version of app.js -->
-<script defer src="app.js"></script>
-<!-- Supabase client (optional) -->
-<script type="module">
-  import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-  window.supabase = createClient(
-    "YOUR_SUPABASE_URL",
-    "YOUR_SUPABASE_ANON_KEY"
-  );
-</script>
+<!-- App logic — auto cache-busted by deploy pipeline via ?v= query string -->
+<script defer src="app.js?v=2.0.1"></script>
 <!-- Service worker: caches app shell + tiles so the app loads fast on weak signal -->
 <script>
   if ('serviceWorker' in navigator) {

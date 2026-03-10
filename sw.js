@@ -61,6 +61,27 @@ self.addEventListener('fetch', function(e) {
   // Never intercept Nominatim (reverse geocode must always be fresh)
   if (url.includes('nominatim.openstreetmap.org')) return;
 
+  // ── index.html: network-first ─────────────────────────────
+  // Always try the network first so reps get fresh HTML after a deploy.
+  // Cache-first here means reps who never close the app tab can be stuck on
+  // stale markup for days even after a CACHE_VERSION bump activates.
+  var isIndex = url.endsWith('/') || url.endsWith('/index.html') || url.endsWith('index.html');
+  if (isIndex) {
+    e.respondWith(
+      fetch(e.request).then(function(response) {
+        if (response && response.status === 200) {
+          var clone = response.clone();
+          caches.open(CACHE_VERSION).then(function(cache) { cache.put(e.request, clone); });
+        }
+        return response;
+      }).catch(function() {
+        // Offline — fall back to cached copy so the app still opens
+        return caches.match(e.request);
+      })
+    );
+    return;
+  }
+
   // ── Map tiles: cache-first with network fallback ──────────
   // Tiles are large in number but small individually. Cache them
   // so zooming around a visited area works offline.

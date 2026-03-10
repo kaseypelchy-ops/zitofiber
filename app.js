@@ -1057,6 +1057,8 @@ function showGeocodeBar(done, total, failed) {
   if (!bar) return;
   failed = failed || 0;
   var pct = Math.round((done / total) * 100);
+  // Must remove .hidden first — it carries display:none !important which beats inline styles
+  bar.classList.remove('hidden');
   bar.style.display = 'flex';
   var found = done - failed;
   document.getElementById('gc-text').textContent = 'Geocoding… ' + found + ' found, ' + failed + ' not found — ' + done + '/' + total;
@@ -1065,7 +1067,9 @@ function showGeocodeBar(done, total, failed) {
 
 function hideGeocodeBar() {
   var bar = document.getElementById('geocode-bar');
-  if (bar) bar.style.display = 'none';
+  if (!bar) return;
+  bar.style.display = 'none';
+  bar.classList.add('hidden');
 }
 
 // ──────────────────────────────────────────────────────────
@@ -1765,7 +1769,7 @@ function submitSale(pkgLabel) {
   }
 
   var pkg = PKG[selPkg];
-  var monthlyTotal = (pkg.base + EERO + PROC).toFixed(2);
+  var monthlyTotal = (pkg.base + MODEM + EERO + PROC).toFixed(2);
   var pricingSummary = pkgLabel + ' | Monthly: $' + monthlyTotal + ' | First Month: $16.00 (internet free)';
   if (install) {
     var installDate      = new Date(install + 'T12:00:00');
@@ -2548,8 +2552,8 @@ function renderCoverageTab() {
 // ── Forecast Tab ──────────────────────────────────────────
 // Pricing constants (match PKG at top of file)
 var FC_MONTHLY = {
-  mega: 29.95 + 5.00 + 1.00,  // base + eero + proc
-  gig:  39.95 + 5.00 + 1.00
+  mega: 29.95 + 10.00 + 5.00 + 1.00,  // base + modem + eero + proc
+  gig:  39.95 + 10.00 + 5.00 + 1.00
 };
 
 function renderForecastTab() {
@@ -3060,10 +3064,6 @@ function timeAgo(isoString) {
   if (diff < 3600) return Math.floor(diff/60) + 'm ago';
   return Math.floor(diff/3600) + 'h ago';
 }
-function escHtml(str) {
-  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
-
 // ──────────────────────────────────────────────────────────
 //  BADGE & ONLINE/OFFLINE STATUS
 // ──────────────────────────────────────────────────────────
@@ -4523,8 +4523,8 @@ function buildAIPayload() {
   });
 
   // --- Forecast ---
-  var MEGA_MRR = 29.95 + 5.00 + 1.00;
-  var GIG_MRR  = 39.95 + 5.00 + 1.00;
+  var MEGA_MRR = 29.95 + 10.00 + 5.00 + 1.00;
+  var GIG_MRR  = 39.95 + 10.00 + 5.00 + 1.00;
   var currentMRR  = (totalMega * MEGA_MRR) + (totalGig * GIG_MRR);
   var projSales   = Math.round(pending * globalCR);
   var projGig     = Math.round(projSales * (gigMix || 0.40));
@@ -4651,7 +4651,7 @@ function runAIAnalysis() {
     'You receive real-time door-knocking data and produce a concise, actionable daily briefing for the sales manager. ' +
     'Be direct and specific. Use exact numbers. Avoid generic advice. ' +
     'Prioritize actions by urgency and revenue impact. ' +
-    'Gig Speed ($54.95/mo) is higher value than Mega Speed ($44.95/mo). ' +
+    'Gig Speed ($55.95/mo) is higher value than Mega Speed ($45.95/mo). ' +
     'Respond ONLY with a valid JSON object — no markdown fences, no preamble. ' +
     'Schema:\n' +
     '{\n' +
