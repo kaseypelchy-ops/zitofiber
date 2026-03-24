@@ -40,19 +40,18 @@ var COLORS = {
   pending:       '#6b7280',
   mega:          '#8b5cf6',
   gig:           '#10b981',
-  nothome:       '#d97706',
-  brightspeed:   '#ef4444',
-  incontract:    '#818cf8',
-  notinterested: '#dc2626',
-  goback:        '#06b6d4',
-  vacant:        '#ca8a04',
-  business:      '#6366f1',
-  // Bryson City extras
-  nothome2:      '#b45309',
-  nothome3:      '#92400e',
-  nothome4:      '#ef4444',
-  competitor:    '#dc2626',
-  activecustomer:'#facc15'
+  nothome:       '#f59e0b',   // amber
+  nothome2:      '#f59e0b',
+  nothome3:      '#f59e0b',
+  nothome4:      '#f59e0b',
+  brightspeed:   '#ef4444',   // red
+  incontract:    '#6366f1',   // indigo
+  notinterested: '#ec4899',   // pink
+  goback:        '#06b6d4',   // cyan
+  vacant:        '#78716c',   // stone
+  business:      '#2563eb',   // blue
+  competitor:    '#f97316',   // orange
+  activecustomer:'#facc15'    // yellow
 };
 var COLOR_ACTIVE = '#facc15';
 
@@ -333,7 +332,7 @@ function fetchAddressesFromSheet() {
         var lat = (row.lat !== '' && row.lat != null) ? parseFloat(row.lat) : null;
         var lng = (row.lng !== '' && row.lng != null) ? parseFloat(row.lng) : null;
         return {
-          id:          (row.sheetRow != null ? parseInt(row.sheetRow, 10) : i),
+          id:          i,
           sheetRow:    row.sheetRow,
           territory:   (row.territory || activeTerritory || '').trim(),
           address:     (row.address || '').trim(),
@@ -632,17 +631,17 @@ var heatMapOn         = false;
 var HEAT_COLORS = {
   mega:          { fill: '#8b5cf6', opacity: 0.55 },
   gig:           { fill: '#10b981', opacity: 0.55 },
-  nothome:       { fill: '#d97706', opacity: 0.40 },
-  nothome2:      { fill: '#b45309', opacity: 0.45 },
-  nothome3:      { fill: '#92400e', opacity: 0.50 },
-  nothome4:      { fill: '#ef4444', opacity: 0.55 },
+  nothome:       { fill: '#f59e0b', opacity: 0.40 },
+  nothome2:      { fill: '#f59e0b', opacity: 0.45 },
+  nothome3:      { fill: '#f59e0b', opacity: 0.50 },
+  nothome4:      { fill: '#f59e0b', opacity: 0.55 },
   brightspeed:   { fill: '#ef4444', opacity: 0.45 },
-  competitor:    { fill: '#dc2626', opacity: 0.45 },
-  incontract:    { fill: '#818cf8', opacity: 0.40 },
-  notinterested: { fill: '#dc2626', opacity: 0.45 },
+  competitor:    { fill: '#f97316', opacity: 0.45 },
+  incontract:    { fill: '#6366f1', opacity: 0.40 },
+  notinterested: { fill: '#ec4899', opacity: 0.45 },
   goback:        { fill: '#06b6d4', opacity: 0.40 },
-  vacant:        { fill: '#ca8a04', opacity: 0.35 },
-  business:      { fill: '#6366f1', opacity: 0.40 },
+  vacant:        { fill: '#78716c', opacity: 0.35 },
+  business:      { fill: '#2563eb', opacity: 0.40 },
   activecustomer:{ fill: '#facc15', opacity: 0.50 },
   pending:       { fill: '#6b7280', opacity: 0.20 }
 };
@@ -1057,8 +1056,6 @@ function showGeocodeBar(done, total, failed) {
   if (!bar) return;
   failed = failed || 0;
   var pct = Math.round((done / total) * 100);
-  // Must remove .hidden first — it carries display:none !important which beats inline styles
-  bar.classList.remove('hidden');
   bar.style.display = 'flex';
   var found = done - failed;
   document.getElementById('gc-text').textContent = 'Geocoding… ' + found + ' found, ' + failed + ' not found — ' + done + '/' + total;
@@ -1067,9 +1064,7 @@ function showGeocodeBar(done, total, failed) {
 
 function hideGeocodeBar() {
   var bar = document.getElementById('geocode-bar');
-  if (!bar) return;
-  bar.style.display = 'none';
-  bar.classList.add('hidden');
+  if (bar) bar.style.display = 'none';
 }
 
 // ──────────────────────────────────────────────────────────
@@ -1079,18 +1074,17 @@ var TAG_HTML  = {
   mega:          '<span class="ar-tag tag-mega">⚡ Mega</span>',
   gig:           '<span class="ar-tag tag-gig">🚀 Gig</span>',
   nothome:       '<span class="ar-tag tag-nh">🚪 Not Home</span>',
+  nothome2:      '<span class="ar-tag tag-nh">🚪 NH ×2</span>',
+  nothome3:      '<span class="ar-tag tag-nh">🚪 NH ×3</span>',
+  nothome4:      '<span class="ar-tag tag-nh">🚪 NH ×4</span>',
   brightspeed:   '<span class="ar-tag tag-bs">⚡ Brightspeed</span>',
   incontract:    '<span class="ar-tag tag-ic">📋 In Contract</span>',
   notinterested: '<span class="ar-tag tag-ni">❌ Not Int.</span>',
   goback:        '<span class="ar-tag tag-gbl">🔄 Go Back</span>',
   vacant:        '<span class="ar-tag tag-vac">🏚️ Vacant</span>',
   business:      '<span class="ar-tag tag-biz">🏢 Business</span>',
-  // Bryson City extras
-  nothome2:      '<span class="ar-tag tag-nh">🚪 NH ×2</span>',
-  nothome3:      '<span class="ar-tag tag-nh">🚪 NH ×3</span>',
-  nothome4:      '<span class="ar-tag tag-nh">🚪 NH ×4</span>',
-  competitor:    '<span class="ar-tag tag-bs">🔌 Competitor</span>',
-  activecustomer:'<span class="ar-tag tag-mega">⚡ Active Cust.</span>'
+  competitor:    '<span class="ar-tag tag-comp">🔌 Competitor</span>',
+  activecustomer:'<span class="ar-tag tag-ac">⚡ Active Cust.</span>'
 };
 
 // ──────────────────────────────────────────────────────────
@@ -1098,38 +1092,24 @@ var TAG_HTML  = {
 // ──────────────────────────────────────────────────────────
 
 // Each entry: { label, id, status, cls, icon, needsNote, notePlaceholder }
-var DEFAULT_DISPOSITIONS = [
-  { label:'Not Home',       id:'sbt-nh',   status:'nothome',        cls:'act-nc', icon:'🚪', needsNote:true,  notePlaceholder:'Example: will return after 5pm / left flyer' },
-  { label:'Brightspeed',    id:'sbt-bs',   status:'brightspeed',    cls:'act-ni', icon:'⚡', needsNote:false },
-  { label:'In Contract',    id:'sbt-ic',   status:'incontract',     cls:'act-vm', icon:'📋', needsNote:false },
-  { label:'Not Interested', id:'sbt-ni',   status:'notinterested',  cls:'act-ni', icon:'❌', needsNote:true,  notePlaceholder:'Example: not interested — already has provider' },
-  { label:'Go Back Later',  id:'sbt-gbl',  status:'goback',         cls:'act-cb', icon:'🔄', needsNote:true,  notePlaceholder:'Example: customer asked to come back Friday' },
-  { label:'Vacant',         id:'sbt-vac',  status:'vacant',         cls:'act-nc', icon:'🏚️', needsNote:false },
-  { label:'Business',       id:'sbt-biz',  status:'business',       cls:'act-vm', icon:'🏢', needsNote:false }
+var DISPOSITIONS = [
+  { label:'Not Home x1',    id:'sbt-nh1',  status:'nothome',        cls:'act-nh',   icon:'🚪',    needsNote:true,  notePlaceholder:'Example: will return after 5pm / left flyer' },
+  { label:'Not Home x2',    id:'sbt-nh2',  status:'nothome2',       cls:'act-nh',   icon:'🚪🚪',  needsNote:false },
+  { label:'Not Home x3',    id:'sbt-nh3',  status:'nothome3',       cls:'act-nh',   icon:'🚪×3',  needsNote:false },
+  { label:'Not Home x4',    id:'sbt-nh4',  status:'nothome4',       cls:'act-nh',   icon:'🚪×4',  needsNote:false },
+  { label:'Brightspeed',    id:'sbt-bs',   status:'brightspeed',    cls:'act-bs',   icon:'⚡',    needsNote:false },
+  { label:'In Contract',    id:'sbt-ic',   status:'incontract',     cls:'act-ic',   icon:'📋',    needsNote:false },
+  { label:'Not Interested', id:'sbt-ni',   status:'notinterested',  cls:'act-ni',   icon:'❌',    needsNote:true,  notePlaceholder:'Example: not interested — already has provider' },
+  { label:'Go Back Later',  id:'sbt-gbl',  status:'goback',         cls:'act-cb',   icon:'🔄',    needsNote:true,  notePlaceholder:'Example: customer asked to come back Friday' },
+  { label:'Vacant',         id:'sbt-vac',  status:'vacant',         cls:'act-vac',  icon:'🏚️',   needsNote:false },
+  { label:'Business',       id:'sbt-biz',  status:'business',       cls:'act-biz',  icon:'🏢',    needsNote:false },
+  { label:'Competitor',     id:'sbt-comp', status:'competitor',     cls:'act-comp', icon:'🔌',    needsNote:false },
+  { label:'Active Customer',id:'sbt-ac',   status:'activecustomer', cls:'act-ac',   icon:'⚡',    needsNote:false }
 ];
 
-var BRYSON_CITY_DISPOSITIONS = [
-  { label:'Not Home x1',    id:'sbt-nh1',  status:'nothome',        cls:'act-nc', icon:'🚪',    needsNote:true,  notePlaceholder:'Example: will return after 5pm / left flyer' },
-  { label:'Not Home x2',    id:'sbt-nh2',  status:'nothome2',       cls:'act-nc', icon:'🚪🚪',  needsNote:false },
-  { label:'Not Home x3',    id:'sbt-nh3',  status:'nothome3',       cls:'act-nc', icon:'🚪×3',  needsNote:false },
-  { label:'Not Home x4',    id:'sbt-nh4',  status:'nothome4',       cls:'act-ni', icon:'🚪×4',  needsNote:false },
-  { label:'Vacant',         id:'sbt-vac',  status:'vacant',         cls:'act-nc', icon:'🏚️',   needsNote:false },
-  { label:'Not Interested', id:'sbt-ni',   status:'notinterested',  cls:'act-ni', icon:'❌',    needsNote:true,  notePlaceholder:'Example: not interested — already has provider' },
-  { label:'Business',       id:'sbt-biz',  status:'business',       cls:'act-vm', icon:'🏢',   needsNote:false },
-  { label:'In Contract',    id:'sbt-ic',   status:'incontract',     cls:'act-vm', icon:'📋',   needsNote:false },
-  { label:'Competitor',     id:'sbt-comp', status:'competitor',     cls:'act-ni', icon:'🔌',   needsNote:false },
-  { label:'Active Customer',id:'sbt-ac',   status:'activecustomer', cls:'act-vm', icon:'⚡',   needsNote:false },
-  { label:'Go Back Later',  id:'sbt-gbl',  status:'goback',         cls:'act-cb', icon:'🔄',   needsNote:true,  notePlaceholder:'Example: customer asked to come back Friday' }
-];
-
-// Returns the correct disposition config for a given address
+// Returns the disposition config (now unified for all territories)
 function getDispositions(addr) {
-  var terr = ((addr && addr.territory) || activeTerritory || '')
-    .trim().toLowerCase()
-    .replace(/,\s*/g, ' ')   // strip commas (e.g. "Bryson City, NC" → "Bryson City NC")
-    .replace(/\s+/g, '_');   // spaces → underscores
-  if (terr === 'bryson_city_nc' || terr === 'bryson_city') return BRYSON_CITY_DISPOSITIONS;
-  return DEFAULT_DISPOSITIONS;
+  return DISPOSITIONS;
 }
 
 // Returns the disposition entry whose status matches, searching the given config
@@ -1342,10 +1322,8 @@ function openForm(id) {
 
   var config      = getDispositions(addr);
   var prevEntry   = findDispByStatus(curStatus, config);
-  // Also check default config so addresses loaded from sheet restore correctly
-  if (!prevEntry) prevEntry = findDispByStatus(curStatus, DEFAULT_DISPOSITIONS);
-  // Also check Bryson City config so territory-specific statuses (nothome2, competitor, etc.) restore their notes
-  if (!prevEntry) prevEntry = findDispByStatus(curStatus, BRYSON_CITY_DISPOSITIONS);
+  // Also check unified config so addresses loaded from sheet restore correctly
+  if (!prevEntry) prevEntry = findDispByStatus(curStatus, DISPOSITIONS);
 
   if (prevEntry) {
     prevStatus.textContent = prevEntry.label;
@@ -1364,19 +1342,13 @@ function openForm(id) {
 
     var needsNote = !!prevEntry.needsNote;
     if (nsWrap && nsNote) {
-      if (needsNote) {
-        nsWrap.classList.remove('hidden');
-        nsWrap.style.display = '';
-      } else {
-        nsWrap.classList.add('hidden');
-        nsWrap.style.display = '';
-      }
+      nsWrap.style.display = needsNote ? 'block' : 'none';
       nsNote.value = curNote;
       if (needsNote && prevEntry.notePlaceholder) nsNote.placeholder = prevEntry.notePlaceholder;
     }
   } else {
     prevDisp.style.display = 'none';
-    if (nsWrap && nsNote) { nsWrap.classList.add('hidden'); nsWrap.style.display = ''; nsNote.value = ''; }
+    if (nsWrap && nsNote) { nsWrap.style.display = 'none'; nsNote.value = ''; }
   }
 
   document.getElementById('panel-form').classList.add('open');
@@ -1414,7 +1386,7 @@ function clearPrevDisposition() {
   selStatus = null;
   var nsWrap = document.getElementById('ns-note-wrap');
   var nsNote = document.getElementById('ns-note');
-  if (nsWrap) { nsWrap.classList.add('hidden'); nsWrap.style.display = ''; }
+  if (nsWrap) nsWrap.style.display = 'none';
   if (nsNote) nsNote.value = '';
   // Update marker and sidebar to reflect cleared status
   if (addr.lat && addr.lng) placeMarker(addr);
@@ -1705,14 +1677,8 @@ function pickStatus(s) {
   var wrap = document.getElementById('ns-note-wrap');
   var note = document.getElementById('ns-note');
   if (wrap && note) {
-    if (needsNote) {
-      wrap.classList.remove('hidden');
-      wrap.style.display = '';
-    } else {
-      wrap.classList.add('hidden');
-      wrap.style.display = '';
-      note.value = '';
-    }
+    wrap.style.display = needsNote ? 'block' : 'none';
+    if (!needsNote) note.value = '';
     if (needsNote && entry && entry.notePlaceholder) note.placeholder = entry.notePlaceholder;
   }
 }
@@ -1769,7 +1735,7 @@ function submitSale(pkgLabel) {
   }
 
   var pkg = PKG[selPkg];
-  var monthlyTotal = (pkg.base + MODEM + EERO + PROC).toFixed(2);
+  var monthlyTotal = (pkg.base + EERO + PROC).toFixed(2);
   var pricingSummary = pkgLabel + ' | Monthly: $' + monthlyTotal + ' | First Month: $16.00 (internet free)';
   if (install) {
     var installDate      = new Date(install + 'T12:00:00');
@@ -1824,7 +1790,7 @@ function submitStatus() {
 
   var nsWrap  = document.getElementById('ns-note-wrap');
   var nsNote  = document.getElementById('ns-note');
-  var notes   = (nsWrap && !nsWrap.classList.contains('hidden') && nsNote)
+  var notes   = (nsWrap && nsWrap.style.display !== 'none' && nsNote)
     ? (nsNote.value || '').trim()
     : '';
   var payload = {
@@ -1840,9 +1806,9 @@ function submitStatus() {
   // to write the status + note to the Addresses tab.
   maybeWriteNewAddrToSheet(addr);
 
-  // Build label→status map from both configs so any territory works
+  // Build label→status map from unified config
   var smap = {};
-  DEFAULT_DISPOSITIONS.concat(BRYSON_CITY_DISPOSITIONS).forEach(function(d) {
+  DISPOSITIONS.forEach(function(d) {
     smap[d.label] = d.status;
   });
   addr.status = smap[selStatus] || 'nocontact';
@@ -2552,8 +2518,8 @@ function renderCoverageTab() {
 // ── Forecast Tab ──────────────────────────────────────────
 // Pricing constants (match PKG at top of file)
 var FC_MONTHLY = {
-  mega: 29.95 + 10.00 + 5.00 + 1.00,  // base + modem + eero + proc
-  gig:  39.95 + 10.00 + 5.00 + 1.00
+  mega: 29.95 + 5.00 + 1.00,  // base + eero + proc
+  gig:  39.95 + 5.00 + 1.00
 };
 
 function renderForecastTab() {
@@ -3064,6 +3030,10 @@ function timeAgo(isoString) {
   if (diff < 3600) return Math.floor(diff/60) + 'm ago';
   return Math.floor(diff/3600) + 'h ago';
 }
+function escHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
 // ──────────────────────────────────────────────────────────
 //  BADGE & ONLINE/OFFLINE STATUS
 // ──────────────────────────────────────────────────────────
@@ -3427,7 +3397,7 @@ function pingNearbyAddresses() {
     // Build addresses list for UI
     addresses = (json.rows || []).map(function(row, i){
       var addr = {
-        id: (row.sheetRow != null ? parseInt(row.sheetRow, 10) : (900000 + i)),
+        id: i,
         sheetRow: row.sheetRow,
         territory: row.territory,
         address: row.address,
@@ -3468,15 +3438,8 @@ function pingNearbyAddresses() {
     });
 
     updateStats();
-
-    // Don't rebuild the sidebar or re-flash map markers while the rep has a
-    // form open — it causes visible jank and scroll-position loss mid-interaction.
-    // buildList() and refreshMapMarkers() are both called by closeForm() anyway,
-    // so the UI will catch up the moment they dismiss the current form.
-    if (activeId === null) {
-      buildList();
-      refreshMapMarkers();
-    }
+    buildList();
+    refreshMapMarkers();
 
     // Don't forcibly re-center the map on every GPS update — too disruptive
     // while the rep is interacting with the address list or form.
@@ -4523,8 +4486,8 @@ function buildAIPayload() {
   });
 
   // --- Forecast ---
-  var MEGA_MRR = 29.95 + 10.00 + 5.00 + 1.00;
-  var GIG_MRR  = 39.95 + 10.00 + 5.00 + 1.00;
+  var MEGA_MRR = 29.95 + 5.00 + 1.00;
+  var GIG_MRR  = 39.95 + 5.00 + 1.00;
   var currentMRR  = (totalMega * MEGA_MRR) + (totalGig * GIG_MRR);
   var projSales   = Math.round(pending * globalCR);
   var projGig     = Math.round(projSales * (gigMix || 0.40));
@@ -4651,7 +4614,7 @@ function runAIAnalysis() {
     'You receive real-time door-knocking data and produce a concise, actionable daily briefing for the sales manager. ' +
     'Be direct and specific. Use exact numbers. Avoid generic advice. ' +
     'Prioritize actions by urgency and revenue impact. ' +
-    'Gig Speed ($55.95/mo) is higher value than Mega Speed ($45.95/mo). ' +
+    'Gig Speed ($54.95/mo) is higher value than Mega Speed ($44.95/mo). ' +
     'Respond ONLY with a valid JSON object — no markdown fences, no preamble. ' +
     'Schema:\n' +
     '{\n' +
