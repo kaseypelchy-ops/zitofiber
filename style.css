@@ -270,6 +270,41 @@ body { font-family: 'Syne', sans-serif; color: var(--text); background: var(--bg
   flex-direction: column;
   gap: 8px;
 }
+
+.pl-filter-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.disp-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.disp-chip {
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 11px;
+  line-height: 1;
+  font-family: 'Space Mono', monospace;
+  cursor: pointer;
+  user-select: none;
+}
+
+.disp-chip.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(0,212,255,.08);
+}
+
+.disp-chip:active {
+  transform: translateY(1px);
+}
+
 .pl-title {
   font-size: 10px; font-weight: 700; text-transform: uppercase;
   letter-spacing: 1px; color: var(--muted); font-family: 'Space Mono', monospace;

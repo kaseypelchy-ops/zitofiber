@@ -13,6 +13,7 @@ var BUILD_ID    = '2026.03.04';
 var APP_ENV     = 'Production';
 
 var addresses  = [];
+var activeDispFilters = {}; // multi-select disposition filters; empty => no filtering
 var activeId   = null;
 var selPkg     = null;
 var selStatus  = null;
@@ -477,6 +478,10 @@ function launchApp() {
     startPolling();
     maybeAutoCollapse();
     initBadge();
+
+    // Disposition filter UI
+    renderDispositionFilterChips();
+
     // Ask for GPS permission right after launch so Route Mode is ready to go
     startGPSPing();
     // Managers land on the team dashboard automatically
@@ -880,6 +885,9 @@ function placeMarker(addr) {
     delete mapMarkers[addr.id];
   }
 
+  // Hide markers that do not match the current disposition filter
+  if (!matchesDispFilters(addr)) return;
+
   var color  = getMarkerColor(addr);
   var shape  = getMarkerShape(addr);
   var html   = markerHTML(color, shape);
@@ -1120,6 +1128,112 @@ function findDispByStatus(status, config) {
   return null;
 }
 
+
+
+// ──────────────────────────────────────────────────────────
+//  DISPOSITION FILTERS (multi-select)
+// ──────────────────────────────────────────────────────────
+
+function getDispFilterOptions() {
+  return [
+    { value: 'activecustomer', label: '⚡ Active Customers' },
+    { value: 'goback',         label: '🔄 Go Back Later' },
+    { value: 'nothome',        label: '🚪 Not Home x1' },
+    { value: 'nothome2',       label: '🚪 Not Home x2' },
+    { value: 'nothome3',       label: '🚪 Not Home x3' },
+    { value: 'nothome4',       label: '🚪 Not Home x4' },
+    { value: 'brightspeed',    label: '⚡ Brightspeed' },
+    { value: 'incontract',     label: '📋 In Contract' },
+    { value: 'notinterested',  label: '❌ Not Interested' },
+    { value: 'vacant',         label: '🏚️ Vacant' },
+    { value: 'business',       label: '🏢 Business' },
+    { value: 'competitor',     label: '🔌 Competitor' },
+    { value: 'mega',           label: '⚡ Mega Sale' },
+    { value: 'gig',            label: '🚀 Gig Sale' }
+  ];
+}
+
+function isDispFilterActive(value) {
+  return !!activeDispFilters[(value || '').toLowerCase().trim()];
+}
+
+function clearDispFilters() {
+  activeDispFilters = {};
+  renderDispositionFilterChips();
+  refreshAfterDispFilterChange();
+}
+
+function toggleDispFilter(value) {
+  var v = (value || '').toLowerCase().trim();
+  if (!v) return;
+  if (activeDispFilters[v]) delete activeDispFilters[v];
+  else activeDispFilters[v] = true;
+  renderDispositionFilterChips();
+  refreshAfterDispFilterChange();
+}
+
+function anyDispFilterSelected() {
+  for (var k in activeDispFilters) {
+    if (Object.prototype.hasOwnProperty.call(activeDispFilters, k)) return true;
+  }
+  return false;
+}
+
+function matchesDispFilters(addr) {
+  if (!anyDispFilterSelected()) return true;
+
+  var status = ((addr && addr.status) ? String(addr.status) : 'pending').toLowerCase().trim();
+
+  for (var k in activeDispFilters) {
+    if (!Object.prototype.hasOwnProperty.call(activeDispFilters, k)) continue;
+
+    if (k === 'activecustomer') {
+      if (getMarkerShape(addr) === 'bolt' || status === 'activecustomer') return true;
+      continue;
+    }
+
+    if (status === k) return true;
+  }
+
+  return false;
+}
+
+function renderDispositionFilterChips() {
+  var host = document.getElementById('disp-chips');
+  if (!host) return;
+
+  var any = anyDispFilterSelected();
+  var html = '';
+
+  html += '<button class="disp-chip ' + (any ? '' : 'active') + '" onclick="clearDispFilters()">All</button>';
+
+  var opts = getDispFilterOptions();
+  for (var i = 0; i < opts.length; i++) {
+    var o = opts[i];
+    var on = isDispFilterActive(o.value);
+    html += '<button class="disp-chip ' + (on ? 'active' : '') + '" onclick="toggleDispFilter(\'' + o.value + '\')">' +
+      escHtml(o.label) +
+      '</button>';
+  }
+
+  host.innerHTML = html;
+}
+
+function refreshMarkersForDispFilters() {
+  if (!mapObj) return;
+  for (var i = 0; i < addresses.length; i++) {
+    var a = addresses[i];
+    if (a && a.lat && a.lng) placeMarker(a);
+  }
+}
+
+function refreshAfterDispFilterChange() {
+  var q = '';
+  var searchEl = document.getElementById('addr-search');
+  if (searchEl) q = searchEl.value || '';
+  buildList(q || null);
+  refreshMarkersForDispFilters();
+}
 // Render the No Sale buttons into #status-grid for the given address
 function renderDispositionButtons(addr) {
   var grid = document.getElementById('status-grid');
@@ -1194,7 +1308,10 @@ function buildList(filter) {
       : addresses;
   }
 
-  document.getElementById('addr-count').textContent = addresses.length;
+    // Apply multi-select disposition filter
+  list = list.filter(matchesDispFilters);
+
+document.getElementById('addr-count').textContent = addresses.length;
 
   var html = list.map(function(a) {
     var sub   = [a.city, a.state, a.zip].filter(Boolean).join(', ') || '—';
