@@ -3563,3 +3563,136 @@ body { font-family: 'Syne', sans-serif; color: var(--text); background: var(--bg
   .dz-confirm-box { padding: 20px 16px 18px; }
   .dz-btn-confirm, .dz-btn-cancel { padding: 11px; font-size: 13px; }
 }
+
+/* ── Pin Drop Confirm Modal ─────────────────────────────── */
+#pin-confirm-modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.72);
+  z-index: 10500;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+#pin-confirm-modal.open { display: flex; }
+
+.pin-confirm-box {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 26px 24px 22px;
+  width: min(400px, 100%);
+  box-shadow: 0 24px 64px rgba(0,0,0,.65);
+}
+
+.pin-confirm-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.pin-confirm-title {
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--text);
+}
+.pin-confirm-close {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 17px;
+  cursor: pointer;
+  padding: 2px 8px;
+  border-radius: 8px;
+}
+.pin-confirm-close:hover { background: rgba(255,255,255,.07); }
+
+.pin-confirm-hint {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 18px;
+  line-height: 1.4;
+}
+
+.pin-confirm-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 14px;
+}
+.pin-field-label {
+  display: block;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  margin-top: 6px;
+}
+.pin-field-input {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 10px 13px;
+  color: var(--text);
+  font-family: 'Syne', sans-serif;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+.pin-field-input:focus { outline: none; border-color: #3b82f6; }
+
+.pin-field-row {
+  display: flex;
+  gap: 10px;
+}
+.pin-field-half {
+  flex: 1;
+}
+
+.pin-confirm-coords {
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 18px;
+  padding: 7px 10px;
+  background: rgba(255,255,255,.04);
+  border-radius: 8px;
+  text-align: center;
+  font-family: monospace;
+}
+
+.pin-confirm-actions {
+  display: flex;
+  gap: 10px;
+}
+.pin-btn-confirm {
+  flex: 1;
+  background: #3b82f6;
+  color: #fff;
+  border: none;
+  border-radius: 11px;
+  padding: 13px;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: 'Syne', sans-serif;
+  cursor: pointer;
+  transition: background .15s;
+}
+.pin-btn-confirm:hover { background: #2563eb; }
+.pin-btn-cancel {
+  background: rgba(255,255,255,.07);
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  padding: 13px;
+  font-size: 14px;
+  font-family: 'Syne', sans-serif;
+  cursor: pointer;
+}
+.pin-btn-cancel:hover { background: rgba(255,255,255,.12); }
+
+@media (max-width: 480px) {
+  .pin-confirm-box { padding: 20px 16px 18px; }
+  .pin-btn-confirm, .pin-btn-cancel { padding: 11px; font-size: 13px; }
+}

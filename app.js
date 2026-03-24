@@ -3588,6 +3588,9 @@ function cancelPinDropMode() {
   if (tempPinMarker && mapObj) { mapObj.removeLayer(tempPinMarker); tempPinMarker = null; }
 }
 
+// Pending pin-drop data while the confirm modal is open
+var _pendingPin = null;
+
 function handleMapPinDrop(latlng) {
   // Immediately exit pin mode so accidental double-taps don't fire twice
   cancelPinDropMode();
@@ -3622,25 +3625,60 @@ function handleMapPinDrop(latlng) {
       // Build street: house_number + road is the most reliable combo
       var street = ((a.house_number || '') + ' ' + (a.road || a.pedestrian || a.path || '')).trim();
       if (!street) {
-        // Fall back to the display_name first segment, or coords
         street = data && data.display_name
           ? data.display_name.split(',')[0].trim()
-          : ('Pin at ' + lat.toFixed(5) + ', ' + lng.toFixed(5));
+          : '';
       }
 
       var city  = a.city || a.town || a.village || a.hamlet || a.county || '';
       var state = a.state ? stateAbbr(a.state) : '';
       var zip   = a.postcode || '';
 
-      addPinDropAddress(street, city, state, zip, lat, lng);
+      showPinConfirm(street, city, state, zip, lat, lng);
     })
     .catch(function() {
       if (tempPinMarker && mapObj) { mapObj.removeLayer(tempPinMarker); tempPinMarker = null; }
-      // Still add with coords as fallback so the rep isn't left hanging
-      var street = 'Pin at ' + lat.toFixed(5) + ', ' + lng.toFixed(5);
-      addPinDropAddress(street, '', '', '', lat, lng);
-      toast('⚠ Could not look up address — added as pin coordinates', 't-err');
+      // Show modal with empty fields so rep can type the address manually
+      showPinConfirm('', '', '', '', lat, lng);
+      toast('⚠ Could not look up address — enter it manually', 't-err');
     });
+}
+
+function showPinConfirm(street, city, state, zip, lat, lng) {
+  _pendingPin = { lat: lat, lng: lng };
+  document.getElementById('pin-cf-street').value = street;
+  document.getElementById('pin-cf-city').value   = city;
+  document.getElementById('pin-cf-state').value  = state;
+  document.getElementById('pin-cf-zip').value    = zip;
+  document.getElementById('pin-cf-coords').textContent = lat.toFixed(6) + ', ' + lng.toFixed(6);
+  document.getElementById('pin-confirm-modal').classList.add('open');
+  // Auto-focus the street field so the rep can immediately start correcting
+  setTimeout(function() { document.getElementById('pin-cf-street').focus(); }, 120);
+}
+
+function confirmPinAddress() {
+  if (!_pendingPin) return;
+  var street = document.getElementById('pin-cf-street').value.trim();
+  var city   = document.getElementById('pin-cf-city').value.trim();
+  var state  = document.getElementById('pin-cf-state').value.trim();
+  var zip    = document.getElementById('pin-cf-zip').value.trim();
+
+  if (!street) {
+    toast('⚠ Street address is required', 't-err');
+    document.getElementById('pin-cf-street').focus();
+    return;
+  }
+
+  document.getElementById('pin-confirm-modal').classList.remove('open');
+  addPinDropAddress(street, city, state, zip, _pendingPin.lat, _pendingPin.lng);
+  _pendingPin = null;
+}
+
+function cancelPinConfirm() {
+  document.getElementById('pin-confirm-modal').classList.remove('open');
+  _pendingPin = null;
+  // Also remove the temp pin if it's still there
+  if (tempPinMarker && mapObj) { mapObj.removeLayer(tempPinMarker); tempPinMarker = null; }
 }
 
 // Convert full US state name → 2-letter abbreviation

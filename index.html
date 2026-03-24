@@ -27,8 +27,8 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.min.css"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.min.css"/>
-<!-- App styles — auto cache-busted by deploy pipeline via ?v= query string -->
-<link rel="stylesheet" href="style.css?v=2.0.1">
+<!-- App styles — bump ?v= whenever you update style.css so browsers fetch fresh -->
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
 
@@ -61,7 +61,7 @@
       <div class="splash-prog-label">Loading session…</div>
     </div>
   </div>
-  <div class="splash-ver">ZITO FIELDOS v2.0.1 • Production • Build 2026.03.04</div>
+  <div class="splash-ver">ZITO FIELDOS v1.0.3 • Production • Build 2026.02.22</div>
 </div>
 
 <!-- ═══════════════════ SIGN-OUT CONFIRM ═══════════════════ -->
@@ -559,6 +559,38 @@
     </div>
   </div>
 
+  <!-- Pin Drop Address Confirm Modal -->
+  <div id="pin-confirm-modal" onclick="if(event.target===this)cancelPinConfirm()">
+    <div class="pin-confirm-box">
+      <div class="pin-confirm-header">
+        <div class="pin-confirm-title">📍 Confirm Address</div>
+        <button class="pin-confirm-close" onclick="cancelPinConfirm()">✕</button>
+      </div>
+      <div class="pin-confirm-hint">Tap any field to correct it if the address is wrong.</div>
+      <div class="pin-confirm-fields">
+        <label class="pin-field-label">Street</label>
+        <input class="pin-field-input" id="pin-cf-street" type="text" placeholder="123 Main St" autocomplete="off">
+        <label class="pin-field-label">City</label>
+        <input class="pin-field-input" id="pin-cf-city" type="text" placeholder="City" autocomplete="off">
+        <div class="pin-field-row">
+          <div class="pin-field-half">
+            <label class="pin-field-label">State</label>
+            <input class="pin-field-input" id="pin-cf-state" type="text" placeholder="PA" maxlength="2" autocomplete="off">
+          </div>
+          <div class="pin-field-half">
+            <label class="pin-field-label">ZIP</label>
+            <input class="pin-field-input" id="pin-cf-zip" type="text" placeholder="15213" maxlength="10" autocomplete="off">
+          </div>
+        </div>
+      </div>
+      <div class="pin-confirm-coords" id="pin-cf-coords"></div>
+      <div class="pin-confirm-actions">
+        <button class="pin-btn-confirm" onclick="confirmPinAddress()">✅ Add Address</button>
+        <button class="pin-btn-cancel" onclick="cancelPinConfirm()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Drop Pin FAB — mobile only, replaces the topbar button which overflows on small screens -->
   <button id="btn-drop-pin-fab" onclick="togglePinDropMode()" title="Drop a pin / add an address">
     📍 Drop Pin
@@ -641,14 +673,14 @@
           <div class="pkg-icon">⚡</div>
           <div class="pkg-name">Mega Speed</div>
           <div class="pkg-speed">500 Mbps</div>
-          <div class="pkg-price">$45.95/mo</div>
+          <div class="pkg-price">$44.95/mo</div>
         </div>
         <div class="pkg-card gig-card" id="pkg-gig" onclick="pickPkg('gig')">
           <span class="pkg-check">✓</span>
           <div class="pkg-icon">🚀</div>
           <div class="pkg-name">Gig Speed</div>
           <div class="pkg-speed">1,000 Mbps</div>
-          <div class="pkg-price">$55.95/mo</div>
+          <div class="pkg-price">$54.95/mo</div>
         </div>
       </div>
 
@@ -812,8 +844,17 @@
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.min.js"></script>
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<!-- App logic — auto cache-busted by deploy pipeline via ?v= query string -->
-<script defer src="app.js?v=2.0.1"></script>
+<!-- App logic — bump ?v= whenever you push a new version of app.js -->
+<script defer src="app.js"></script>
+<!-- Supabase client (optional) -->
+<script type="module">
+  import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+  window.supabase = createClient(
+    "YOUR_SUPABASE_URL",
+    "YOUR_SUPABASE_ANON_KEY"
+  );
+</script>
 <!-- Service worker: caches app shell + tiles so the app loads fast on weak signal -->
 <script>
   if ('serviceWorker' in navigator) {
