@@ -1196,6 +1196,17 @@ function buildList(filter) {
 
   document.getElementById('addr-count').textContent = addresses.length;
 
+  // Apply disposition filter if active
+  if (activeDispoFilter) {
+    list = list.filter(function(a) {
+      var s = (a.status || '').toLowerCase();
+      if (activeDispoFilter === 'nothome') {
+        return s === 'nothome' || s === 'nothome2' || s === 'nothome3' || s === 'nothome4';
+      }
+      return s === activeDispoFilter;
+    });
+  }
+
   var html = list.map(function(a) {
     var sub   = [a.city, a.state, a.zip].filter(Boolean).join(', ') || '—';
     var tag   = TAG_HTML[a.status] || '';
@@ -1244,6 +1255,11 @@ function buildList(filter) {
 }
 
 function filterList(val) { buildList(val || null); }
+
+function filterByDisposition(val) {
+  activeDispoFilter = (val || '').toLowerCase();
+  buildList(document.getElementById('addr-search').value || null);
+}
 
 function escHtml(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -2655,6 +2671,7 @@ function haversineMiles(lat1, lng1, lat2, lng2) {
 // ──────────────────────────────────────────────────────────
 var routeMode = false;
 var staleMode = false;
+var activeDispoFilter = '';
 var STALE_HOURS = 2; // hours before a Not Home / Go Back is considered stale
 
 function toggleRouteMode() {
