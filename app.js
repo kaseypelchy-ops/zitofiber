@@ -1093,18 +1093,18 @@ var TAG_HTML  = {
 
 // Each entry: { label, id, status, cls, icon, needsNote, notePlaceholder }
 var DISPOSITIONS = [
-  { label:'Not Home x1',    id:'sbt-nh1',  status:'nothome',        cls:'act-nh',   icon:'🚪',    needsNote:false },
-  { label:'Not Home x2',    id:'sbt-nh2',  status:'nothome2',       cls:'act-nh',   icon:'🚪🚪',  needsNote:false },
-  { label:'Not Home x3',    id:'sbt-nh3',  status:'nothome3',       cls:'act-nh',   icon:'🚪×3',  needsNote:false },
-  { label:'Not Home x4',    id:'sbt-nh4',  status:'nothome4',       cls:'act-nh',   icon:'🚪×4',  needsNote:false },
-  { label:'Brightspeed',    id:'sbt-bs',   status:'brightspeed',    cls:'act-bs',   icon:'⚡',    needsNote:false },
-  { label:'In Contract',    id:'sbt-ic',   status:'incontract',     cls:'act-ic',   icon:'📋',    needsNote:false },
+  { label:'Not Home x1',    id:'sbt-nh1',  status:'nothome',        cls:'act-nh',   icon:'🚪',    needsNote:true },
+  { label:'Not Home x2',    id:'sbt-nh2',  status:'nothome2',       cls:'act-nh',   icon:'🚪🚪',  needsNote:true },
+  { label:'Not Home x3',    id:'sbt-nh3',  status:'nothome3',       cls:'act-nh',   icon:'🚪×3',  needsNote:true },
+  { label:'Not Home x4',    id:'sbt-nh4',  status:'nothome4',       cls:'act-nh',   icon:'🚪×4',  needsNote:true },
+  { label:'Brightspeed',    id:'sbt-bs',   status:'brightspeed',    cls:'act-bs',   icon:'⚡',    needsNote:true },
+  { label:'In Contract',    id:'sbt-ic',   status:'incontract',     cls:'act-ic',   icon:'📋',    needsNote:true },
   { label:'Not Interested', id:'sbt-ni',   status:'notinterested',  cls:'act-ni',   icon:'❌',    needsNote:true,  notePlaceholder:'Example: not interested — already has provider' },
   { label:'Go Back Later',  id:'sbt-gbl',  status:'goback',         cls:'act-cb',   icon:'🔄',    needsNote:true,  notePlaceholder:'Example: customer asked to come back Friday' },
-  { label:'Vacant',         id:'sbt-vac',  status:'vacant',         cls:'act-vac',  icon:'🏚️',   needsNote:false },
-  { label:'Business',       id:'sbt-biz',  status:'business',       cls:'act-biz',  icon:'🏢',    needsNote:false },
-  { label:'Competitor',     id:'sbt-comp', status:'competitor',     cls:'act-comp', icon:'🔌',    needsNote:false },
-  { label:'Active Customer',id:'sbt-ac',   status:'activecustomer', cls:'act-ac',   icon:'⚡',    needsNote:false }
+  { label:'Vacant',         id:'sbt-vac',  status:'vacant',         cls:'act-vac',  icon:'🏚️',   needsNote:true },
+  { label:'Business',       id:'sbt-biz',  status:'business',       cls:'act-biz',  icon:'🏢',    needsNote:true },
+  { label:'Competitor',     id:'sbt-comp', status:'competitor',     cls:'act-comp', icon:'🔌',    needsNote:true },
+  { label:'Active Customer',id:'sbt-ac',   status:'activecustomer', cls:'act-ac',   icon:'⚡',    needsNote:true }
 ];
 
 // Returns the disposition config (now unified for all territories)
