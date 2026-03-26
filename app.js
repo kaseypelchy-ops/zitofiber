@@ -880,6 +880,14 @@ function placeMarker(addr) {
     delete mapMarkers[addr.id];
   }
 
+  // If a disposition filter is active, only show matching markers
+  if (activeDispoFilter) {
+    var fs = (addr.status || '').toLowerCase();
+    if (activeDispoFilter === 'nothome') {
+      if (fs !== 'nothome' && fs !== 'nothome2' && fs !== 'nothome3' && fs !== 'nothome4') return;
+    } else if (fs !== activeDispoFilter) return;
+  }
+
   var color  = getMarkerColor(addr);
   var shape  = getMarkerShape(addr);
   var html   = markerHTML(color, shape);
@@ -1259,6 +1267,7 @@ function filterList(val) { buildList(val || null); }
 function filterByDisposition(val) {
   activeDispoFilter = (val || '').toLowerCase();
   buildList(document.getElementById('addr-search').value || null);
+  refreshMapMarkers();
 }
 
 function escHtml(s) {
@@ -2086,6 +2095,15 @@ function refreshMapMarkers() {
   var toAdd = [];
   (addresses || []).forEach(function(a){
     if (!a || a.lat == null || a.lng == null) return;
+
+    // Skip addresses that don't match the active disposition filter
+    if (activeDispoFilter) {
+      var s = (a.status || '').toLowerCase();
+      if (activeDispoFilter === 'nothome') {
+        if (s !== 'nothome' && s !== 'nothome2' && s !== 'nothome3' && s !== 'nothome4') return;
+      } else if (s !== activeDispoFilter) return;
+    }
+
     var color  = getMarkerColor(a);
     var shape  = getMarkerShape(a);
     var html   = markerHTML(color, shape);
