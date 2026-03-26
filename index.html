@@ -483,6 +483,21 @@
         <div class="disp-chips" id="disp-chips"></div>
       </div>
       <input class="search-in" id="addr-search" placeholder="🔍 Search addresses…" oninput="filterList(this.value)">
+      <select class="dispo-filter" id="dispo-filter" onchange="filterByDisposition(this.value)">
+        <option value="">All Dispositions</option>
+        <option value="pending">📋 Pending</option>
+        <option value="nothome">🚪 Not Home (all)</option>
+        <option value="notinterested">❌ Not Interested</option>
+        <option value="goback">🔄 Go Back</option>
+        <option value="brightspeed">⚡ Brightspeed</option>
+        <option value="incontract">📋 In Contract</option>
+        <option value="competitor">🔌 Competitor</option>
+        <option value="vacant">🏚️ Vacant</option>
+        <option value="business">🏢 Business</option>
+        <option value="activecustomer">⚡ Active Customer</option>
+        <option value="mega">⚡ Mega Sale</option>
+        <option value="gig">🚀 Gig Sale</option>
+      </select>
     </div>
     <div id="addr-items"></div>
     <div class="pl-footer">
