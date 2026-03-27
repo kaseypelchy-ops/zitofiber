@@ -880,13 +880,33 @@ function placeMarker(addr) {
     delete mapMarkers[addr.id];
   }
 
-  // If a disposition filter is active, only show matching markers
-  if (activeDispoFilter) {
-    var fs = (addr.status || '').toLowerCase();
-    if (activeDispoFilter === 'nothome') {
-      if (fs !== 'nothome' && fs !== 'nothome2' && fs !== 'nothome3' && fs !== 'nothome4') return;
-    } else if (fs !== activeDispoFilter) return;
+ // If a disposition filter is active, keep:
+// 1) the selected disposition
+// 2) pending
+// 3) homes passed
+// 4) active customers
+if (activeDispoFilter) {
+  var fs = (addr.status || '').toLowerCase().trim();
+  var shape = getMarkerShape(addr);
+
+  var isPending = fs === 'pending';
+  var isHomesPassed = shape === 'house';
+  var isActiveCustomer = shape === 'bolt';
+
+  var matchesDisposition = false;
+  if (activeDispoFilter === 'nothome') {
+    matchesDisposition = (
+      fs === 'nothome' ||
+      fs === 'nothome2' ||
+      fs === 'nothome3' ||
+      fs === 'nothome4'
+    );
+  } else {
+    matchesDisposition = fs === activeDispoFilter;
   }
+
+  if (!matchesDisposition && !isPending && !isHomesPassed && !isActiveCustomer) return;
+}
 
   var color  = getMarkerColor(addr);
   var shape  = getMarkerShape(addr);
@@ -2096,13 +2116,28 @@ function refreshMapMarkers() {
   (addresses || []).forEach(function(a){
     if (!a || a.lat == null || a.lng == null) return;
 
-    // Skip addresses that don't match the active disposition filter
     if (activeDispoFilter) {
-      var s = (a.status || '').toLowerCase();
-      if (activeDispoFilter === 'nothome') {
-        if (s !== 'nothome' && s !== 'nothome2' && s !== 'nothome3' && s !== 'nothome4') return;
-      } else if (s !== activeDispoFilter) return;
-    }
+  var s = (a.status || '').toLowerCase().trim();
+  var shape = getMarkerShape(a);
+
+  var isPending = s === 'pending';
+  var isHomesPassed = shape === 'house';
+  var isActiveCustomer = shape === 'bolt';
+
+  var matchesDisposition = false;
+  if (activeDispoFilter === 'nothome') {
+    matchesDisposition = (
+      s === 'nothome' ||
+      s === 'nothome2' ||
+      s === 'nothome3' ||
+      s === 'nothome4'
+    );
+  } else {
+    matchesDisposition = s === activeDispoFilter;
+  }
+
+  if (!matchesDisposition && !isPending && !isHomesPassed && !isActiveCustomer) return;
+}
 
     var color  = getMarkerColor(a);
     var shape  = getMarkerShape(a);
