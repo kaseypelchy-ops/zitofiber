@@ -86,15 +86,22 @@
     <h1>Initialize Sales Session</h1>
     <p class="sub">Securely configure your territory, rep credentials, and address dataset before deployment.</p>
 
+    <div class="step" id="team-step">
+      <div class="slabel">Step 1 — Select Your Team</div>
+      <select class="txt-in team-select" id="team-select" onchange="selectTeam(this.value)">
+        <option value="">— Choose a team —</option>
+      </select>
+    </div>
+
     <div class="step">
-      <div class="slabel">Step 1 — Your Name</div>
+      <div class="slabel">Step 2 — Your Name</div>
       <input class="txt-in" type="text" id="rep-name" placeholder="e.g. John Smith" oninput="validateRepName()" autocomplete="name">
       <div id="rep-name-hint">⚠ Please enter your first and last name</div>
       <div id="rep-profile-status"></div>
     </div>
 
     <div class="step">
-      <div class="slabel">Step 2 — Load Addresses <span class="text-danger">*Required</span></div>
+      <div class="slabel">Step 3 — Load Addresses <span class="text-danger">*Required</span></div>
       <p class="shint">Addresses are loaded automatically once you click Load Addresses. Click the button below to fetch them — or upload a CSV as a backup.</p>
       <button class="btn-fetch-addr" id="btn-fetch-addr" onclick="fetchAddressesFromSheet()">
         <span id="fetch-addr-icon">📋</span> Load Addresses
@@ -111,7 +118,7 @@
     </div>
 
     <div class="step">
-      <div class="slabel">Step 3 — Territory KMZ Files <span class="text-muted">(optional)</span></div>
+      <div class="slabel">Step 4 — Territory KMZ Files <span class="text-muted">(optional)</span></div>
       <p class="shint">Upload one or more KMZ files to draw territory polygons on the map.</p>
       <div class="dropzone" id="dz-kml">
         <input type="file" id="kml-file" accept=".kml,.kmz" multiple>
@@ -326,7 +333,7 @@
               <div class="cov-leg-row"><span class="cov-swatch mega"></span>Mega Sale</div>
               <div class="cov-leg-row"><span class="cov-swatch gig"></span>Gig Sale</div>
               <div class="cov-leg-row"><span class="cov-swatch nothome"></span>Not Home</div>
-              <div class="cov-leg-row"><span class="cov-swatch brightspeed"></span>Brightspeed</div>
+              <div class="cov-leg-row"><span class="cov-swatch fibercompetitor"></span>Fiber Competitor</div>
               <div class="cov-leg-row"><span class="cov-swatch incontract"></span>In Contract</div>
               <div class="cov-leg-row"><span class="cov-swatch notinterested"></span>Not Interested</div>
               <div class="cov-leg-row"><span class="cov-swatch goback"></span>Go Back Later</div>
@@ -375,7 +382,7 @@
 
         <div class="ana-card">
           <div class="ana-card-head">🆚 Competitor Breakdown by Territory</div>
-          <div class="ana-card-sub">% of homes using Brightspeed, in contract, or open market — per territory</div>
+          <div class="ana-card-sub">% of homes using Fiber Competitor, in contract, or open market — per territory</div>
           <div id="ti-competitor-table"></div>
         </div>
 
@@ -489,7 +496,7 @@
         <option value="nothome">🚪 Not Home (all)</option>
         <option value="notinterested">❌ Not Interested</option>
         <option value="goback">🔄 Go Back</option>
-        <option value="brightspeed">⚡ Brightspeed</option>
+        <option value="fibercompetitor">⚡ Fiber Competitor</option>
         <option value="incontract">📋 In Contract</option>
         <option value="competitor">🔌 Competitor</option>
         <option value="vacant">🏚️ Vacant</option>
@@ -499,6 +506,7 @@
         <option value="gig">🚀 Gig Sale</option>
       </select>
     </div>
+    <div id="territory-tabs" class="territory-tabs"></div>
     <div id="addr-items"></div>
     <div class="pl-footer">
       <button class="btn-add-addr" onclick="openAddAddrModal()">&#43; Add Address</button>
@@ -774,6 +782,19 @@
           </div>
         </div>
       </div>
+
+      <div class="sec-head">Outcome Tracking</div>
+      <div class="outcome-flags">
+        <label class="yn-flag">
+          <input type="checkbox" id="f-decision-maker">
+          <span>Decision Maker Spoken To</span>
+        </label>
+        <label class="yn-flag">
+          <input type="checkbox" id="f-followup-needed">
+          <span>Follow Up Needed</span>
+        </label>
+      </div>
+      <div class="outcome-help">Sale Made is set automatically when a sale is submitted.</div>
 
       <div class="sec-head">Submit Sale</div>
       <button class="btn-mega" id="btn-mega" onclick="submitSale('Mega Speed')" disabled>⚡ Submit — Mega Speed</button>

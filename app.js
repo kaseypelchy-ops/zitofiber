@@ -17,12 +17,41 @@ var activeId   = null;
 var selPkg     = null;
 var selStatus  = null;
 var selSlot    = null;
-var webhookURL = 'https://script.google.com/macros/s/AKfycbyyqHh3H5qbBxB2fP9dPsymDoreXGwvrjCLT-ROQGBLMjBXKpprt3LWCC2aHbbeovJp/exec';
+// ──────────────────────────────────────────────────────────
+//  TEAM CONFIG — add new teams here
+//  Each team gets its own Google Sheet + Apps Script deployment.
+//  The webhook URL is the deployed Apps Script web app URL.
+// ──────────────────────────────────────────────────────────
+var TEAMS = {
+  'Fiber Sales Team, LLC': {
+    webhook: 'https://script.google.com/macros/s/AKfycbyyqHh3H5qbBxB2fP9dPsymDoreXGwvrjCLT-ROQGBLMjBXKpprt3LWCC2aHbbeovJp/exec'
+  },
+  'Sales Focus Inc.': {
+    webhook: 'https://script.google.com/macros/s/AKfycbz906-WFbhMixpmKiX9bbX86FOHGwltVkLehJFd5z7AtAt-dJXavHHl7uPr2TgOnAc1/exec'
+  }
+  // To add more teams, duplicate the block above:
+  // 'Team Name': {
+  //   webhook: 'https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec'
+  // },
+};
+
+var TEAM_LINK_ALIASES = {
+  fiber: 'Fiber Sales Team, LLC',
+  fibersales: 'Fiber Sales Team, LLC',
+  fsi: 'Fiber Sales Team, LLC',
+  sfi: 'Sales Focus Inc.',
+  salesfocus: 'Sales Focus Inc.',
+  salesfocusinc: 'Sales Focus Inc.'
+};
+
+var activeTeam  = '';
+var webhookURL  = '';
 var repName    = 'Rep';
 var repPhone   = '';
 var repEmail   = '';
 var repWebsite = 'https://www.zitomedia.net';
 var activeTerritory = '';
+var activeTerritoryTab = '';
 var mapObj     = null;
 var mapMarkers = {};
 var clusterGroup = null; // Leaflet.markercluster group — holds all address pins
@@ -44,7 +73,7 @@ var COLORS = {
   nothome2:      '#f59e0b',
   nothome3:      '#f59e0b',
   nothome4:      '#f59e0b',
-  brightspeed:   '#ef4444',   // red
+  fibercompetitor:   '#ef4444',   // red
   incontract:    '#6366f1',   // indigo
   notinterested: '#ec4899',   // pink
   goback:        '#06b6d4',   // cyan
@@ -346,6 +375,9 @@ function fetchAddressesFromSheet() {
           salesperson: (row.salesperson || '').trim(),
           note:        (row.note || row.dispositionNote || row.disposition_note || '').toString().trim(),
           knockedAt:   (row.knockedAt || row.knocked_at || null),
+          decisionMakerSpokenTo: (row.decisionMakerSpokenTo || row.decision_maker_spoken_to || row['Decision Maker Spoken To'] || 'N').toString().trim().toUpperCase(),
+          followUpNeeded:        (row.followUpNeeded || row.follow_up_needed || row['Follow Up Needed'] || 'N').toString().trim().toUpperCase(),
+          saleMade:              (row.saleMade || row.sale_made || row['Sale Made'] || 'N').toString().trim().toUpperCase(),
           sale:        null
         };
       });
@@ -390,7 +422,70 @@ function validateRepName() {
 
 function checkLaunchReady() {
   var hasAddresses = addresses.length > 0;
-  document.getElementById('launch-btn').disabled = !(hasAddresses && hasValidName());
+  var hasTeam      = !!activeTeam;
+  document.getElementById('launch-btn').disabled = !(hasAddresses && hasValidName() && hasTeam);
+}
+
+function getPresetTeamNameFromURL() {
+  try {
+    var params = new URLSearchParams(window.location.search || '');
+    var raw = (params.get('team') || '').toLowerCase().trim();
+    if (!raw) return '';
+    if (TEAM_LINK_ALIASES[raw]) return TEAM_LINK_ALIASES[raw];
+
+    var direct = Object.keys(TEAMS).find(function(name) {
+      return name.toLowerCase().trim() === raw;
+    });
+    return direct || '';
+  } catch (e) {
+    return '';
+  }
+}
+
+function applyPresetTeamFromURL() {
+  var presetTeam = getPresetTeamNameFromURL();
+  var teamStep = document.getElementById('team-step');
+  var teamSel  = document.getElementById('team-select');
+
+  if (!presetTeam || !TEAMS[presetTeam]) {
+    if (teamStep) teamStep.style.display = '';
+    if (teamSel) teamSel.disabled = false;
+    return '';
+  }
+
+  if (teamStep) teamStep.style.display = 'none';
+  if (teamSel) {
+    teamSel.disabled = true;
+    if (!teamSel.options.length || !Array.from(teamSel.options).some(function(opt){ return opt.value === presetTeam; })) {
+      var opt = document.createElement('option');
+      opt.value = presetTeam;
+      opt.textContent = presetTeam;
+      teamSel.appendChild(opt);
+    }
+    teamSel.value = presetTeam;
+  }
+
+  selectTeam(presetTeam);
+  return presetTeam;
+}
+
+function selectTeam(val) {
+  activeTeam = (val || '').trim();
+  var team = TEAMS[activeTeam];
+  if (team) {
+    webhookURL = team.webhook;
+    SCHED_URL  = team.webhook;
+    // Clear previously loaded addresses when switching teams
+    addresses = [];
+    document.getElementById('fetch-addr-status').textContent = '';
+    document.getElementById('fetch-addr-icon').textContent = '📋';
+    document.getElementById('btn-fetch-addr').disabled = false;
+    try { localStorage.setItem('fieldos_team', activeTeam); } catch(e) {}
+  } else {
+    webhookURL = '';
+    SCHED_URL  = '';
+  }
+  checkLaunchReady();
 }
 
 // ──────────────────────────────────────────────────────────
@@ -635,7 +730,7 @@ var HEAT_COLORS = {
   nothome2:      { fill: '#f59e0b', opacity: 0.45 },
   nothome3:      { fill: '#f59e0b', opacity: 0.50 },
   nothome4:      { fill: '#f59e0b', opacity: 0.55 },
-  brightspeed:   { fill: '#ef4444', opacity: 0.45 },
+  fibercompetitor:   { fill: '#ef4444', opacity: 0.45 },
   competitor:    { fill: '#f97316', opacity: 0.45 },
   incontract:    { fill: '#6366f1', opacity: 0.40 },
   notinterested: { fill: '#ec4899', opacity: 0.45 },
@@ -859,8 +954,8 @@ function getMarkerShape(addr) {
   // Without this guard, any address with a non-empty activeCount field would
   // fall through to the `if (ac && ac !== '') return 'bolt'` catch-all below,
   // incorrectly showing "Active Customer" after Go Back Later / Not Interested /
-  // Brightspeed etc. are submitted.
-  var REP_LOGGED = ['nothome','nothome2','nothome3','nothome4','brightspeed','incontract','notinterested','goback','vacant','business','competitor','activecustomer'];
+  // Fiber Competitor etc. are submitted.
+  var REP_LOGGED = ['nothome','nothome2','nothome3','nothome4','fibercompetitor','incontract','notinterested','goback','vacant','business','competitor','activecustomer'];
   if (REP_LOGGED.indexOf(s) >= 0) return 'dot';
 
   // Sheet-driven status / activeCount checks (untouched addresses only)
@@ -1105,7 +1200,7 @@ var TAG_HTML  = {
   nothome2:      '<span class="ar-tag tag-nh">🚪 NH ×2</span>',
   nothome3:      '<span class="ar-tag tag-nh">🚪 NH ×3</span>',
   nothome4:      '<span class="ar-tag tag-nh">🚪 NH ×4</span>',
-  brightspeed:   '<span class="ar-tag tag-bs">⚡ Brightspeed</span>',
+  fibercompetitor:   '<span class="ar-tag tag-fc">⚡ Fiber Competitor</span>',
   incontract:    '<span class="ar-tag tag-ic">📋 In Contract</span>',
   notinterested: '<span class="ar-tag tag-ni">❌ Not Int.</span>',
   goback:        '<span class="ar-tag tag-gbl">🔄 Go Back</span>',
@@ -1125,7 +1220,7 @@ var DISPOSITIONS = [
   { label:'Not Home x2',    id:'sbt-nh2',  status:'nothome2',       cls:'act-nh',   icon:'🚪🚪',  needsNote:true },
   { label:'Not Home x3',    id:'sbt-nh3',  status:'nothome3',       cls:'act-nh',   icon:'🚪×3',  needsNote:true },
   { label:'Not Home x4',    id:'sbt-nh4',  status:'nothome4',       cls:'act-nh',   icon:'🚪×4',  needsNote:true },
-  { label:'Brightspeed',    id:'sbt-bs',   status:'brightspeed',    cls:'act-bs',   icon:'⚡',    needsNote:true },
+  { label:'Fiber Competitor',    id:'sbt-fc',   status:'fibercompetitor',    cls:'act-fc',   icon:'⚡',    needsNote:true },
   { label:'In Contract',    id:'sbt-ic',   status:'incontract',     cls:'act-ic',   icon:'📋',    needsNote:true },
   { label:'Not Interested', id:'sbt-ni',   status:'notinterested',  cls:'act-ni',   icon:'❌',    needsNote:true,  notePlaceholder:'Example: not interested — already has provider' },
   { label:'Go Back Later',  id:'sbt-gbl',  status:'goback',         cls:'act-cb',   icon:'🔄',    needsNote:true,  notePlaceholder:'Example: customer asked to come back Friday' },
@@ -1176,7 +1271,33 @@ function renderDispositionButtons(addr) {
   });
 })();
 
+// ──────────────────────────────────────────────────────────
+//  TERRITORY TABS — split address list by territory
+// ──────────────────────────────────────────────────────────
+function buildTerritoryTabs() {
+  var el = document.getElementById('territory-tabs');
+  if (!el) return;
+  var terrs = {};
+  addresses.forEach(function(a) { if (a.territory) terrs[a.territory] = true; });
+  var sorted = Object.keys(terrs).sort();
+  if (sorted.length < 2) { el.innerHTML = ''; activeTerritoryTab = ''; return; }
+  var html = '<button class="terr-tab' + (activeTerritoryTab === '' ? ' active' : '') + '" onclick="switchTerritoryTab(\'\')">All</button>';
+  sorted.forEach(function(t) {
+    html += '<button class="terr-tab' + (activeTerritoryTab === t ? ' active' : '') + '" onclick="switchTerritoryTab(\'' + escHtml(t).replace(/'/g, "\\'") + '\')">' + escHtml(t) + '</button>';
+  });
+  el.innerHTML = html;
+}
+
+function switchTerritoryTab(t) {
+  activeTerritoryTab = t;
+  buildTerritoryTabs();
+  buildList(document.getElementById('addr-search').value || null);
+  refreshMapMarkers();
+}
+
 function buildList(filter) {
+  // Update territory tabs
+  buildTerritoryTabs();
   // Update stale badge every time list rebuilds
   updateStaleBadge();
 
@@ -1232,6 +1353,13 @@ function buildList(filter) {
         return s === 'nothome' || s === 'nothome2' || s === 'nothome3' || s === 'nothome4';
       }
       return s === activeDispoFilter;
+    });
+  }
+
+  // Apply territory tab filter if active
+  if (activeTerritoryTab) {
+    list = list.filter(function(a) {
+      return (a.territory || '').trim() === activeTerritoryTab;
     });
   }
 
@@ -1348,6 +1476,7 @@ function openForm(id) {
   document.getElementById('f-install-date').value = '';
   document.getElementById('f-install-time').value = '';
   selSlot = null;
+  resetOutcomeFlags();
 
   ['sbt-nh','sbt-bs','sbt-ic','sbt-ni','sbt-gbl','sbt-vac','sbt-biz'].forEach(function(sid) {
     var el = document.getElementById(sid); if (el) el.className = 'stbtn';
@@ -1371,6 +1500,10 @@ function openForm(id) {
   if (!prevEntry) prevEntry = findDispByStatus(curStatus, DISPOSITIONS);
 
   if (prevEntry) {
+    setOutcomeFlags({
+      decisionMakerSpokenTo: addr.decisionMakerSpokenTo || 'N',
+      followUpNeeded: addr.followUpNeeded || 'N'
+    });
     prevStatus.textContent = prevEntry.label;
     prevStatus.className   = 'prev-disp-status s-' + curStatus;
     if (curNote) {
@@ -1394,6 +1527,10 @@ function openForm(id) {
   } else {
     prevDisp.style.display = 'none';
     if (nsWrap && nsNote) { nsWrap.classList.add('hidden'); nsNote.value = ''; }
+    setOutcomeFlags({
+      decisionMakerSpokenTo: addr.decisionMakerSpokenTo || 'N',
+      followUpNeeded: addr.followUpNeeded || 'N'
+    });
   }
 
   document.getElementById('panel-form').classList.add('open');
@@ -1420,6 +1557,9 @@ function clearPrevDisposition() {
   if (!addr) return;
   addr.status = 'pending';
   addr.note   = '';
+  addr.decisionMakerSpokenTo = 'N';
+  addr.followUpNeeded = 'N';
+  addr.saleMade = 'N';
   // Reset banner
   document.getElementById('prev-disposition').style.display = 'none';
   // Reset all disposition buttons for the current territory
@@ -1433,10 +1573,15 @@ function clearPrevDisposition() {
   var nsNote = document.getElementById('ns-note');
   if (nsWrap) nsWrap.classList.add('hidden');
   if (nsNote) nsNote.value = '';
+  resetOutcomeFlags();
   // Update marker and sidebar to reflect cleared status
   if (addr.lat && addr.lng) placeMarker(addr);
   buildList();
-  updateAddressStatus(addr, 'pending', '');
+  updateAddressStatus(addr, 'pending', '', {
+    decisionMakerSpokenTo: 'N',
+    followUpNeeded: 'N',
+    saleMade: 'N'
+  });
   toast('🗑 Disposition cleared', 't-info');
 }
 
@@ -1473,7 +1618,7 @@ function pickPkg(p) {
 // ──────────────────────────────────────────────────────────
 //  SCHEDULE PICKER
 // ──────────────────────────────────────────────────────────
-var SCHED_URL    = 'https://script.google.com/macros/s/AKfycbyyqHh3H5qbBxB2fP9dPsymDoreXGwvrjCLT-ROQGBLMjBXKpprt3LWCC2aHbbeovJp/exec';
+var SCHED_URL    = ''; // set dynamically by team selection
 var SLOT_TIMES   = ['8:00 AM','10:00 AM','1:00 PM','3:00 PM'];
 var schedData    = {};
 var schedWeekOff = 0;
@@ -1755,6 +1900,38 @@ function maybeWriteNewAddrToSheet(addr) {
   }).catch(function(){});
 }
 
+function boolToYN(val) {
+  return val ? 'Y' : 'N';
+}
+
+function ynToBool(val) {
+  return String(val || '').trim().toUpperCase() === 'Y';
+}
+
+function getOutcomeFlags(isSale) {
+  var decisionEl = document.getElementById('f-decision-maker');
+  var followEl   = document.getElementById('f-followup-needed');
+  return {
+    decisionMakerSpokenTo: boolToYN(isSale ? true : !!(decisionEl && decisionEl.checked)),
+    followUpNeeded:        boolToYN(!!(followEl && followEl.checked)),
+    saleMade:              boolToYN(!!isSale)
+  };
+}
+
+function setOutcomeFlags(flags) {
+  var decisionEl = document.getElementById('f-decision-maker');
+  var followEl   = document.getElementById('f-followup-needed');
+  if (decisionEl) decisionEl.checked = ynToBool(flags && flags.decisionMakerSpokenTo);
+  if (followEl)   followEl.checked   = ynToBool(flags && flags.followUpNeeded);
+}
+
+function resetOutcomeFlags() {
+  setOutcomeFlags({
+    decisionMakerSpokenTo: 'N',
+    followUpNeeded: 'N'
+  });
+}
+
 // ──────────────────────────────────────────────────────────
 //  SUBMIT
 // ──────────────────────────────────────────────────────────
@@ -1793,6 +1970,7 @@ function submitSale(pkgLabel) {
     pricingSummary += ' | Estimated Proration: $' + dueAtInstall + ' (' + diffDays + ' day proration)';
   }
 
+  var outcomeFlags = getOutcomeFlags(true);
   var payload = {
     territory: (activeTerritory || ''),
     salesperson: repName,
@@ -1805,7 +1983,10 @@ function submitSale(pkgLabel) {
     installDate: selSlot ? selSlot.date : (install || ''),
     installTime: selSlot ? selSlot.time : '',
     notes: notes,
-    status: 'Sale — ' + pkgLabel
+    status: 'Sale — ' + pkgLabel,
+    decisionMakerSpokenTo: outcomeFlags.decisionMakerSpokenTo,
+    followUpNeeded: outcomeFlags.followUpNeeded,
+    saleMade: outcomeFlags.saleMade
   };
 
   sendData(payload);
@@ -1819,7 +2000,10 @@ function submitSale(pkgLabel) {
   addr.status = (selPkg === 'mega') ? 'mega' : 'gig';
   addr.salesperson = repName;
   addr.sale   = { firstName: first, lastName: last, phone: phone, email: email, notes: notes };
-  updateAddressStatus(addr, addr.status);
+  addr.decisionMakerSpokenTo = outcomeFlags.decisionMakerSpokenTo;
+  addr.followUpNeeded = outcomeFlags.followUpNeeded;
+  addr.saleMade = outcomeFlags.saleMade;
+  updateAddressStatus(addr, addr.status, notes, outcomeFlags);
   addr.note = (notes || '').trim();
   if (addr.lat && addr.lng) placeMarker(addr);
   updateStats();
@@ -1838,12 +2022,16 @@ function submitStatus() {
   var notes   = (nsWrap && !nsWrap.classList.contains('hidden') && nsNote)
     ? (nsNote.value || '').trim()
     : '';
+  var outcomeFlags = getOutcomeFlags(false);
   var payload = {
     salesperson: repName,
     address: addr.address, city: addr.city||'', state: addr.state||'', zip: addr.zip||'',
     firstName:'', lastName:'', phone:'', email:'',
     package:'', notes: notes,
-    status: selStatus
+    status: selStatus,
+    decisionMakerSpokenTo: outcomeFlags.decisionMakerSpokenTo,
+    followUpNeeded: outcomeFlags.followUpNeeded,
+    saleMade: outcomeFlags.saleMade
   };
 
   // NOTE: sendData() is intentionally NOT called here — no-sale statuses
@@ -1859,7 +2047,10 @@ function submitStatus() {
   addr.status = smap[selStatus] || 'nocontact';
   addr.salesperson = repName;
   addr.note = notes || '';
-  updateAddressStatus(addr, addr.status, notes);
+  addr.decisionMakerSpokenTo = outcomeFlags.decisionMakerSpokenTo;
+  addr.followUpNeeded = outcomeFlags.followUpNeeded;
+  addr.saleMade = outcomeFlags.saleMade;
+  updateAddressStatus(addr, addr.status, notes, outcomeFlags);
   if (addr.lat && addr.lng) placeMarker(addr);
   updateStats();
   toast('📋 "' + selStatus + '" logged', 't-info');
@@ -1868,7 +2059,13 @@ function submitStatus() {
   closeForm();
 }
 
-function updateAddressStatus(addr, status, note) {
+function updateAddressStatus(addr, status, note, flags) {
+  var outcomeFlags = flags || {
+    decisionMakerSpokenTo: addr.decisionMakerSpokenTo || 'N',
+    followUpNeeded: addr.followUpNeeded || 'N',
+    saleMade: addr.saleMade || 'N'
+  };
+
   // Always send — manual addresses have no sheetRow but the backend can still
   // log by address text, and we need the disposition to survive GPS refreshes.
   fetch(webhookURL, {
@@ -1887,7 +2084,10 @@ function updateAddressStatus(addr, status, note) {
       salesperson:     repName,
       note:            (note || ''),
       dispositionNote: (note || ''),
-      knockedAt:       new Date().toISOString()
+      knockedAt:       new Date().toISOString(),
+      decisionMakerSpokenTo: outcomeFlags.decisionMakerSpokenTo,
+      followUpNeeded: outcomeFlags.followUpNeeded,
+      saleMade: outcomeFlags.saleMade
     })
   }).catch(function(){});
 }
@@ -2023,28 +2223,75 @@ function confirmSignOut() {
     document.getElementById('rep-name').value = '';
     repPhone = '';
     repEmail = '';
-    try { localStorage.removeItem('zito_rep_name'); localStorage.removeItem('zito_rep_phone'); localStorage.removeItem('zito_rep_email'); } catch(e) {}
+    try { localStorage.removeItem('zito_rep_name'); localStorage.removeItem('zito_rep_phone'); localStorage.removeItem('zito_rep_email'); localStorage.removeItem('fieldos_team'); } catch(e) {}
     document.getElementById('launch-btn').disabled = true;
     document.getElementById('fetch-addr-status').textContent = '';
     document.getElementById('btn-manager').style.display = 'none';
+    activeTeam = '';
+    webhookURL = '';
+    SCHED_URL  = '';
+    var teamSel = document.getElementById('team-select');
+    if (teamSel) teamSel.value = '';
+    applyPresetTeamFromURL();
+    checkLaunchReady();
 
     toast('👋 Signed out successfully', 't-info');
   }, 400);
 }
 
+function hideAppForDirectAccess() {
+  document.body.innerHTML = '';
+  document.body.style.background = '#0d1117';
+}
+
+function requireTeamInURL() {
+  var presetTeam = getPresetTeamNameFromURL();
+  if (!presetTeam || !TEAMS[presetTeam]) {
+    hideAppForDirectAccess();
+    return false;
+  }
+  return true;
+}
+
 function restoreRepProfile() {
+  // Populate team dropdown from TEAMS config
+  var sel = document.getElementById('team-select');
+  if (sel && sel.options.length <= 1) {
+    Object.keys(TEAMS).forEach(function(name) {
+      var opt = document.createElement('option');
+      opt.value = name;
+      opt.textContent = name;
+      sel.appendChild(opt);
+    });
+  }
+
   try {
+    var presetTeam = getPresetTeamNameFromURL();
+    var t = presetTeam || '';
     var n = localStorage.getItem('zito_rep_name')  || '';
     var p = localStorage.getItem('zito_rep_phone') || '';
     var e = localStorage.getItem('zito_rep_email') || '';
+    if (t && TEAMS[t]) {
+      activeTeam = t;
+      webhookURL = TEAMS[t].webhook;
+      SCHED_URL  = TEAMS[t].webhook;
+      if (sel) sel.value = t;
+    }
     if (n && document.getElementById('rep-name')) document.getElementById('rep-name').value = n;
-    // Restore cached phone/email (populated from sheet on last session)
     if (p) repPhone = p;
     if (e) repEmail = e;
   } catch(err) {}
+
+  applyPresetTeamFromURL();
+  checkLaunchReady();
 }
 
-window.addEventListener('load', function(){ try { restoreRepProfile(); } catch(e) {} });
+window.addEventListener('load', function() {
+  try {
+    if (!requireTeamInURL()) return;
+    restoreRepProfile();
+  } catch(e) {}
+});
 
 function emailCustomerOffer(pkgKey) {
   var to = '';
@@ -2138,6 +2385,11 @@ function refreshMapMarkers() {
 
   if (!matchesDisposition && !isPending && !isHomesPassed && !isActiveCustomer) return;
 }
+
+    // Territory tab filter
+    if (activeTerritoryTab) {
+      if ((a.territory || '').trim() !== activeTerritoryTab) return;
+    }
 
     var color  = getMarkerColor(a);
     var shape  = getMarkerShape(a);
@@ -2341,7 +2593,7 @@ var STATUS_LABELS = {
   mega:          'Mega Sale',
   gig:           'Gig Sale',
   nothome:       'Not Home',
-  brightspeed:   'Brightspeed',
+  fibercompetitor:   'Fiber Competitor',
   incontract:    'In Contract',
   notinterested: 'Not Interested',
   goback:        'Go Back Later',
@@ -2470,7 +2722,7 @@ function renderCompetitor() {
   // Only count knockable homes — existing customers are a separate universe
   var knockable = addresses.filter(isKnockable);
   var total     = knockable.length;
-  var bspeed    = knockable.filter(function(a){ return a.status === 'brightspeed'; }).length;
+  var bspeed    = knockable.filter(function(a){ return a.status === 'fibercompetitor'; }).length;
   var incon     = knockable.filter(function(a){ return a.status === 'incontract'; }).length;
   var sold      = knockable.filter(function(a){ return a.status === 'mega' || a.status === 'gig'; }).length;
   var avail     = knockable.filter(function(a){
@@ -2480,7 +2732,7 @@ function renderCompetitor() {
 
   var cells = [
     { val: total,  label: 'Total Homes', color: 'var(--text)' },
-    { val: bspeed, label: 'Brightspeed', color: '#ef4444' },
+    { val: bspeed, label: 'Fiber Competitor', color: '#ef4444' },
     { val: incon,  label: 'In Contract', color: '#818cf8' },
     { val: sold,   label: 'Zito Sales',  color: '#10b981' },
     { val: avail,  label: 'Still Available', color: '#facc15' },
@@ -2883,7 +3135,7 @@ function renderCompetitorByTerritory() {
   rows += names.map(function(t) {
     var d       = terrMap[t];
     var total   = d.total || 1;
-    var open    = total - d.brightspeed - d.incontract - d.sales;
+    var open    = total - d.fibercompetitor - d.incontract - d.sales;
     open = Math.max(open, 0);
 
     function bar(val, color) {
@@ -2896,7 +3148,7 @@ function renderCompetitorByTerritory() {
 
     return '<div class="ti-comp-row">' +
       '<span class="ti-comp-terr" title="' + escHtml(t) + '">' + escHtml(t) + '</span>' +
-      bar(d.brightspeed, '#ef4444') +
+      bar(d.fibercompetitor, '#ef4444') +
       bar(d.incontract,  '#818cf8') +
       bar(d.sales,       '#10b981') +
       bar(open,          '#06b6d4') +
@@ -3054,7 +3306,7 @@ function buildTerrMap() {
     if (!m[t]) m[t] = {
       total: 0, worked: 0, pending: 0, sales: 0,
       mega: 0, gig: 0, nothome: 0,
-      brightspeed: 0, incontract: 0, goback: 0,
+      fibercompetitor: 0, incontract: 0, goback: 0,
       notinterested: 0, vacant: 0, business: 0,
       // Existing customer count tracked separately for context
       existingCustomers: 0
@@ -3078,8 +3330,8 @@ function buildTerrMap() {
     else if (s === 'nothome2')     d.nothome++;   // count all NH variants together
     else if (s === 'nothome3')     d.nothome++;
     else if (s === 'nothome4')     d.nothome++;
-    else if (s === 'brightspeed')  d.brightspeed++;
-    else if (s === 'competitor')   d.brightspeed++; // lump competitor with BS for coverage stats
+    else if (s === 'fibercompetitor')  d.fibercompetitor++;
+    else if (s === 'competitor')   d.fibercompetitor++; // lump competitor with BS for coverage stats
     else if (s === 'incontract')   d.incontract++;
     else if (s === 'goback')       d.goback++;
     else if (s === 'notinterested') d.notinterested++;
@@ -3455,7 +3707,7 @@ function pingNearbyAddresses() {
     addresses.forEach(function(a) {
       var s = (a.status || '').toLowerCase();
       // Only preserve statuses the rep actually set — not bare 'pending' from the sheet
-      var REP_STATUSES = ['mega','gig','nothome','brightspeed','incontract','notinterested','goback','vacant','business'];
+      var REP_STATUSES = ['mega','gig','nothome','fibercompetitor','incontract','notinterested','goback','vacant','business'];
       if (REP_STATUSES.indexOf(s) >= 0) {
         var key = (a.address + '|' + (a.city || '')).toLowerCase().trim();
         dispositionMap[key] = { status: a.status, note: a.note || '', salesperson: a.salesperson || '', sale: a.sale || null };
@@ -3713,7 +3965,6 @@ function handleMapPinDrop(latlng) {
       toast('⚠ Could not look up address — enter it manually', 't-err');
     });
 }
-
 function showPinConfirm(street, city, state, zip, lat, lng) {
   _pendingPin = { lat: lat, lng: lng };
   document.getElementById('pin-cf-street').value = street;
@@ -4556,7 +4807,7 @@ function buildAIPayload() {
       gig:             d.gig,
       closeRatePct:    Math.round(cr * 100),
       notHome:         d.nothome,
-      brightspeed:     d.brightspeed,
+      fibercompetitor:     d.fibercompetitor,
       inContract:      d.incontract,
       goBack:          d.goback,
       notInterested:   d.notinterested,
@@ -4704,7 +4955,7 @@ function runAIAnalysis() {
   var terrLines = (payload.territories || []).map(function(t) {
     return '  • ' + t.name + ': ' + t.coveragePct + '% coverage, ' +
       t.closeRatePct + '% close rate, ' + t.sales + ' sales, ' + t.pending + ' pending | ' +
-      'Brightspeed=' + t.brightspeed + ' InContract=' + t.inContract +
+      'Fiber Competitor=' + t.fibercompetitor + ' InContract=' + t.inContract +
       ' NotHome=' + t.notHome + ' GoBack=' + t.goBack;
   }).join('\n') || '  No territory data';
 
