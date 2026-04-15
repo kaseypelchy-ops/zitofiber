@@ -2,7 +2,16 @@
  * Split from single-file build on 2026.02.24
  * To update: bump ?v= query string in index.html <script> tag
  */
+var TEAM_LINK_ALIASES = {
+  fiber: 'Fiber Sales Team, LLC',
+  fibersales: 'Fiber Sales Team, LLC',
+  fsi: 'Sales Focus Inc.',
+  sfi: 'Sales Focus Inc.',
+  salesfocus: 'Sales Focus Inc.',
+  salesfocusinc: 'Sales Focus Inc.'
+};
 
+var MANAGER_NAMES = ['kasey pelchy', 'james rigas', 'chris ruding', 'matt gerding'];
 // ──────────────────────────────────────────────────────────
 //  STATE
 // ──────────────────────────────────────────────────────────
@@ -35,14 +44,6 @@ var TEAMS = {
   // },
 };
 
-var TEAM_LINK_ALIASES = {
-  fiber: 'Fiber Sales Team, LLC',
-  fibersales: 'Fiber Sales Team, LLC',
-  fsi: 'Fiber Sales Team, LLC',
-  sfi: 'Sales Focus Inc.',
-  salesfocus: 'Sales Focus Inc.',
-  salesfocusinc: 'Sales Focus Inc.'
-};
 
 var activeTeam  = '';
 var webhookURL  = '';
