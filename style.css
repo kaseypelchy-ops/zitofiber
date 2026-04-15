@@ -39,6 +39,11 @@ body { font-family: 'Syne', sans-serif; color: var(--text); background: var(--bg
 .cov-swatch.incontract { background: #818cf8; }
 .cov-swatch.notinterested { background: #dc2626; }
 .cov-swatch.goback { background: #06b6d4; }
+.cov-swatch.maybelater { background: #22c55e; }
+.cov-swatch.sendinfo { background: #0ea5e9; }
+.cov-swatch.talktospouse { background: #a855f7; }
+.cov-swatch.priceconcern { background: #f97316; }
+.cov-swatch.notdecisionmaker { background: #14b8a6; }
 .cov-swatch.pending { background: #6b7280; }
 
 /* geocode bar styles */
@@ -1562,6 +1567,11 @@ select.team-select option { background: var(--card); color: var(--text); }
 /* colour-code the status text */
 .prev-disp-status.s-nothome       { color: #fcd34d; }
 .prev-disp-status.s-goback        { color: #67e8f9; }
+.prev-disp-status.s-maybelater     { color: #86efac; }
+.prev-disp-status.s-sendinfo       { color: #7dd3fc; }
+.prev-disp-status.s-talktospouse   { color: #d8b4fe; }
+.prev-disp-status.s-priceconcern   { color: #fdba74; }
+.prev-disp-status.s-notdecisionmaker { color: #99f6e4; }
 .prev-disp-status.s-notinterested { color: #fca5a5; }
 .prev-disp-status.s-fibercompetitor   { color: #fca5a5; }
 .prev-disp-status.s-incontract    { color: #a5b4fc; }

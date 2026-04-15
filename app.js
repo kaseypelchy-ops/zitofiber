@@ -77,6 +77,11 @@ var COLORS = {
   incontract:    '#6366f1',   // indigo
   notinterested: '#ec4899',   // pink
   goback:        '#06b6d4',   // cyan
+  maybelater:    '#22c55e',
+  sendinfo:      '#0ea5e9',
+  talktospouse:  '#a855f7',
+  priceconcern:  '#f97316',
+  notdecisionmaker: '#14b8a6',
   vacant:        '#78716c',   // stone
   business:      '#2563eb',   // blue
   competitor:    '#f97316',   // orange
@@ -113,6 +118,49 @@ var colors = {
   danger: '#ef4444',
   muted:  '#8b949e'
 };
+
+
+var STANDARDIZED_OUTCOME_LABELS = {
+  nothome: 'Not home',
+  hardno: 'Hard no',
+  someinterest: 'Some interest',
+  converted: 'Converted'
+};
+
+function isSoftInterestStatus(status) {
+  status = String(status || '').toLowerCase().trim();
+  return ['goback','maybelater','sendinfo','talktospouse','priceconcern','notdecisionmaker'].indexOf(status) >= 0;
+}
+
+function getStandardizedOutcomeKey(status) {
+  status = String(status || '').toLowerCase().trim();
+  if (status === 'mega' || status === 'gig') return 'converted';
+  if (status === 'nothome' || status === 'nothome2' || status === 'nothome3' || status === 'nothome4') return 'nothome';
+  if (isSoftInterestStatus(status)) return 'someinterest';
+  if (status === 'pending' || !status) return '';
+  return 'hardno';
+}
+
+function getStandardizedOutcomeLabel(status) {
+  var key = getStandardizedOutcomeKey(status);
+  return key ? STANDARDIZED_OUTCOME_LABELS[key] : '';
+}
+
+function getSoftInterestType(status) {
+  status = String(status || '').toLowerCase().trim();
+  if (!isSoftInterestStatus(status) || status === 'goback') return '';
+  return status;
+}
+
+function normalizeOutcomeFlagsForStatus(status, flags) {
+  var next = {
+    decisionMakerSpokenTo: (flags && flags.decisionMakerSpokenTo) || 'N',
+    followUpNeeded: (flags && flags.followUpNeeded) || 'N',
+    saleMade: (flags && flags.saleMade) || 'N'
+  };
+  if (isSoftInterestStatus(status)) next.followUpNeeded = 'Y';
+  return next;
+}
 
 
 // ──────────────────────────────────────────────────────────
@@ -378,6 +426,8 @@ function fetchAddressesFromSheet() {
           decisionMakerSpokenTo: (row.decisionMakerSpokenTo || row.decision_maker_spoken_to || row['Decision Maker Spoken To'] || 'N').toString().trim().toUpperCase(),
           followUpNeeded:        (row.followUpNeeded || row.follow_up_needed || row['Follow Up Needed'] || 'N').toString().trim().toUpperCase(),
           saleMade:              (row.saleMade || row.sale_made || row['Sale Made'] || 'N').toString().trim().toUpperCase(),
+          standardizedOutcome: (row.standardizedOutcome || row.standardized_outcome || row['Standardized Outcome'] || '').toString().trim(),
+          softInterestType: (row.softInterestType || row.soft_interest_type || row['Soft Interest Type'] || '').toString().trim(),
           sale:        null
         };
       });
@@ -735,6 +785,11 @@ var HEAT_COLORS = {
   incontract:    { fill: '#6366f1', opacity: 0.40 },
   notinterested: { fill: '#ec4899', opacity: 0.45 },
   goback:        { fill: '#06b6d4', opacity: 0.40 },
+  maybelater:    { fill: '#22c55e', opacity: 0.45 },
+  sendinfo:      { fill: '#0ea5e9', opacity: 0.45 },
+  talktospouse:  { fill: '#a855f7', opacity: 0.45 },
+  priceconcern:  { fill: '#f97316', opacity: 0.45 },
+  notdecisionmaker: { fill: '#14b8a6', opacity: 0.45 },
   vacant:        { fill: '#78716c', opacity: 0.35 },
   business:      { fill: '#2563eb', opacity: 0.40 },
   activecustomer:{ fill: '#facc15', opacity: 0.50 },
@@ -955,7 +1010,7 @@ function getMarkerShape(addr) {
   // fall through to the `if (ac && ac !== '') return 'bolt'` catch-all below,
   // incorrectly showing "Active Customer" after Go Back Later / Not Interested /
   // Fiber Competitor etc. are submitted.
-  var REP_LOGGED = ['nothome','nothome2','nothome3','nothome4','fibercompetitor','incontract','notinterested','goback','vacant','business','competitor','activecustomer'];
+  var REP_LOGGED = ['nothome','nothome2','nothome3','nothome4','fibercompetitor','incontract','notinterested','goback','maybelater','sendinfo','talktospouse','priceconcern','notdecisionmaker','vacant','business','competitor','activecustomer'];
   if (REP_LOGGED.indexOf(s) >= 0) return 'dot';
 
   // Sheet-driven status / activeCount checks (untouched addresses only)
@@ -1204,6 +1259,11 @@ var TAG_HTML  = {
   incontract:    '<span class="ar-tag tag-ic">📋 In Contract</span>',
   notinterested: '<span class="ar-tag tag-ni">❌ Not Int.</span>',
   goback:        '<span class="ar-tag tag-gbl">🔄 Go Back</span>',
+  maybelater:    '<span class="ar-tag tag-gbl">🕒 Maybe Later</span>',
+  sendinfo:      '<span class="ar-tag tag-gbl">📩 Send Info</span>',
+  talktospouse:  '<span class="ar-tag tag-gbl">💬 Talk to Spouse</span>',
+  priceconcern:  '<span class="ar-tag tag-comp">💲 Price Concern</span>',
+  notdecisionmaker:'<span class="ar-tag tag-biz">👤 Not Decision Maker</span>',
   vacant:        '<span class="ar-tag tag-vac">🏚️ Vacant</span>',
   business:      '<span class="ar-tag tag-biz">🏢 Business</span>',
   competitor:    '<span class="ar-tag tag-comp">🔌 Competitor</span>',
@@ -1220,10 +1280,15 @@ var DISPOSITIONS = [
   { label:'Not Home x2',    id:'sbt-nh2',  status:'nothome2',       cls:'act-nh',   icon:'🚪🚪',  needsNote:true },
   { label:'Not Home x3',    id:'sbt-nh3',  status:'nothome3',       cls:'act-nh',   icon:'🚪×3',  needsNote:true },
   { label:'Not Home x4',    id:'sbt-nh4',  status:'nothome4',       cls:'act-nh',   icon:'🚪×4',  needsNote:true },
+  { label:'Maybe Later',    id:'sbt-ml',   status:'maybelater',     cls:'act-cb',   icon:'🕒',    needsNote:true,  notePlaceholder:'Example: interested, but asked to revisit in 30 days' },
+  { label:'Send Information', id:'sbt-si', status:'sendinfo',       cls:'act-cb',   icon:'📩',    needsNote:true,  notePlaceholder:'Example: asked for email or printed information before deciding' },
+  { label:'Need to Talk to Spouse', id:'sbt-ts', status:'talktospouse', cls:'act-cb', icon:'💬', needsNote:true, notePlaceholder:'Example: wants to review it with spouse before deciding' },
+  { label:'Price Concern',  id:'sbt-pc',   status:'priceconcern',   cls:'act-comp', icon:'💲',    needsNote:true,  notePlaceholder:'Example: interested, but price is the current objection' },
+  { label:'Not Decision Maker', id:'sbt-ndm', status:'notdecisionmaker', cls:'act-biz', icon:'👤', needsNote:true, notePlaceholder:'Example: renter or family member answered — need owner / account holder' },
+  { label:'Go Back Later',  id:'sbt-gbl',  status:'goback',         cls:'act-cb',   icon:'🔄',    needsNote:true,  notePlaceholder:'Example: customer asked to come back Friday' },
   { label:'Fiber Competitor',    id:'sbt-fc',   status:'fibercompetitor',    cls:'act-fc',   icon:'⚡',    needsNote:true },
   { label:'In Contract',    id:'sbt-ic',   status:'incontract',     cls:'act-ic',   icon:'📋',    needsNote:true },
   { label:'Not Interested', id:'sbt-ni',   status:'notinterested',  cls:'act-ni',   icon:'❌',    needsNote:true,  notePlaceholder:'Example: not interested — already has provider' },
-  { label:'Go Back Later',  id:'sbt-gbl',  status:'goback',         cls:'act-cb',   icon:'🔄',    needsNote:true,  notePlaceholder:'Example: customer asked to come back Friday' },
   { label:'Vacant',         id:'sbt-vac',  status:'vacant',         cls:'act-vac',  icon:'🏚️',   needsNote:true },
   { label:'Business',       id:'sbt-biz',  status:'business',       cls:'act-biz',  icon:'🏢',    needsNote:true },
   { label:'Competitor',     id:'sbt-comp', status:'competitor',     cls:'act-comp', icon:'🔌',    needsNote:true },
@@ -1502,7 +1567,7 @@ function openForm(id) {
   if (prevEntry) {
     setOutcomeFlags({
       decisionMakerSpokenTo: addr.decisionMakerSpokenTo || 'N',
-      followUpNeeded: addr.followUpNeeded || 'N'
+      followUpNeeded: addr.followUpNeeded || (isSoftInterestStatus(curStatus) ? 'Y' : 'N')
     });
     prevStatus.textContent = prevEntry.label;
     prevStatus.className   = 'prev-disp-status s-' + curStatus;
@@ -1529,7 +1594,7 @@ function openForm(id) {
     if (nsWrap && nsNote) { nsWrap.classList.add('hidden'); nsNote.value = ''; }
     setOutcomeFlags({
       decisionMakerSpokenTo: addr.decisionMakerSpokenTo || 'N',
-      followUpNeeded: addr.followUpNeeded || 'N'
+      followUpNeeded: addr.followUpNeeded || (isSoftInterestStatus(curStatus) ? 'Y' : 'N')
     });
   }
 
@@ -1893,8 +1958,17 @@ function maybeWriteNewAddrToSheet(addr) {
       zip:       addr.zip   || '',
       lat:       addr.lat   != null ? addr.lat : '',
       lng:       addr.lng   != null ? addr.lng : '',
+      status:    addr.status || 'pending',
+      note:      addr.note || '',
+      dispositionNote: addr.note || '',
+      standardizedOutcome: getStandardizedOutcomeLabel(addr.status || 'pending'),
+      softInterestType: getSoftInterestType(addr.status || ''),
+      decisionMakerSpokenTo: addr.decisionMakerSpokenTo || 'N',
+      followUpNeeded: addr.followUpNeeded || 'N',
+      saleMade: addr.saleMade || 'N',
       pinDropped: addr._pinDropped ? true : false,
       addedBy:   repName,
+      knockedAt: new Date().toISOString(),
       timestamp: new Date().toISOString()
     })
   }).catch(function(){});
@@ -1984,10 +2058,19 @@ function submitSale(pkgLabel) {
     installTime: selSlot ? selSlot.time : '',
     notes: notes,
     status: 'Sale — ' + pkgLabel,
+    standardizedOutcome: getStandardizedOutcomeLabel((selPkg === 'mega') ? 'mega' : 'gig'),
+    softInterestType: '',
     decisionMakerSpokenTo: outcomeFlags.decisionMakerSpokenTo,
     followUpNeeded: outcomeFlags.followUpNeeded,
     saleMade: outcomeFlags.saleMade
   };
+
+  addr.status = (selPkg === 'mega') ? 'mega' : 'gig';
+  addr.salesperson = repName;
+  addr.note   = (notes || '').trim();
+  addr.decisionMakerSpokenTo = outcomeFlags.decisionMakerSpokenTo;
+  addr.followUpNeeded = outcomeFlags.followUpNeeded;
+  addr.saleMade = outcomeFlags.saleMade;
 
   sendData(payload);
   maybeWriteNewAddrToSheet(addr);
@@ -1997,14 +2080,8 @@ function submitSale(pkgLabel) {
     schedBookSlot(selSlot.date, selSlot.time, first + ' ' + last, fullAddress);
   }
 
-  addr.status = (selPkg === 'mega') ? 'mega' : 'gig';
-  addr.salesperson = repName;
   addr.sale   = { firstName: first, lastName: last, phone: phone, email: email, notes: notes };
-  addr.decisionMakerSpokenTo = outcomeFlags.decisionMakerSpokenTo;
-  addr.followUpNeeded = outcomeFlags.followUpNeeded;
-  addr.saleMade = outcomeFlags.saleMade;
   updateAddressStatus(addr, addr.status, notes, outcomeFlags);
-  addr.note = (notes || '').trim();
   if (addr.lat && addr.lng) placeMarker(addr);
   updateStats();
   sendHeartbeat();
@@ -2022,34 +2099,41 @@ function submitStatus() {
   var notes   = (nsWrap && !nsWrap.classList.contains('hidden') && nsNote)
     ? (nsNote.value || '').trim()
     : '';
-  var outcomeFlags = getOutcomeFlags(false);
+  var outcomeFlags = normalizeOutcomeFlagsForStatus(selStatus ? (DISPOSITIONS.find(function(d){ return d.label === selStatus; }) || {}).status : '', getOutcomeFlags(false));
+  var mappedStatus = selStatus ? (DISPOSITIONS.find(function(d){ return d.label === selStatus; }) || {}).status : '';
+  var standardizedOutcome = getStandardizedOutcomeLabel(mappedStatus);
+  var softInterestType = getSoftInterestType(mappedStatus);
   var payload = {
     salesperson: repName,
     address: addr.address, city: addr.city||'', state: addr.state||'', zip: addr.zip||'',
     firstName:'', lastName:'', phone:'', email:'',
     package:'', notes: notes,
     status: selStatus,
+    standardizedOutcome: standardizedOutcome,
+    softInterestType: softInterestType,
     decisionMakerSpokenTo: outcomeFlags.decisionMakerSpokenTo,
     followUpNeeded: outcomeFlags.followUpNeeded,
     saleMade: outcomeFlags.saleMade
   };
-
-  // NOTE: sendData() is intentionally NOT called here — no-sale statuses
-  // should never go to recordSale(). Only updateAddressStatus() is needed
-  // to write the status + note to the Addresses tab.
-  maybeWriteNewAddrToSheet(addr);
 
   // Build label→status map from unified config
   var smap = {};
   DISPOSITIONS.forEach(function(d) {
     smap[d.label] = d.status;
   });
-  addr.status = smap[selStatus] || 'nocontact';
+  addr.status = mappedStatus || smap[selStatus] || 'nocontact';
+  addr.standardizedOutcome = standardizedOutcome;
+  addr.softInterestType = softInterestType;
   addr.salesperson = repName;
   addr.note = notes || '';
   addr.decisionMakerSpokenTo = outcomeFlags.decisionMakerSpokenTo;
   addr.followUpNeeded = outcomeFlags.followUpNeeded;
   addr.saleMade = outcomeFlags.saleMade;
+
+  // NOTE: sendData() is intentionally NOT called here — no-sale statuses
+  // should never go to recordSale(). Only updateAddressStatus() is needed
+  // to write the status + note to the Addresses tab.
+  maybeWriteNewAddrToSheet(addr);
   updateAddressStatus(addr, addr.status, notes, outcomeFlags);
   if (addr.lat && addr.lng) placeMarker(addr);
   updateStats();
@@ -2065,6 +2149,8 @@ function updateAddressStatus(addr, status, note, flags) {
     followUpNeeded: addr.followUpNeeded || 'N',
     saleMade: addr.saleMade || 'N'
   };
+  var standardizedOutcome = getStandardizedOutcomeLabel(status);
+  var softInterestType = getSoftInterestType(status);
 
   // Always send — manual addresses have no sheetRow but the backend can still
   // log by address text, and we need the disposition to survive GPS refreshes.
@@ -2085,6 +2171,8 @@ function updateAddressStatus(addr, status, note, flags) {
       note:            (note || ''),
       dispositionNote: (note || ''),
       knockedAt:       new Date().toISOString(),
+      standardizedOutcome: standardizedOutcome,
+      softInterestType: softInterestType,
       decisionMakerSpokenTo: outcomeFlags.decisionMakerSpokenTo,
       followUpNeeded: outcomeFlags.followUpNeeded,
       saleMade: outcomeFlags.saleMade
@@ -3399,26 +3487,15 @@ function escapeHtml(s) {
 }
 
 function popupHtmlForAddr(addr) {
-  var status = (addr.status || 'pending').toString();
-  var note   = (addr.note || '').toString().trim();
-
-  return (
-    '<div style="min-width:220px;">' +
-      '<div style="font-weight:800;font-size:14px;margin-bottom:4px;">' + escapeHtml(addr.address || '') + '</div>' +
-      '<div style="font-size:12px;opacity:.85;margin-bottom:8px;">' +
-        escapeHtml([addr.city, addr.state, addr.zip].filter(Boolean).join(', ')) +
-      '</div>' +
-      '<div style="display:inline-block;padding:3px 8px;border-radius:999px;border:1px solid #ddd;font-size:12px;font-weight:700;margin-bottom:8px;">' +
-        escapeHtml(status) +
-      '</div>' +
-      (note ? (
-        '<div style="margin-top:8px;border-left:4px solid #46bba4;padding:6px 10px;background:rgba(70,187,164,0.08);border-radius:10px;">' +
-          '<div style="font-size:11px;font-weight:800;letter-spacing:.02em;opacity:.85;margin-bottom:3px;">Disposition Note</div>' +
-          '<div style="font-size:12px;">' + escapeHtml(note) + '</div>' +
-        '</div>'
-      ) : '') +
-    '</div>'
-  );
+  var cityState = [addr.city, addr.state, addr.zip].filter(Boolean).join(', ');
+  var noteHtml = addr.note ? '<div style="margin-top:6px;color:#8b949e;font-size:11px">💬 ' + escHtml(addr.note) + '</div>' : '';
+  var outcomeLabel = getStandardizedOutcomeLabel(addr.status);
+  var outcomeHtml = outcomeLabel ? '<div style="margin-top:6px;font-size:11px;color:#cbd5e1">Framework: <strong>' + escHtml(outcomeLabel) + '</strong></div>' : '';
+  var softType = getSoftInterestType(addr.status);
+  var softHtml = softType ? '<div style="margin-top:4px;font-size:11px;color:#93c5fd">Soft interest: ' + escHtml(softType) + '</div>' : '';
+  return '<div style="font-size:12px;font-weight:700">' + escHtml(addr.address) + '</div>' +
+         '<div style="font-size:11px;color:#8b949e">' + escHtml(cityState || '—') + '</div>' +
+         noteHtml + outcomeHtml + softHtml;
 }
 
 function toggleRepStatus() {
@@ -4060,11 +4137,11 @@ function addPinDropAddress(street, city, state, zip, lat, lng) {
   // Place the proper pending marker immediately (we already have coords)
   if (mapObj) placeMarker(newAddr);
 
-  // Write to Google Sheet
-  maybeWriteNewAddrToSheet(newAddr);
-
   // Open the sales form right away
   openForm(newId);
+
+  // Write to Google Sheet
+  maybeWriteNewAddrToSheet(newAddr);
 
   toast('📍 ' + street + ' added!', 't-ok');
 }
