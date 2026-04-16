@@ -138,7 +138,7 @@ function getStandardizedOutcomeKey(status) {
   if (status === 'mega' || status === 'gig') return 'converted';
   if (status === 'nothome' || status === 'nothome2' || status === 'nothome3' || status === 'nothome4') return 'nothome';
   if (isSoftInterestStatus(status)) return 'someinterest';
-  if (status === 'pending' || !status) return '';
+  if (status === 'pending' || status === 'homes passed' || !status) return '';
   return 'hardno';
 }
 
