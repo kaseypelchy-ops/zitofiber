@@ -361,7 +361,9 @@ function rebuildKmlGeoJSON() {
 // ──────────────────────────────────────────────────────────
 //  LOAD ADDRESSES FROM SHEET
 // ──────────────────────────────────────────────────────────
-function fetchAddressesFromSheet() {
+function fetchAddressesFromSheet(opts) {
+  opts = opts || {};
+  var isRefresh = !!opts.isRefresh;
   var btn = document.getElementById('btn-fetch-addr');
   var st  = document.getElementById('fetch-addr-status');
   var profileSt = document.getElementById('rep-profile-status');
@@ -373,11 +375,16 @@ function fetchAddressesFromSheet() {
     return;
   }
 
-  btn.disabled = true;
-  document.getElementById('fetch-addr-icon').textContent = '⏳';
-  st.className = 'dz-status';
-  st.textContent = 'Loading…';
-  if (profileSt) { profileSt.style.color = 'var(--muted)'; profileSt.textContent = ''; }
+  if (btn) btn.disabled = true;
+  if (!isRefresh && document.getElementById('fetch-addr-icon')) {
+    document.getElementById('fetch-addr-icon').textContent = '⏳';
+  }
+  if (st && !isRefresh) {
+    st.className = 'dz-status';
+    st.textContent = 'Loading…';
+  }
+  if (profileSt && !isRefresh) { profileSt.style.color = 'var(--muted)'; profileSt.textContent = ''; }
+  setRefreshButtonState(true);
 
   var managerFlag = MANAGER_NAMES.indexOf(repInput.toLowerCase()) >= 0 ? '&isManager=true' : '';
   fetch(webhookURL + '?action=addresses&repName=' + encodeURIComponent(repInput) + managerFlag + '&_t=' + Date.now())
@@ -433,18 +440,31 @@ function fetchAddressesFromSheet() {
 
       updateStats();
       buildList();
-      st.className   = 'dz-status ok';
-      st.textContent = '✓ ' + addresses.length + ' addresses loaded' + (activeTerritory ? (' • ' + activeTerritory) : '');
-      document.getElementById('fetch-addr-icon').textContent = '✅';
-      btn.disabled = false;
+      if (mapObj) refreshMapMarkers();
+      if (st && !isRefresh) {
+        st.className   = 'dz-status ok';
+        st.textContent = '✓ ' + addresses.length + ' addresses loaded' + (activeTerritory ? (' • ' + activeTerritory) : '');
+      }
+      if (!isRefresh && document.getElementById('fetch-addr-icon')) {
+        document.getElementById('fetch-addr-icon').textContent = '✅';
+      }
+      if (btn) btn.disabled = false;
+      setRefreshButtonState(false, isRefresh ? ('Refreshed ' + new Date().toLocaleTimeString([], {hour:'numeric', minute:'2-digit'})) : '');
+      if (isRefresh) toast('⟳ Data refreshed', 't-ok');
       checkLaunchReady();
     })
     .catch(function(err){
-      st.className   = 'dz-status err';
-      st.textContent = '✗ ' + (err && err.message ? err.message : 'Unable to load addresses');
-      document.getElementById('fetch-addr-icon').textContent = '📋';
-      btn.disabled = false;
-      if (profileSt) { profileSt.textContent = ''; }
+      if (st && !isRefresh) {
+        st.className   = 'dz-status err';
+        st.textContent = '✗ ' + (err && err.message ? err.message : 'Unable to load addresses');
+      }
+      if (!isRefresh && document.getElementById('fetch-addr-icon')) {
+        document.getElementById('fetch-addr-icon').textContent = '📋';
+      }
+      if (btn) btn.disabled = false;
+      setRefreshButtonState(false);
+      if (isRefresh) toast('⚠ Refresh failed', 't-err');
+      if (profileSt && !isRefresh) { profileSt.textContent = ''; }
     });
 }
 
@@ -535,6 +555,29 @@ function selectTeam(val) {
     SCHED_URL  = '';
   }
   checkLaunchReady();
+}
+
+
+function setRefreshButtonState(isLoading, label) {
+  var btn = document.getElementById('btn-refresh-data');
+  if (!btn) return;
+  btn.disabled = !!isLoading;
+  btn.textContent = isLoading ? '⟳ Refreshing…' : (label ? '⟳ ' + label : '⟳ Refresh');
+}
+
+function refreshAddressData() {
+  if (!webhookURL) {
+    toast('⚠ Load your team first', 't-err');
+    return;
+  }
+  if (!repName || repName === 'Rep') {
+    repName = (document.getElementById('rep-name') ? (document.getElementById('rep-name').value || '').trim() : repName);
+  }
+  if (!repName) {
+    toast('⚠ Rep name missing', 't-err');
+    return;
+  }
+  fetchAddressesFromSheet({ isRefresh: true });
 }
 
 
@@ -4216,11 +4259,20 @@ function toast(msg, cls) {
 // Top Bar Drop Pin Hook
 document.addEventListener('DOMContentLoaded', function() {
   var topDropBtn = document.getElementById('btn-drop-pin-top');
-  if (!topDropBtn) return;
-  topDropBtn.addEventListener('click', function(e) {
-    e.preventDefault();
-    if (typeof togglePinDropMode === 'function') togglePinDropMode();
-  });
+  if (topDropBtn) {
+    topDropBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      if (typeof togglePinDropMode === 'function') togglePinDropMode();
+    });
+  }
+
+  var refreshBtn = document.getElementById('btn-refresh-data');
+  if (refreshBtn) {
+    refreshBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      refreshAddressData();
+    });
+  }
 });
 
 // ══════════════════════════════════════════════════════════
