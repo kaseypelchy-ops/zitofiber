@@ -28,7 +28,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.min.css"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.min.css"/>
 <!-- App styles — bump ?v= whenever you update style.css so browsers fetch fresh -->
-<link rel="stylesheet" href="style.css?v=softinterest1">
+<link rel="stylesheet" href="style.css?v=field-lite-1">
 </head>
 <body>
 
@@ -145,380 +145,32 @@
     <div class="tb-stat">Pending: <strong id="st-pend">0</strong></div>
     <div class="tb-actions">
       <button id="btn-drop-pin-top" class="tb-btn" title="Drop a pin / add an address">📍 Drop Pin</button>
-      <button id="btn-draw-zone-top" class="tb-btn tb-btn-zone" onclick="toggleDrawZoneMode()" title="Draw a polygon and auto-add every house inside it">🏘 Draw Zone</button>
-      <div id="tb-status-pill" class="is-offline" onclick="openBadge()" title="View my badge">
-        <span class="status-dot"></span>
-        <span id="tb-status-label">OFFLINE</span>
-      </div>
-      <button id="btn-manager" class="tb-btn" onclick="openManagerPanel()">Team</button>
-      <button id="btn-chat" class="tb-btn tb-btn-chat" onclick="openChat()" title="Team Chat">
-        💬 Chat<span id="chat-unread-badge" class="chat-unread-badge hidden"></span>
-      </button>
-      <button class="tb-btn" onclick="openBadge()">My Badge</button>
-      <button class="tb-btn btn-logout" onclick="openSignOutConfirm()" title="Sign out">Log Out</button>
+<button class="tb-btn btn-logout" onclick="openSignOutConfirm()" title="Sign out">Log Out</button>
     </div>
   </div>
 
   <!-- Sidebar collapse toggle -->
   <button id="sidebar-toggle" onclick="toggleSidebar()" title="Toggle address list">&#8249;</button>
 
-  <!-- ═══════════════════ BADGE MODAL ═══════════════════ -->
-  <div id="badge-modal" onclick="if(event.target===this)closeBadge()">
-    <div class="badge-wrap">
-      <div class="badge-card">
-        <div class="badge-stripe"></div>
-        <div class="badge-logo-bar">
-          <img src="https://www.zitomedia.net/wp-content/uploads/2025/03/Untitled-design-6.png" alt="Zito Media">
-          <span class="badge-id-num" id="badge-id-num">REP-000</span>
-        </div>
-        <div class="badge-avatar" id="badge-avatar">?</div>
-        <div class="badge-name" id="badge-rep-name">—</div>
-        <div class="badge-title">Sales Representative</div>
-        
-        <div class="badge-contact">
-          <div class="badge-contact-row">📞 <a id="badge-phone-link" href="#"><span id="badge-rep-phone">—</span></a></div>
-          <div class="badge-contact-row">✉️ <a id="badge-email-link" href="#"><span id="badge-rep-email">—</span></a></div>
-          <div class="badge-contact-row">🌐 <a id="badge-web-link" href="#" target="_blank" rel="noopener"><span id="badge-rep-web">zitomedia.net</span></a></div>
-        </div>
-
-        <div class="badge-email-actions">
-          <button class="badge-email-btn mega" onclick="emailCustomerOffer('mega')">Email Mega Offer</button>
-          <button class="badge-email-btn gig" onclick="emailCustomerOffer('gig')">Email Gig Offer</button>
-        </div>
-
-        <div class="badge-divider"></div>
-        <div class="badge-stats">
-          <div class="badge-stat">
-            <div class="badge-stat-val total-c" id="badge-total">0</div>
-            <div class="badge-stat-lbl">Total Sales</div>
-          </div>
-          <div class="badge-stat">
-            <div class="badge-stat-val mega-c" id="badge-mega">0</div>
-            <div class="badge-stat-lbl">Mega</div>
-          </div>
-          <div class="badge-stat">
-            <div class="badge-stat-val gig-c" id="badge-gig">0</div>
-            <div class="badge-stat-lbl">Gig</div>
-          </div>
-        </div>
-        <div class="badge-divider"></div>
-        <div class="badge-status-row">
-          <div id="badge-toggle" class="badge-status-toggle offline" onclick="toggleRepStatus()">
-            <span class="badge-toggle-dot"></span>
-            <span id="badge-status-text">OFFLINE</span>
-          </div>
-        </div>
-        <div class="badge-toggle-hint">Tap to toggle your availability status</div>
-      </div>
-      <button class="badge-close-btn" onclick="closeBadge()">Close</button>
-      <button class="badge-signout-btn" onclick="closeBadge();openSignOutConfirm()">⏻ End Session</button>
-    </div>
-  </div>
-
-  <!-- ═══════════════════ MANAGER DASHBOARD ═══════════════════ -->
-  <div id="manager-modal" onclick="if(event.target===this)closeManagerPanel()">
-    <div class="mgr-wrap">
-
-      <!-- Header -->
-      <div class="mgr-header">
-        <div>
-          <div class="mgr-eyebrow">Manager View</div>
-          <div class="mgr-title">Field Intelligence</div>
-          <div class="mgr-subtitle" id="mgr-last-refresh">—</div>
-        </div>
-        <button class="mgr-refresh-btn" id="mgr-refresh-btn" onclick="refreshManagerPanel()">↻</button>
-      </div>
-
-      <!-- Top KPI pills -->
-      <div class="mgr-summary">
-        <div class="mgr-pill"><div class="mgr-pill-val online-c" id="mgr-count-online">—</div><div class="mgr-pill-lbl">Online</div></div>
-        <div class="mgr-pill"><div class="mgr-pill-val offline-c" id="mgr-count-offline">—</div><div class="mgr-pill-lbl">Offline</div></div>
-        <div class="mgr-pill"><div class="mgr-pill-val sales-c" id="mgr-count-sales">—</div><div class="mgr-pill-lbl">Sales Today</div></div>
-      </div>
-
-      <!-- Tab nav -->
-      <div class="mgr-tabs">
-        <button class="mgr-tab active" onclick="switchMgrTab('team',this)"><span class="tab-emoji">👥</span><span class="tab-label">Team</span></button>
-        <button class="mgr-tab" onclick="switchMgrTab('analytics',this)"><span class="tab-emoji">📊</span><span class="tab-label">Analytics</span></button>
-        <button class="mgr-tab" onclick="switchMgrTab('coverage',this)"><span class="tab-emoji">🗺</span><span class="tab-label">Coverage</span></button>
-        <button class="mgr-tab" onclick="switchMgrTab('forecast',this)"><span class="tab-emoji">💰</span><span class="tab-label">Forecast</span></button>
-        <button class="mgr-tab" onclick="switchMgrTab('territory',this)"><span class="tab-emoji">🎯</span><span class="tab-label">Territory</span></button>
-        <button class="mgr-tab mgr-tab-ai" onclick="switchMgrTab('ai',this)"><span class="tab-emoji">🤖</span><span class="tab-label">AI</span></button>
-        <!-- AI Coach removed -->
-      </div>
-
-      <!-- ── TAB: TEAM ── -->
-      <div id="mgr-tab-team" class="mgr-tab-panel active">
-        <div class="mgr-perf">
-          <div class="mgr-perf-head">Live Performance</div>
-          <div class="mgr-perf-grid">
-            <div class="mgr-metric">
-              <div class="mgr-metric-lbl">Close Rate</div>
-              <div class="mgr-metric-val" id="mgr-m-close">—</div>
-              <div class="mgr-metric-sub" id="mgr-m-close-sub">—</div>
-            </div>
-            <div class="mgr-metric">
-              <div class="mgr-metric-lbl">Sales / Hour</div>
-              <div class="mgr-metric-val" id="mgr-m-pace">—</div>
-              <div class="mgr-metric-sub" id="mgr-m-pace-sub">—</div>
-            </div>
-            <div class="mgr-metric">
-              <div class="mgr-metric-lbl">Gig Mix</div>
-              <div class="mgr-metric-val" id="mgr-m-gigmix">—</div>
-              <div class="mgr-metric-sub" id="mgr-m-gigmix-sub">—</div>
-            </div>
-            <div class="mgr-metric">
-              <div class="mgr-metric-lbl">Sales / Rep</div>
-              <div class="mgr-metric-val" id="mgr-m-spr">—</div>
-              <div class="mgr-metric-sub" id="mgr-m-spr-sub">—</div>
-            </div>
-          </div>
-        </div>
-        <div class="mgr-list-head">Field Reps</div>
-        <div id="mgr-rep-list">
-          <div class="mgr-loading"><div class="mgr-spinner"></div>Loading rep data…</div>
-        </div>
-      </div>
-
-      <!-- ── TAB: ANALYTICS ── -->
-      <div id="mgr-tab-analytics" class="mgr-tab-panel">
-
-        <div class="mgr-two-col">
-          <div class="ana-card">
-            <div class="ana-card-head">🕐 Best Hours to Knock</div>
-            <div class="ana-card-sub">Close rate by hour of day — based on all recorded door knocks</div>
-            <div id="ana-tod-chart" class="tod-chart"></div>
-            <div class="tod-x-labels" id="ana-tod-labels"></div>
-          </div>
-
-          <div class="ana-card">
-            <div class="ana-card-head">📶 Status Breakdown</div>
-            <div class="ana-card-sub">Disposition of all worked doors this session</div>
-            <div id="ana-status-bars" class="status-bars"></div>
-          </div>
-        </div>
-
-        <div class="mgr-two-col">
-          <div class="ana-card">
-            <div class="ana-card-head">🆚 Competitor Landscape</div>
-            <div class="ana-card-sub">What service do prospects already have?</div>
-            <div id="ana-competitor" class="competitor-grid"></div>
-          </div>
-
-          <div class="ana-card">
-            <div class="ana-card-head">👤 Rep Leaderboard</div>
-            <div class="ana-card-sub">Ranked by close rate — minimum 5 doors worked</div>
-            <div id="ana-leaderboard" class="leaderboard-list"></div>
-          </div>
-        </div>
-
-      </div>
-
-      <!-- ── TAB: COVERAGE ── -->
-      <div id="mgr-tab-coverage" class="mgr-tab-panel">
-
-        <div class="mgr-two-col">
-          <div class="ana-card">
-            <div class="ana-card-head card-head-flex">
-              <span>Territory Coverage</span>
-              <button class="heat-btn" id="btn-heat-map" onclick="toggleHeatMap()">🌡 Coverage Map</button>
-            </div>
-            <div class="ana-card-sub">% of addresses knocked per territory</div>
-            <div id="cov-territory-bars"></div>
-          </div>
-
-          <div class="ana-card">
-            <div class="ana-card-head">📍 Coverage Legend</div>
-            <div class="cov-legend">
-              <div class="cov-leg-row"><span class="cov-swatch mega"></span>Mega Sale</div>
-              <div class="cov-leg-row"><span class="cov-swatch gig"></span>Gig Sale</div>
-              <div class="cov-leg-row"><span class="cov-swatch nothome"></span>Not Home</div>
-              <div class="cov-leg-row"><span class="cov-swatch fibercompetitor"></span>Fiber Competitor</div>
-              <div class="cov-leg-row"><span class="cov-swatch incontract"></span>In Contract</div>
-              <div class="cov-leg-row"><span class="cov-swatch notinterested"></span>Not Interested</div>
-              <div class="cov-leg-row"><span class="cov-swatch goback"></span>Go Back Later</div>
-              <div class="cov-leg-row"><span class="cov-swatch pending"></span>Pending / Untouched</div>
-            </div>
-          </div>
-        </div>
-
-      </div>
-
-      <!-- ── TAB: FORECAST ── -->
-      <div id="mgr-tab-forecast" class="mgr-tab-panel">
-
-        <div class="ana-card forecast-hero">
-          <div class="ana-card-head">📡 Revenue Projection</div>
-          <div class="ana-card-sub">Based on current close rate applied to remaining pending homes</div>
-          <div class="forecast-mrr" id="fc-mrr">—</div>
-          <div class="forecast-mrr-label">Projected Monthly Recurring Revenue</div>
-        </div>
-
-        <div class="ana-card">
-          <div class="ana-card-head">Projection Inputs</div>
-          <div class="fc-inputs-grid" id="fc-inputs-grid"></div>
-        </div>
-
-        <div class="ana-card">
-          <div class="ana-card-head">Territory Breakdown</div>
-          <div id="fc-territory-table"></div>
-        </div>
-
-        <div class="ana-card">
-          <div class="ana-card-head">Package Revenue Split</div>
-          <div class="fc-pkg-split" id="fc-pkg-split"></div>
-        </div>
-
-      </div>
-
-      <!-- ── TAB: TERRITORY INTEL ── -->
-      <div id="mgr-tab-territory" class="mgr-tab-panel">
-
-        <div class="ana-card">
-          <div class="ana-card-head">📡 Territory Saturation</div>
-          <div class="ana-card-sub">How worked-out is each territory? When to rotate reps in.</div>
-          <div id="ti-saturation"></div>
-        </div>
-
-        <div class="ana-card">
-          <div class="ana-card-head">🆚 Competitor Breakdown by Territory</div>
-          <div class="ana-card-sub">% of homes using Fiber Competitor, in contract, or open market — per territory</div>
-          <div id="ti-competitor-table"></div>
-        </div>
-
-        <div class="ana-card">
-          <div class="ana-card-head">🔄 Follow-Up Queue</div>
-          <div class="ana-card-sub">Go Back Later &amp; Not Home doors across all territories — sorted by how long they've been waiting</div>
-          <div id="ti-stale-list"></div>
-        </div>
-
-        <div class="ana-card">
-          <div class="ana-card-head">📋 Deploy Recommendations</div>
-          <div class="ana-card-sub">Where to focus reps next based on coverage and close rate data</div>
-          <div id="ti-recommendations"></div>
-        </div>
-
-      </div>
-
-      <!-- AI Coach tab removed -->
-
-      <!-- ── TAB: AI ANALYSIS ── -->
-      <div id="mgr-tab-ai" class="mgr-tab-panel">
-
-        <!-- API Key row -->
-        <div class="ai-key-row" id="ai-key-row">
-          <div class="ai-key-label">Anthropic API Key</div>
-          <div class="ai-key-input-wrap">
-            <input class="ai-key-input" id="ai-key-input" type="password"
-              placeholder="sk-ant-api03-…"
-              oninput="aiKeySave()"
-              autocomplete="off" spellcheck="false">
-            <button class="ai-key-toggle" onclick="aiKeyToggle()" title="Show/hide key">👁</button>
-          </div>
-          <div class="ai-key-hint" id="ai-key-hint">Saved in your browser only — never sent to the sheet</div>
-        </div>
-
-        <div class="ai-hero-card">
-          <div class="ai-hero-left">
-            <div class="ai-hero-title">🤖 Field Intelligence Briefing</div>
-            <div class="ai-hero-sub">Claude analyses all live territory, rep, competitor, and forecast data to give you actionable deployment recommendations.</div>
-          </div>
-          <button class="ai-run-btn" id="ai-run-btn" onclick="runAIAnalysis()">
-            <span id="ai-run-btn-label">▶ Run Analysis</span>
-          </button>
-        </div>
-
-        <!-- Context pills — what data is being sent -->
-        <div class="ai-context-pills" id="ai-context-pills"></div>
-
-        <!-- Output area -->
-        <div id="ai-output" class="ai-output-idle">
-          <div class="ai-output-placeholder">
-            <div class="ai-placeholder-icon">🧠</div>
-            <div>Enter your API key above, then hit <strong>Run Analysis</strong>.<br>
-            Takes about 10–15 seconds.</div>
-          </div>
-        </div>
-
-        <!-- Timestamp -->
-        <div class="ai-timestamp" id="ai-timestamp"></div>
-
-      </div>
-
-      <button class="mgr-close-btn" onclick="closeManagerPanel()">Close</button>
-    </div>
-  </div>
-
-  <!-- ═══════════════════ GPS PERMISSION PROMPT ═══════════════════ -->
-  <div id="gps-prompt" class="gps-prompt-overlay">
-    <div class="gps-prompt-box">
-      <div class="gps-prompt-icon">📍</div>
-      <div class="gps-prompt-title">Enable Location</div>
-      <div class="gps-prompt-body">
-        FieldOS uses your location to:<br><br>
-        <span class="gps-feat">🧭 <strong>Route Mode</strong> — sort addresses nearest-first as you walk</span>
-        <span class="gps-feat">📡 <strong>Territory loading</strong> — auto-load homes near you</span>
-        <span class="gps-feat">🔄 <strong>Follow-Up Queue</strong> — show distance to each callback</span>
-      </div>
-      <div class="gps-prompt-sub">Your location is never stored or shared. It stays on your device.</div>
-      <button class="gps-btn-allow" onclick="requestGPS()">Allow Location Access</button>
-      <button class="gps-btn-skip"  onclick="dismissGPSPrompt()">Not Now</button>
-    </div>
-  </div>
-
-  <!-- GPS status banner (shows briefly after grant/deny) -->
-  <div id="gps-banner" class="gps-banner"></div>
-
   <div id="panel-list">
     <div class="pl-head">
-      <div class="pl-title">
-        Addresses
-        <span class="pl-badge" id="addr-count">0</span>
-      </div>
-      <div class="pl-mode-btns">
-        <button class="pl-mode-btn" id="btn-route-mode" onclick="toggleRouteMode()">
-          <span class="pl-mode-icon">🧭</span>
-          <span class="pl-mode-label">Route</span>
-        </button>
-        <button class="pl-mode-btn" id="btn-stale-mode" onclick="toggleStaleMode()">
-          <span class="pl-mode-icon">🔄</span>
-          <span class="pl-mode-label">Follow-Up</span>
-          <span class="pl-mode-count" id="stale-badge"></span>
-        </button>
-      </div>
+      <div class="pl-title">Addresses <span class="pl-badge" id="addr-count">0</span></div>
       <div class="pl-filter-row">
-        <div class="disp-chips" id="disp-chips"></div>
+        <input class="search-in" id="addr-search" type="text" placeholder="Search addresses" oninput="buildList(this.value)">
+        <div class="disp-chips">
+          <button class="disp-chip" id="btn-route-mode" type="button" onclick="toggleRouteMode()">Route</button>
+          <button class="disp-chip" id="btn-stale-mode" type="button" onclick="toggleStaleMode()">Follow-Ups <span id="stale-badge" class="pl-badge">0</span></button>
+        </div>
       </div>
-      <input class="search-in" id="addr-search" placeholder="🔍 Search addresses…" oninput="filterList(this.value)">
-      <select class="dispo-filter" id="dispo-filter" onchange="filterByDisposition(this.value)">
-        <option value="">All Dispositions</option>
-        <option value="pending">📋 Pending</option>
-        <option value="nothome">🚪 Not Home (all)</option>
-        <option value="maybelater">🕒 Maybe Later</option>
-        <option value="sendinfo">📩 Send Information</option>
-        <option value="talktospouse">💬 Need to Talk to Spouse</option>
-        <option value="priceconcern">💲 Price Concern</option>
-        <option value="notdecisionmaker">👤 Not Decision Maker</option>
-        <option value="goback">🔄 Go Back</option>
-        <option value="notinterested">❌ Not Interested</option>
-        <option value="fibercompetitor">⚡ Fiber Competitor</option>
-        <option value="incontract">📋 In Contract</option>
-        <option value="competitor">🔌 Competitor</option>
-        <option value="vacant">🏚️ Vacant</option>
-        <option value="business">🏢 Business</option>
-        <option value="activecustomer">⚡ Active Customer</option>
-        <option value="mega">⚡ Mega Sale</option>
-        <option value="gig">🚀 Gig Sale</option>
-      </select>
+      <div id="territory-tabs" class="territory-tabs"></div>
     </div>
-    <div id="territory-tabs" class="territory-tabs"></div>
     <div id="addr-items"></div>
     <div class="pl-footer">
       <button class="btn-add-addr" onclick="openAddAddrModal()">&#43; Add Address</button>
     </div>
   </div>
 
-  <!-- ═══════════════════ ADD ADDRESS MODAL ═══════════════════ -->
+<!-- ═══════════════════ ADD ADDRESS MODAL ═══════════════════ -->
   <div id="add-addr-modal" onclick="if(event.target===this)closeAddAddrModal()">
     <div class="add-addr-box">
       <div class="add-addr-header">
@@ -560,36 +212,6 @@
   <!-- Pin Drop banner — visible while pin mode is active -->
   <div id="pin-drop-banner">📍 Tap a home on the map to add it</div>
 
-  <!-- Draw Zone banner — visible while polygon drawing is active -->
-  <div id="draw-zone-banner">
-    <span id="draw-zone-banner-text">✏️ Tap to place corners — double-tap or tap ● to close</span>
-    <button class="dz-banner-cancel" onclick="cancelDrawZone()">✕ Cancel</button>
-  </div>
-
-  <!-- Draw Zone Confirm Modal -->
-  <div id="draw-zone-confirm-modal" onclick="if(event.target===this)closeDrawZoneConfirm()">
-    <div class="dz-confirm-box">
-      <div class="dz-confirm-header">
-        <div class="dz-confirm-title">🏘 Zone Scan Complete</div>
-        <button class="dz-confirm-close" onclick="closeDrawZoneConfirm()">✕</button>
-      </div>
-      <div class="dz-confirm-count">
-        <div class="dz-count-num" id="dz-count-big">0</div>
-        <div class="dz-count-label">homes found in zone</div>
-      </div>
-      <div id="dz-breakdown" class="dz-breakdown"></div>
-      <div id="dz-geocode-time" class="dz-geocode-time"></div>
-      <div class="dz-territory-row">
-        <label class="dz-terr-label">Assign territory name</label>
-        <input class="dz-terr-input" id="dz-territory-input" type="text" placeholder="e.g. Palestine_TX">
-      </div>
-      <div class="dz-confirm-actions">
-        <button class="dz-btn-confirm" onclick="confirmAddZoneBuildings()">✅ Add All Homes</button>
-        <button class="dz-btn-cancel"  onclick="closeDrawZoneConfirm()">Cancel</button>
-      </div>
-    </div>
-  </div>
-
   <!-- Pin Drop Address Confirm Modal -->
   <div id="pin-confirm-modal" onclick="if(event.target===this)cancelPinConfirm()">
     <div class="pin-confirm-box">
@@ -628,16 +250,6 @@
   </button>
 
   <div id="map"></div>
-
-  <!-- Weather Overlay Pill -->
-  <div id="wx-pill" class="wx-pill" aria-label="Weather controls">
-    <button id="wx-radar-toggle" class="wx-chip wx-toggle" type="button" onclick="wxToggleRadar()" aria-pressed="false">
-      <span class="wx-label">Radar</span>
-      <span class="wx-switch" aria-hidden="true"><span class="wx-knob"></span></span>
-    </button>
-    <div id="wx-temp" class="wx-chip wx-temp" title="Current temperature">—°F</div>
-  </div>
-
   <!-- Geocoding progress bar -->
   <div id="geocode-bar" class="hidden">
     <div id="gc-text"></div>
@@ -823,26 +435,6 @@
   </div>
 </div>
 
-<!-- ═══════════════════ CHAT MODAL ═══════════════════ -->
-<div id="chat-modal" onclick="if(event.target===this)closeChat()">
-  <div class="chat-wrap">
-    <div class="chat-header">
-      <div class="chat-header-left">
-        <div class="chat-title">💬 Team Chat</div>
-        <div class="chat-subtitle" id="chat-subtitle">Loading…</div>
-      </div>
-      <button class="chat-close-btn" onclick="closeChat()">✕</button>
-    </div>
-    <div class="chat-messages" id="chat-messages">
-      <div class="chat-loading"><div class="chat-spinner"></div> Loading messages…</div>
-    </div>
-    <div class="chat-input-row">
-      <input class="chat-input" id="chat-input" type="text" placeholder="Message the team…" maxlength="500" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChatMessage();}">
-      <button class="chat-send-btn" onclick="sendChatMessage()">Send</button>
-    </div>
-  </div>
-</div>
-
 <!-- Toast -->
 <div id="toast"></div>
 
@@ -889,7 +481,7 @@
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <!-- App logic — bump ?v= whenever you push a new version of app.js -->
-<script defer src="app.js?v=softinterest1"></script>
+<script defer src="app.js?v=field-lite-1"></script>
 <!-- Supabase client (optional) -->
 <script type="module">
   import { createClient } from "https://esm.sh/@supabase/supabase-js@2";

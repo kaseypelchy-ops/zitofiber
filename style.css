@@ -420,7 +420,7 @@ select.team-select option { background: var(--card); color: var(--text); }
 #panel-form {
   position: absolute; top: 52px; right: 0; width: 360px; bottom: 0;
   background: var(--surface); border-left: 1px solid var(--border);
-  /* Keep sales form above map overlays (weather pill/radar/temp) */
+
   display: flex; flex-direction: column; z-index: 1200;
   transform: translateX(100%); transition: transform .25s ease;
 }
@@ -733,19 +733,6 @@ select.team-select option { background: var(--card); color: var(--text); }
 .pop-open-btn:hover { background: #1d4ed8; }
 
 /* ── ONLINE STATUS PILL (topbar) ── */
-#tb-status-pill {
-  display: flex; align-items: center; gap: 6px;
-  background: var(--surface2); border: 1px solid var(--border);
-  border-radius: 20px; padding: 4px 10px; cursor: pointer;
-  font-size: 11px; font-family: 'Space Mono', monospace; font-weight: 700;
-  transition: all .2s; user-select: none;
-}
-#tb-status-pill:hover { border-color: var(--accent); }
-#tb-status-pill.is-online  { border-color: rgba(16,185,129,.5); color: #6ee7b7; }
-#tb-status-pill.is-offline { border-color: rgba(239,68,68,.5);  color: #fca5a5; }
-.status-dot {
-  width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; transition: background .3s;
-}
 .is-online  .status-dot { background: #10b981; box-shadow: 0 0 6px #10b981; animation: pulse-online 2s infinite; }
 .is-offline .status-dot { background: #ef4444; }
 @keyframes pulse-online {
@@ -754,12 +741,6 @@ select.team-select option { background: var(--card); color: var(--text); }
 }
 
 /* ── BADGE MODAL ── */
-#badge-modal {
-  display: none; position: fixed; inset: 0;
-  background: rgba(0,0,0,.8); z-index: 3000;
-  align-items: center; justify-content: center; padding: 20px;
-}
-#badge-modal.open { display: flex; }
 
 .badge-wrap {
   width: 100%; max-width: 360px;
@@ -1089,7 +1070,6 @@ select.team-select option { background: var(--card); color: var(--text); }
   cursor: pointer; transition: all .2s;
 }
 .mgr-close-btn:hover { border-color: var(--accent); color: var(--accent); }
-#btn-manager { display: none; }
 
 /* ── Splash screen ── */
 #splash {
@@ -1248,7 +1228,7 @@ select.team-select option { background: var(--card); color: var(--text); }
 }
 
 @media (min-width: 641px){
-  /* When the sales form panel is open, keep the weather pill visible (not underneath the panel). */
+
   body.form-open .wx-pill{ right: calc(16px + 360px); }
 }
 @media (max-width: 640px){
@@ -2395,78 +2375,6 @@ select.team-select option { background: var(--card); color: var(--text); }
    GPS PERMISSION PROMPT
    ══════════════════════════════════════════════════════════ */
 
-.gps-prompt-overlay {
-  display: none;
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,.75);
-  z-index: 4000;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  padding-bottom: max(20px, calc(20px + env(safe-area-inset-bottom)));
-  backdrop-filter: blur(4px);
-  overflow-y: auto;
-}
-.gps-prompt-overlay.open { display: flex; }
-
-.gps-prompt-box {
-  background: #161b22;
-  border: 1px solid rgba(0,86,150,.4);
-  border-radius: 20px;
-  padding: 28px 24px;
-  max-width: 320px;
-  width: 100%;
-  max-height: calc(100vh - 40px);
-  max-height: calc(100dvh - 40px);
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  box-shadow: 0 24px 60px rgba(0,0,0,.6);
-  animation: gps-pop .25s cubic-bezier(.175,.885,.32,1.275);
-}
-@keyframes gps-pop {
-  from { transform: scale(.88); opacity: 0; }
-  to   { transform: scale(1);   opacity: 1; }
-}
-
-.gps-prompt-icon {
-  font-size: 44px;
-  margin-bottom: 14px;
-  filter: drop-shadow(0 0 16px rgba(0,86,150,.6));
-}
-.gps-prompt-title {
-  font-size: 20px;
-  font-weight: 800;
-  color: #fff;
-  margin-bottom: 14px;
-}
-.gps-prompt-body {
-  font-size: 12px;
-  color: #8b949e;
-  line-height: 1.5;
-  margin-bottom: 12px;
-  text-align: left;
-  width: 100%;
-}
-.gps-feat {
-  display: block;
-  padding: 6px 10px;
-  margin: 4px 0;
-  background: rgba(255,255,255,.04);
-  border-radius: 8px;
-  font-size: 12px;
-  color: #c9d1d9;
-}
-.gps-prompt-sub {
-  font-size: 10px;
-  color: #6e7681;
-  margin-bottom: 20px;
-  font-family: 'Space Mono', monospace;
-  line-height: 1.5;
-}
 .gps-btn-allow {
   width: 100%;
   padding: 13px;
@@ -2785,12 +2693,6 @@ select.team-select option { background: var(--card); color: var(--text); }
   /* ── Add address modal ───────────────────────────────── */
   .add-addr-box { padding: 20px 16px 20px; border-radius: 16px; }
 
-  /* ── GPS prompt ──────────────────────────────────────── */
-  .gps-prompt-box { padding: 24px 18px; border-radius: 16px; }
-  .gps-prompt-icon { font-size: 36px; margin-bottom: 10px; }
-  .gps-prompt-title { font-size: 17px; margin-bottom: 10px; }
-  .gps-feat { font-size: 11px; padding: 5px 8px; }
-
   /* ── Rep marker tooltip smaller on mobile ────────────── */
   .rep-tooltip { font-size: 11px !important; padding: 5px 8px !important; }
 
@@ -2835,7 +2737,6 @@ select.team-select option { background: var(--card); color: var(--text); }
   .forecast-mrr { font-size: 28px; }
   .comp-pill-val { font-size: 16px; }
   .setup-card { padding: 18px 14px; }
-  .gps-prompt-icon { font-size: 30px; }
   .ai-summary-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
@@ -2874,299 +2775,6 @@ select.team-select option { background: var(--card); color: var(--text); }
 /* ── Mobile: mgr-two-col always single column ──────────── */
 @media (max-width: 699px) {
   .mgr-two-col { display: flex; flex-direction: column; gap: 10px; }
-}
-
-/* ══════════════════════════════════════════════════════
-   AI ANALYSIS TAB
-   ══════════════════════════════════════════════════════ */
-
-/* Pulse glow on the AI tab button */
-.mgr-tab-ai {
-  position: relative;
-  overflow: visible;
-}
-.mgr-tab-ai::after {
-  content: '✦';
-  position: absolute;
-  top: -4px; right: -2px;
-  font-size: 8px;
-  color: #a78bfa;
-  animation: aiPulse 2s ease-in-out infinite;
-}
-@keyframes aiPulse {
-  0%, 100% { opacity: .4; transform: scale(1); }
-  50%       { opacity: 1;  transform: scale(1.3); }
-}
-
-/* Hero card at top of AI tab */
-.ai-hero-card {
-  background: linear-gradient(135deg, rgba(0,86,150,.18) 0%, rgba(139,92,246,.12) 100%);
-  border: 1px solid rgba(139,92,246,.3);
-  border-radius: 14px;
-  padding: 18px 20px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  margin-bottom: 14px;
-}
-.ai-hero-title {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--text);
-  margin-bottom: 5px;
-}
-.ai-hero-sub {
-  font-size: 11px;
-  color: var(--muted);
-  line-height: 1.5;
-  max-width: 400px;
-}
-.ai-run-btn {
-  background: linear-gradient(135deg, #005696 0%, #8b5cf6 100%);
-  color: #fff;
-  border: none;
-  border-radius: 12px;
-  padding: 12px 22px;
-  font-family: 'Syne', sans-serif;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-  white-space: nowrap;
-  flex-shrink: 0;
-  transition: opacity .15s, transform .1s;
-  box-shadow: 0 4px 16px rgba(139,92,246,.3);
-}
-.ai-run-btn:hover   { opacity: .9; transform: translateY(-1px); }
-.ai-run-btn:active  { transform: translateY(0); }
-.ai-run-btn:disabled { opacity: .5; cursor: default; transform: none; }
-
-/* Context pills */
-.ai-context-pills {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 14px;
-  min-height: 24px;
-}
-.ai-pill {
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  padding: 3px 10px;
-  font-size: 10px;
-  font-family: 'Space Mono', monospace;
-  color: var(--muted);
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-.ai-pill-dot {
-  width: 6px; height: 6px;
-  border-radius: 50%;
-  background: var(--gig);
-  flex-shrink: 0;
-}
-.ai-pill-dot.warn { background: var(--warn); }
-.ai-pill-dot.dim  { background: var(--muted); }
-
-/* Output area */
-.ai-output-idle {
-  background: var(--surface2);
-  border: 1px dashed var(--border);
-  border-radius: 14px;
-  min-height: 200px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.ai-output-active {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 20px;
-}
-.ai-output-loading {
-  background: var(--surface2);
-  border: 1px solid rgba(139,92,246,.3);
-  border-radius: 14px;
-  min-height: 200px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-}
-.ai-output-placeholder {
-  text-align: center;
-  color: var(--muted);
-  font-size: 13px;
-  line-height: 1.6;
-  padding: 24px;
-}
-.ai-placeholder-icon {
-  font-size: 36px;
-  margin-bottom: 12px;
-}
-
-/* Loading animation */
-.ai-loading-orb {
-  width: 48px; height: 48px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #005696, #8b5cf6);
-  animation: aiOrb .9s ease-in-out infinite alternate;
-  box-shadow: 0 0 24px rgba(139,92,246,.4);
-}
-@keyframes aiOrb {
-  from { transform: scale(.85); box-shadow: 0 0 12px rgba(139,92,246,.2); }
-  to   { transform: scale(1.1); box-shadow: 0 0 32px rgba(139,92,246,.6); }
-}
-.ai-loading-label {
-  font-size: 13px;
-  color: var(--muted);
-  font-family: 'Space Mono', monospace;
-}
-.ai-loading-steps {
-  font-size: 11px;
-  color: var(--muted);
-  opacity: .7;
-}
-
-/* Rendered analysis sections */
-.ai-section {
-  margin-bottom: 22px;
-}
-.ai-section:last-child { margin-bottom: 0; }
-
-.ai-section-head {
-  font-size: 12px;
-  font-weight: 700;
-  font-family: 'Space Mono', monospace;
-  text-transform: uppercase;
-  letter-spacing: .06em;
-  color: var(--muted);
-  margin-bottom: 10px;
-  padding-bottom: 6px;
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  gap: 7px;
-}
-
-.ai-rec-card {
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--accent);
-  border-radius: 10px;
-  padding: 12px 14px;
-  margin-bottom: 8px;
-}
-.ai-rec-card.priority-high   { border-left-color: #ef4444; }
-.ai-rec-card.priority-medium { border-left-color: #facc15; }
-.ai-rec-card.priority-low    { border-left-color: #6b7280; }
-
-.ai-rec-header {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  margin-bottom: 5px;
-}
-.ai-rec-priority {
-  font-size: 9px;
-  font-family: 'Space Mono', monospace;
-  font-weight: 700;
-  padding: 2px 7px;
-  border-radius: 4px;
-  flex-shrink: 0;
-  margin-top: 1px;
-}
-.priority-high   .ai-rec-priority { background: rgba(239,68,68,.15);  color: #ef4444; }
-.priority-medium .ai-rec-priority { background: rgba(250,204,21,.15); color: #facc15; }
-.priority-low    .ai-rec-priority { background: rgba(107,114,128,.15); color: #8b949e; }
-
-.ai-rec-action {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text);
-  line-height: 1.4;
-}
-.ai-rec-detail {
-  font-size: 12px;
-  color: var(--muted);
-  line-height: 1.5;
-  margin-top: 4px;
-}
-.ai-rec-territory {
-  font-size: 10px;
-  font-family: 'Space Mono', monospace;
-  color: var(--accent);
-  margin-bottom: 3px;
-}
-
-.ai-insight-row {
-  display: flex;
-  gap: 8px;
-  align-items: flex-start;
-  padding: 8px 0;
-  border-bottom: 1px solid rgba(48,54,61,.5);
-  font-size: 12.5px;
-  color: var(--text);
-  line-height: 1.5;
-}
-.ai-insight-row:last-child { border-bottom: none; }
-.ai-insight-icon { flex-shrink: 0; margin-top: 1px; }
-
-.ai-summary-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-  margin-bottom: 14px;
-}
-.ai-summary-cell {
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 10px 12px;
-  text-align: center;
-}
-.ai-summary-val {
-  font-size: 20px;
-  font-weight: 700;
-  font-family: 'Space Mono', monospace;
-  color: var(--text);
-}
-.ai-summary-lbl {
-  font-size: 9px;
-  color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: .05em;
-  margin-top: 3px;
-}
-
-.ai-timestamp {
-  font-size: 10px;
-  color: var(--muted);
-  font-family: 'Space Mono', monospace;
-  text-align: right;
-  margin-top: 10px;
-  opacity: .6;
-}
-
-.ai-error-box {
-  background: rgba(239,68,68,.08);
-  border: 1px solid rgba(239,68,68,.25);
-  border-radius: 12px;
-  padding: 16px 20px;
-  color: var(--danger);
-  font-size: 13px;
-  line-height: 1.5;
-}
-
-/* Mobile */
-@media (max-width: 520px) {
-  .ai-hero-card { flex-direction: column; align-items: flex-start; }
-  .ai-run-btn   { width: 100%; text-align: center; }
-  .ai-summary-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
 /* ══════════════════════════════════════════════════════
@@ -3398,75 +3006,9 @@ select.team-select option { background: var(--card); color: var(--text); }
   to   { transform: scale(1);   opacity: 1; }
 }
 
-/* ── AI key input row ───────────────────────────────────── */
-.ai-key-row {
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 12px 16px;
-  margin-bottom: 12px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-.ai-key-label {
-  font-size: 11px;
-  font-family: 'Space Mono', monospace;
-  color: var(--muted);
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-.ai-key-input-wrap {
-  display: flex;
-  align-items: center;
-  flex: 1;
-  min-width: 180px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  overflow: hidden;
-}
-.ai-key-input {
-  flex: 1;
-  background: transparent;
-  border: none;
-  outline: none;
-  color: var(--text);
-  font-family: 'Space Mono', monospace;
-  font-size: 12px;
-  padding: 8px 10px;
-  min-width: 0;
-}
-.ai-key-input::placeholder { color: var(--muted); opacity: .6; }
-.ai-key-toggle {
-  background: none;
-  border: none;
-  border-left: 1px solid var(--border);
-  padding: 6px 10px;
-  cursor: pointer;
-  font-size: 14px;
-  color: var(--muted);
-  flex-shrink: 0;
-}
-.ai-key-toggle:hover { color: var(--text); }
-.ai-key-hint {
-  font-size: 10px;
-  color: var(--muted);
-  white-space: nowrap;
-  font-family: 'Space Mono', monospace;
-  opacity: .7;
-}
-.ai-key-hint.saved { color: var(--gig); opacity: 1; }
-@media (max-width: 520px) {
-  .ai-key-row { flex-direction: column; align-items: flex-start; gap: 8px; }
   .ai-key-input-wrap { width: 100%; }
   .ai-key-hint { white-space: normal; }
 }
-
-/* ═══════════════════════════════════════════════════════════
-   DRAW ZONE — polygon drawing + OSM rooftop import
-   ═══════════════════════════════════════════════════════════ */
 
 /* Topbar button */
 .tb-btn-zone {

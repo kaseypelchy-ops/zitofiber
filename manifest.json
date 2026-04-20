@@ -33,34 +33,5 @@
     "standalone",
     "minimal-ui"
   ],
-  "shortcuts": [
-    {
-      "name": "Team Dashboard",
-      "short_name": "Team",
-      "description": "Open Manager Team Status",
-      "url": "./index.html#manager",
-      "icons": [
-        {
-          "src": "https://www.zitomedia.net/wp-content/uploads/2025/03/Untitled-design-6.png",
-          "sizes": "192x192",
-          "type": "image/png",
-          "purpose": "any maskable"
-        }
-      ]
-    },
-    {
-      "name": "My Badge",
-      "short_name": "Badge",
-      "description": "Open Rep Badge",
-      "url": "./index.html#badge",
-      "icons": [
-        {
-          "src": "https://www.zitomedia.net/wp-content/uploads/2025/03/Untitled-design-6.png",
-          "sizes": "192x192",
-          "type": "image/png",
-          "purpose": "any maskable"
-        }
-      ]
-    }
-  ]
+  "shortcuts": []
 }

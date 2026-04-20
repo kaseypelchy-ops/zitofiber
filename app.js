@@ -11,7 +11,6 @@ var TEAM_LINK_ALIASES = {
   salesfocusinc: 'Sales Focus Inc.'
 };
 
-var MANAGER_NAMES = ['kasey pelchy', 'james rigas', 'chris ruding', 'matt gerding'];
 // ──────────────────────────────────────────────────────────
 //  STATE
 // ──────────────────────────────────────────────────────────
@@ -60,7 +59,6 @@ var kmlGeoJSON = null;
 var toastTimer = null;
 var sidebarOpen  = true;
 var pinDropMode  = false;
-var drawZoneMode = false;   // polygon drawing for zone-based house import
 var tempPinMarker = null;
 
 // ──────────────────────────────────────────────────────────
@@ -539,53 +537,7 @@ function selectTeam(val) {
   checkLaunchReady();
 }
 
-// ──────────────────────────────────────────────────────────
-//  REAL-TIME POLLING
-// ──────────────────────────────────────────────────────────
-var pollTimer = null;
 
-function startPolling() {
-  // Managers always poll — they have no single activeTerritory
-  if (!activeTerritory && !isManager()) return;
-
-  pollTimer = setInterval(function() {
-    var pollUrl = isManager()
-      ? webhookURL + '?action=addresses&isManager=true&_t=' + Date.now()
-      : webhookURL + '?action=addresses&territory=' + encodeURIComponent(activeTerritory || '') + '&_t=' + Date.now();
-    fetch(pollUrl)
-      .then(function(r){ return r.json(); })
-      .then(function(json){
-        if (!json || !json.rows) return;
-
-        var changed = false;
-        var markersToRefresh = [];
-
-        // First pass: update all data — no DOM touches yet
-        json.rows.forEach(function(row) {
-          var addr = addresses.find(function(a){ return a.sheetRow === row.sheetRow; });
-          if (!addr) return;
-
-          var newStatus = (row.status || 'pending').toString().toLowerCase().trim();
-          var newNote   = (row.note || row.dispositionNote || row.disposition_note || '').toString().trim();
-
-          if (addr.status !== newStatus || addr.note !== newNote) {
-            addr.status = newStatus;
-            addr.note   = newNote;
-            changed = true;
-            if (addr.lat && addr.lng) markersToRefresh.push(addr);
-          }
-        });
-
-        // Second pass: update markers all at once after data is settled
-        if (changed) {
-          markersToRefresh.forEach(function(addr) { placeMarker(addr); });
-          buildList();
-          updateStats();
-        }
-      })
-      .catch(function(){});
-  }, 10000);
-}
 function launchApp() {
   repName = (document.getElementById('rep-name').value || '').trim();
   // repPhone and repEmail are populated by fetchAddressesFromSheet from the Reps sheet
@@ -620,15 +572,7 @@ function launchApp() {
     initMap();
     prefetchTiles();
     geocodeAll();
-    startPolling();
     maybeAutoCollapse();
-    initBadge();
-    // Ask for GPS permission right after launch so Route Mode is ready to go
-    startGPSPing();
-    // Managers land on the team dashboard automatically
-    if (isManager()) {
-      setTimeout(function(){ openManagerPanel(); }, 600);
-    }
   } catch (err) {
     try { clearTimeout(fadeTimer); } catch(e) {}
     if (splash) { splash.classList.add('fade-out'); setTimeout(function(){ splash.classList.add('gone'); }, 300); }
@@ -648,154 +592,7 @@ function launchApp() {
   var wxLastTempFetch = 0;
   var wxTempTimer = null;
 
-  function wxSetRadarUI_(on) {
-    wxRadarOn = !!on;
-    var btn = document.getElementById('wx-radar-toggle');
-    if (!btn) return;
-    btn.classList.toggle('on', wxRadarOn);
-    btn.setAttribute('aria-pressed', wxRadarOn ? 'true' : 'false');
-  }
-
-  function wxToggleRadar() {
-    if (!mapObj) return;
-    if (!wxRadarLayer) {
-      wxSetRadarUI_(true);
-      wxInitRadarOverlay_();
-      return;
-    }
-    if (mapObj.hasLayer(wxRadarLayer)) {
-      mapObj.removeLayer(wxRadarLayer);
-      wxSetRadarUI_(false);
-    } else {
-      wxRadarLayer.addTo(mapObj);
-      wxSetRadarUI_(true);
-    }
-  }
-
-  function wxInitRadarOverlay_() {
-    if (!mapObj) return;
-
-    fetch('https://api.rainviewer.com/public/weather-maps.json')
-      .then(function(r){ return r.json(); })
-      .then(function(meta){
-        wxRadarMeta = meta;
-        var past = meta && meta.radar && meta.radar.past ? meta.radar.past : [];
-        if (!past.length) return;
-
-        var frame = past[past.length - 1];
-        var host  = meta.host;
-        var path  = frame.path;
-
-        var tileUrl = host + path + '/256/{z}/{x}/{y}/2/1_1.png';
-
-        var wasOn = wxRadarLayer && mapObj.hasLayer(wxRadarLayer);
-
-        if (wxRadarLayer) {
-          try { mapObj.removeLayer(wxRadarLayer); } catch(e) {}
-        }
-
-        wxRadarLayer = L.tileLayer(tileUrl, {
-          opacity: 0.55,
-          zIndex: 500,
-          maxNativeZoom: 7,
-          maxZoom: 19
-        });
-
-        if (wasOn || wxRadarOn) {
-          wxRadarLayer.addTo(mapObj);
-          wxSetRadarUI_(true);
-        }
-      })
-      .catch(function(){});
-  }
-
-  function wxFetchTemp_(lat, lng) {
-    var now = Date.now();
-    if (now - wxLastTempFetch < 60 * 1000) return;
-    wxLastTempFetch = now;
-
-    var url =
-      'https://api.open-meteo.com/v1/forecast' +
-      '?latitude=' + encodeURIComponent(lat) +
-      '&longitude=' + encodeURIComponent(lng) +
-      '&current_weather=true' +
-      '&temperature_unit=fahrenheit';
-
-    fetch(url)
-      .then(function(r){ return r.json(); })
-      .then(function(json){
-        var el = document.getElementById('wx-temp');
-        if (!el) return;
-
-        var t = (json && json.current_weather && typeof json.current_weather.temperature === 'number')
-          ? json.current_weather.temperature
-          : null;
-
-        if (t === null) { el.textContent = '—°F'; return; }
-        el.textContent = Math.round(t) + '°F';
-      })
-      .catch(function(){
-        var el = document.getElementById('wx-temp');
-        if (el) el.textContent = '—°F';
-      });
-  }
-
-  function wxUpdateTempFromMap_() {
-    if (!mapObj) return;
-    var c = mapObj.getCenter();
-    wxFetchTemp_(c.lat, c.lng);
-  }
-
-  function wxInitTemperature_() {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(function(pos){
-        wxFetchTemp_(pos.coords.latitude, pos.coords.longitude);
-      }, function(){
-        wxUpdateTempFromMap_();
-      }, { enableHighAccuracy: false, timeout: 5000, maximumAge: 600000 });
-    } else {
-      wxUpdateTempFromMap_();
-    }
-
-    var t;
-    mapObj.on('moveend', function(){
-      clearTimeout(t);
-      t = setTimeout(wxUpdateTempFromMap_, 700);
-    });
-
-    if (wxTempTimer) clearInterval(wxTempTimer);
-    wxTempTimer = setInterval(wxUpdateTempFromMap_, 10 * 60 * 1000);
-  }
-
-// Track the active base layer and label overlay globally
-var activeBaseLayer   = null;
-var activeLabelLayer  = null;
-var heatMapLayer      = null;  // Coverage heat map — manager only
-var heatMapOn         = false;
-
-// Status-to-heat-color mapping (warm = worked, cool = pending)
-var HEAT_COLORS = {
-  mega:          { fill: '#8b5cf6', opacity: 0.55 },
-  gig:           { fill: '#10b981', opacity: 0.55 },
-  nothome:       { fill: '#f59e0b', opacity: 0.40 },
-  nothome2:      { fill: '#f59e0b', opacity: 0.45 },
-  nothome3:      { fill: '#f59e0b', opacity: 0.50 },
-  nothome4:      { fill: '#f59e0b', opacity: 0.55 },
-  fibercompetitor:   { fill: '#ef4444', opacity: 0.45 },
-  competitor:    { fill: '#f97316', opacity: 0.45 },
-  incontract:    { fill: '#6366f1', opacity: 0.40 },
-  notinterested: { fill: '#ec4899', opacity: 0.45 },
-  goback:        { fill: '#06b6d4', opacity: 0.40 },
-  maybelater:    { fill: '#22c55e', opacity: 0.45 },
-  sendinfo:      { fill: '#0ea5e9', opacity: 0.45 },
-  talktospouse:  { fill: '#a855f7', opacity: 0.45 },
-  priceconcern:  { fill: '#f97316', opacity: 0.45 },
-  notdecisionmaker: { fill: '#14b8a6', opacity: 0.45 },
-  vacant:        { fill: '#78716c', opacity: 0.35 },
-  business:      { fill: '#2563eb', opacity: 0.40 },
-  activecustomer:{ fill: '#facc15', opacity: 0.50 },
-  pending:       { fill: '#6b7280', opacity: 0.20 }
-};
+  function wxSetRadarUI_() {};
 
 function toggleHeatMap() {
   if (!mapObj) return;
@@ -840,6 +637,10 @@ function renderHeatMap() {
   heatMapLayer = L.layerGroup(circles);
   heatMapLayer.addTo(mapObj);
 }
+
+// Track current map tile layers
+var activeBaseLayer = null;
+var activeLabelLayer = null;
 
 // Satellite imagery (ONLY base map option) + labels overlay
 var SATELLITE_LAYER = {
@@ -951,25 +752,10 @@ function initMap() {
   }
 
   wxSetRadarUI_(false);
-  wxInitRadarOverlay_();
-  if (wxRadarRefreshTimer) clearInterval(wxRadarRefreshTimer);
-  wxRadarRefreshTimer = setInterval(wxInitRadarOverlay_, 10 * 60 * 1000);
-
-  wxInitTemperature_();
-
   // ── Pin-drop: tap map to place a new address ──────────────
   mapObj.on('click', function(e) {
-    if (drawZoneMode) { handleDrawZoneClick(e.latlng); return; }
     if (!pinDropMode) return;
     handleMapPinDrop(e.latlng);
-  });
-
-  // Double-click closes polygon when drawing (also prevents zoom-in during draw mode)
-  mapObj.on('dblclick', function(e) {
-    if (drawZoneMode && drawZonePoints.length >= 3) {
-      L.DomEvent.stopPropagation(e);
-      finalizeDrawZone();
-    }
   });
 
   // (Map Drop Pin control removed — use top bar button)
@@ -2222,15 +2008,9 @@ var MANAGER_NAMES  = ['kasey pelchy', 'james rigas', 'chris ruding']; // ← add
 var heartbeatTimer = null;
 var mgrAutoRefresh = null;
 
-function isManager() {
-  return MANAGER_NAMES.indexOf(repName.trim().toLowerCase()) >= 0;
-}
+function isManager() { return false; }
 
-function initManagerAccess() {
-  if (isManager()) {
-    document.getElementById('btn-manager').style.display = 'block';
-  }
-}
+function initManagerAccess() {}
 
 function sendHeartbeat(statusOverride) {
   var cleanName = (repName || '').trim();
@@ -2304,7 +2084,7 @@ function confirmSignOut() {
     selPkg    = null;
     selStatus = null;
     selSlot   = null;
-    clearInterval(pollTimer);
+    clearInterval(heartbeatTimer);
     if (mapObj) { mapObj.remove(); mapObj = null; }
 
     document.getElementById('page-app').style.display   = 'none';
@@ -2315,7 +2095,6 @@ function confirmSignOut() {
     try { localStorage.removeItem('zito_rep_name'); localStorage.removeItem('zito_rep_phone'); localStorage.removeItem('zito_rep_email'); localStorage.removeItem('fieldos_team'); } catch(e) {}
     document.getElementById('launch-btn').disabled = true;
     document.getElementById('fetch-addr-status').textContent = '';
-    document.getElementById('btn-manager').style.display = 'none';
     activeTeam = '';
     webhookURL = '';
     SCHED_URL  = '';
@@ -2503,16 +2282,8 @@ function refreshMapMarkers() {
   if (clusterGroup) clusterGroup.addLayers(toAdd);
 }
 
-function openManagerPanel() {
-  document.getElementById('manager-modal').classList.add('open');
-  switchMgrTab('team', document.querySelector('.mgr-tab'));
-  refreshManagerPanel();
-  mgrAutoRefresh = setInterval(refreshManagerPanel, 10000);
-}
-function closeManagerPanel() {
-  document.getElementById('manager-modal').classList.remove('open');
-  clearInterval(mgrAutoRefresh);
-}
+function openManagerPanel() {}
+function closeManagerPanel() {}
 
 // ── Tab switching ─────────────────────────────────────────
 function switchMgrTab(tab, btn) {
@@ -3450,33 +3221,9 @@ function escHtml(str) {
 // ──────────────────────────────────────────────────────────
 var repOnline = false;
 
-function initBadge() {
-  repOnline = navigator.onLine;
-  applyRepStatus();
-  window.addEventListener('online',  function() { repOnline = true;  applyRepStatus(); sendHeartbeat('online');  });
-  window.addEventListener('offline', function() { repOnline = false; applyRepStatus(); sendHeartbeat('offline'); });
-  initManagerAccess();
-  startHeartbeat();
-}
+function initBadge() {}
 
-function applyRepStatus() {
-  var pill   = document.getElementById('tb-status-pill');
-  var label  = document.getElementById('tb-status-label');
-  var toggle = document.getElementById('badge-toggle');
-  var btext  = document.getElementById('badge-status-text');
-
-  if (repOnline) {
-    pill.className   = 'is-online';
-    label.textContent = 'ONLINE';
-    toggle.className = 'badge-status-toggle online';
-    btext.textContent = 'ONLINE';
-  } else {
-    pill.className   = 'is-offline';
-    label.textContent = 'OFFLINE';
-    toggle.className = 'badge-status-toggle offline';
-    btext.textContent = 'OFFLINE';
-  }
-}
+function applyRepStatus() {}
 
 function escapeHtml(s) {
   return String(s || '')
@@ -3499,51 +3246,11 @@ function popupHtmlForAddr(addr) {
          noteHtml + outcomeHtml + softHtml;
 }
 
-function toggleRepStatus() {
-  repOnline = !repOnline;
-  applyRepStatus();
-  sendHeartbeat(repOnline ? 'online' : 'offline');
-}
+function toggleRepStatus() {}
 
-function openBadge() {
-  var name = repName || 'Unknown Rep';
-  document.getElementById('badge-rep-name').textContent = name;
+function openBadge() {}
 
-  var p = repPhone || '';
-  var e = repEmail || '';
-  document.getElementById('badge-rep-phone').textContent = p ? p : '—';
-  document.getElementById('badge-rep-email').textContent = e ? e : '—';
-  document.getElementById('badge-rep-web').textContent   = repWebsite.replace(/^https?:\/\//,'');
-  var phoneLink = document.getElementById('badge-phone-link');
-  var emailLink = document.getElementById('badge-email-link');
-  var webLink   = document.getElementById('badge-web-link');
-  if (phoneLink) phoneLink.href = p ? ('tel:' + p.replace(/[^0-9+]/g,'')) : '#';
-  if (emailLink) emailLink.href = e ? ('mailto:' + e) : '#';
-  if (webLink)   webLink.href   = repWebsite;
-
-  var parts    = name.trim().split(/\s+/);
-  var initials = parts.length >= 2
-    ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
-    : name.slice(0, 2).toUpperCase();
-  document.getElementById('badge-avatar').textContent = initials;
-
-  var idNum = 0;
-  for (var i = 0; i < name.length; i++) { idNum += name.charCodeAt(i); }
-  document.getElementById('badge-id-num').textContent = 'REP-' + String(idNum).padStart(3, '0');
-
-  var megaSales = addresses.filter(function(a){ return a.status === 'mega'; }).length;
-  var gigSales  = addresses.filter(function(a){ return a.status === 'gig';  }).length;
-  document.getElementById('badge-mega').textContent  = megaSales;
-  document.getElementById('badge-gig').textContent   = gigSales;
-  document.getElementById('badge-total').textContent = megaSales + gigSales;
-
-  applyRepStatus();
-  document.getElementById('badge-modal').classList.add('open');
-}
-
-function closeBadge() {
-  document.getElementById('badge-modal').classList.remove('open');
-}
+function closeBadge() {}
 
 var lastGPS       = null;
 var gpsWatchId    = null;
@@ -3552,25 +3259,11 @@ var repAccCircle  = null;   // Accuracy radius circle
 
 // ── GPS Permission & Init ─────────────────────────────────
 
-function showGPSPrompt() {
-  var el = document.getElementById('gps-prompt');
-  if (el) el.classList.add('open');
-}
+function showGPSPrompt() {}
 
-function dismissGPSPrompt(reason) {
-  var el = document.getElementById('gps-prompt');
-  if (el) el.classList.remove('open');
-  if (reason) showGPSBanner(reason.text, reason.type);
-}
+function dismissGPSPrompt() {}
 
-function showGPSBanner(msg, type) {
-  var el = document.getElementById('gps-banner');
-  if (!el) return;
-  el.textContent = msg;
-  el.className = 'gps-banner ' + (type || 'ok');
-  el.classList.add('show');
-  setTimeout(function() { el.classList.remove('show'); }, 3500);
-}
+function showGPSBanner() {}
 
 // ── Rep position marker ──────────────────────────────────
 function updateRepMarker(lat, lng, acc) {
@@ -3715,46 +3408,18 @@ function _startGPSWatch_() {
 }
 
 // Public entry called from launchApp — shows the in-app prompt first
-function startGPSPing() {
-  if (isManager()) return;  // managers don't use GPS
-  if (!navigator.geolocation) {
-    _markRouteButtonUnavailable_();
-    return;
-  }
-  // Check if permission was already granted (won't re-prompt if so)
-  if (navigator.permissions && navigator.permissions.query) {
-    navigator.permissions.query({ name: 'geolocation' }).then(function(result) {
-      if (result.state === 'granted') {
-        // Already have permission — skip the prompt and go straight to watching
-        _startGPSWatch_();
-        navigator.geolocation.getCurrentPosition(function(pos) {
-          lastGPS = { lat: pos.coords.latitude, lng: pos.coords.longitude,
-                      acc: pos.coords.accuracy || null, ts: Date.now() };
-          updateRepMarker(lastGPS.lat, lastGPS.lng, lastGPS.acc);
-          showGPSBanner('📍 Location active', 'ok');
-        }, function(){});
-      } else if (result.state === 'denied') {
-        // Already denied — mark button unavailable, no point prompting
-        _markRouteButtonUnavailable_();
-        showGPSBanner('📍 Location blocked — enable in browser settings for Route Mode', 'warn');
-      } else {
-        // 'prompt' state — show our friendly in-app prompt first
-        showGPSPrompt();
-      }
-    }).catch(function() {
-      // permissions API not supported — show prompt anyway
-      showGPSPrompt();
-    });
-  } else {
-    // No permissions API (older browsers) — show our prompt
-    showGPSPrompt();
-  }
-}
+function startGPSPing() {}
+
+var _lastNearbyPing = 0;
+var NEARBY_PING_THROTTLE = 180000; // 3 minutes
 
 function pingNearbyAddresses() {
   if (isManager()) return;       // managers don't filter by proximity
   if (!lastGPS) return;
   if (!repName) return; // your global repName after login/setup
+  var now = Date.now();
+  if (now - _lastNearbyPing < NEARBY_PING_THROTTLE) return;
+  _lastNearbyPing = now;
 
   fetch(webhookURL, {
     method: 'POST',
@@ -4558,263 +4223,17 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 });
 
-// (AI Coach removed)
-
-// ══════════════════════════════════════════════════════════
-//  TEAM CHAT
-// ══════════════════════════════════════════════════════════
-//  GET  ?action=getChat&since=ISO_TIMESTAMP  → {messages:[…]}
-//  POST { type:'chat_message', sender, text, ts } → {result:'ok'}
-//  Chat tab in Google Sheet: Col A=Timestamp, B=Sender, C=Message
-// ──────────────────────────────────────────────────────────
-
-var chatOpen        = false;
-var chatMessages    = [];
-var chatLastTS      = null;
-var chatPollTimer   = null;
-var chatUnreadCount = 0;
-var chatSending     = false;
-
-var CHAT_POLL_OPEN   = 5000;   // poll every 5 s while panel is visible
-var CHAT_POLL_CLOSED = 30000;  // poll every 30 s in background
-
-function openChat() {
-  document.getElementById('chat-modal').classList.add('open');
-  chatOpen = true;
-  chatUnreadCount = 0;
-  updateChatBadge();
-  renderChatMessages();
-  if (chatMessages.length === 0) fetchChatMessages(true);
-  startChatPoll();
-  setTimeout(scrollChatBottom, 80);
-  document.getElementById('chat-input').focus();
-}
-
-function closeChat() {
-  document.getElementById('chat-modal').classList.remove('open');
-  chatOpen = false;
-  stopChatPoll();
-  startChatPoll(); // restart at slow background rate
-}
-
-function startChatPoll() {
-  stopChatPoll();
-  var interval = chatOpen ? CHAT_POLL_OPEN : CHAT_POLL_CLOSED;
-  chatPollTimer = setInterval(function() { fetchChatMessages(false); }, interval);
-}
-function stopChatPoll() {
-  if (chatPollTimer) { clearInterval(chatPollTimer); chatPollTimer = null; }
-}
-
-function fetchChatMessages(isInitial) {
-  if (!webhookURL) return;
-  var url = webhookURL + '?action=getChat&_t=' + Date.now();
-  if (!isInitial && chatLastTS) url += '&since=' + encodeURIComponent(chatLastTS);
-
-  fetch(url)
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-      var msgs = data.messages || [];
-      if (msgs.length === 0) { if (isInitial) renderChatMessages(); return; }
-
-      var wasAtBottom = isChatScrolledToBottom();
-      if (isInitial) {
-        chatMessages = msgs;
-      } else {
-        msgs.forEach(function(m) {
-          var key = m.ts + '|' + m.sender;
-          var exists = chatMessages.some(function(x) { return (x.ts + '|' + x.sender) === key; });
-          if (!exists) { chatMessages.push(m); if (!chatOpen) chatUnreadCount++; }
-        });
-        chatMessages.sort(function(a, b) { return a.ts < b.ts ? -1 : 1; });
-      }
-      if (chatMessages.length) chatLastTS = chatMessages[chatMessages.length - 1].ts;
-      updateChatBadge();
-      if (chatOpen) { renderChatMessages(); if (wasAtBottom || isInitial) scrollChatBottom(); }
-    })
-    .catch(function() {}); // silently retry next poll
-}
-
-function sendChatMessage() {
-  if (chatSending) return;
-  var input = document.getElementById('chat-input');
-  var text  = (input.value || '').trim();
-  if (!text) return;
-  if (!webhookURL) { toast('⚠ No webhook configured', 't-err'); return; }
-
-  var ts   = new Date().toISOString();
-  var name = repName || 'Rep';
-
-  // Optimistic UI
-  chatMessages.push({ ts: ts, sender: name, text: text, _pending: true });
-  chatLastTS = ts;
-  renderChatMessages();
-  scrollChatBottom();
-  input.value = '';
-
-  chatSending = true;
-  var sendBtn = document.querySelector('.chat-send-btn');
-  if (sendBtn) sendBtn.disabled = true;
-
-  // Using text/plain avoids the CORS preflight that blocks application/json
-  // Apps Script receives the body identically via e.postData.contents either way
-  fetch(webhookURL, {
-    method:  'POST',
-    headers: { 'Content-Type': 'text/plain' },
-    body:    JSON.stringify({ type: 'chat_message', sender: name, text: text, ts: ts })
-  })
-  .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-  .then(function(data) {
-    if (data && data.result === 'ok') {
-      chatMessages.forEach(function(m) {
-        if (m._pending && m.ts === ts && m.sender === name) delete m._pending;
-      });
-      renderChatMessages();
-      setTimeout(function() { fetchChatMessages(false); }, 500);
-    } else {
-      throw new Error(data && data.msg ? data.msg : 'Apps Script returned: ' + JSON.stringify(data));
-    }
-  })
-  .catch(function(err) {
-    console.error('[Chat] Send failed:', err);
-    var errMsg = String(err.message || err);
-    if (errMsg.indexOf('Chat sheet not found') >= 0) {
-      toast('⚠ Run setupChatSheet() in Apps Script first', 't-err');
-    } else {
-      toast('⚠ ' + errMsg.substring(0, 60), 't-err');
-    }
-    chatMessages = chatMessages.filter(function(m) {
-      return !(m._pending && m.ts === ts && m.sender === name);
-    });
-    renderChatMessages();
-    input.value = text;
-  })
-  .finally(function() {
-    chatSending = false;
-    if (sendBtn) sendBtn.disabled = false;
-    input.focus();
-  });
-}
-
-function renderChatMessages() {
-  var el = document.getElementById('chat-messages');
-  if (!el) return;
-
-  if (chatMessages.length === 0) {
-    el.innerHTML =
-      '<div class="chat-empty"><div class="chat-empty-icon">💬</div>' +
-      'No messages yet. Say hello to the team!</div>';
-    updateChatSubtitle();
-    return;
-  }
-
-  var myName      = repName || 'Rep';
-  var html        = '';
-  var lastDateStr = '';
-
-  chatMessages.forEach(function(m) {
-    var isMine  = m.sender === myName;
-    var msgDate = new Date(m.ts);
-    var dateStr = msgDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-    var timeStr = msgDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-    var today   = new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-
-    if (dateStr !== lastDateStr) {
-      html += '<div class="chat-date-sep">' + (dateStr === today ? 'Today' : dateStr) + '</div>';
-      lastDateStr = dateStr;
-    }
-
-    html += '<div class="chat-msg ' + (isMine ? 'mine' : 'theirs') + '">' +
-      '<div class="chat-msg-meta">' +
-        (isMine ? '' : '<span class="chat-msg-sender">' + escHtml(m.sender) + '</span> · ') +
-        '<span>' + timeStr + '</span>' +
-        (m._pending ? ' · <span style="opacity:.5">sending…</span>' : '') +
-      '</div>' +
-      '<div class="chat-bubble">' + escHtml(m.text) + '</div>' +
-    '</div>';
-  });
-
-  el.innerHTML = html;
-  updateChatSubtitle();
-}
-
-function updateChatSubtitle() {
-  var el = document.getElementById('chat-subtitle');
-  if (!el) return;
-  var n = chatMessages.length;
-  el.textContent = n === 0 ? 'Be the first to message' : n + ' message' + (n === 1 ? '' : 's');
-}
-
-function updateChatBadge() {
-  var badge = document.getElementById('chat-unread-badge');
-  if (!badge) return;
-  if (chatUnreadCount > 0) {
-    badge.textContent = chatUnreadCount > 99 ? '99+' : String(chatUnreadCount);
-    badge.classList.remove('hidden');
-  } else {
-    badge.classList.add('hidden');
-  }
-}
-
-function isChatScrolledToBottom() {
-  var el = document.getElementById('chat-messages');
-  return el ? (el.scrollHeight - el.scrollTop - el.clientHeight < 60) : true;
-}
-function scrollChatBottom() {
-  var el = document.getElementById('chat-messages');
-  if (el) el.scrollTop = el.scrollHeight;
-}
-
-// Start background polling once the app page is live
-document.addEventListener('DOMContentLoaded', function() {
-  var observer = new MutationObserver(function() {
-    var appPage = document.getElementById('page-app');
-    if (appPage && appPage.style.display !== 'none' && appPage.style.display !== '') {
-      observer.disconnect();
-      setTimeout(function() { fetchChatMessages(true); startChatPoll(); }, 2000);
-    }
-  });
-  var appPage = document.getElementById('page-app');
-  if (appPage) observer.observe(appPage, { attributes: true, attributeFilter: ['style', 'class'] });
-});
-
 // ══════════════════════════════════════════════════════════
 //  AI FIELD ANALYSIS
 // ══════════════════════════════════════════════════════════
 
 var aiLastResult = null;   // cache last result so tab re-opens instantly
 
-function renderAITab() {
-  // Load saved key into the input
-  var saved = localStorage.getItem('fieldos_ai_key') || '';
-  var input = document.getElementById('ai-key-input');
-  if (input && saved) {
-    input.value = saved;
-    var hint = document.getElementById('ai-key-hint');
-    if (hint) { hint.textContent = '✓ Key saved in this browser'; hint.className = 'ai-key-hint saved'; }
-  }
-  renderAIContextPills();
-  if (aiLastResult) renderAIResult(aiLastResult);
-}
+function renderAITab() {}
 
-function aiKeySave() {
-  var input = document.getElementById('ai-key-input');
-  var hint  = document.getElementById('ai-key-hint');
-  if (!input) return;
-  var val = input.value.trim();
-  if (val) {
-    localStorage.setItem('fieldos_ai_key', val);
-    if (hint) { hint.textContent = '✓ Key saved in this browser'; hint.className = 'ai-key-hint saved'; }
-  } else {
-    localStorage.removeItem('fieldos_ai_key');
-    if (hint) { hint.textContent = 'Saved in your browser only — never sent to the sheet'; hint.className = 'ai-key-hint'; }
-  }
-}
+function aiKeySave() {}
 
-function aiKeyToggle() {
-  var input = document.getElementById('ai-key-input');
-  if (input) input.type = (input.type === 'password') ? 'text' : 'password';
-}
+function aiKeyToggle() {}
 
 function renderAIContextPills() {
   var el = document.getElementById('ai-context-pills');
@@ -4956,214 +4375,7 @@ function buildAIPayload() {
 }
 
 // ── Run the analysis ───────────────────────────────────────
-function runAIAnalysis() {
-  var btn    = document.getElementById('ai-run-btn');
-  var label  = document.getElementById('ai-run-btn-label');
-  var output = document.getElementById('ai-output');
-
-  function resetBtn(txt) {
-    if (btn)   btn.disabled = false;
-    if (label) label.textContent = txt || '↻ Re-run Analysis';
-  }
-
-  // ── Get API key ────────────────────────────────────────
-  var apiKey = (document.getElementById('ai-key-input') || {}).value;
-  if (!apiKey) apiKey = localStorage.getItem('fieldos_ai_key') || '';
-  apiKey = apiKey.trim();
-
-  if (!apiKey) {
-    renderAIError('Enter your Anthropic API key in the field above first.');
-    return;
-  }
-
-  // ── Disable button & show loading ──────────────────────
-  if (btn)   btn.disabled = true;
-  if (label) label.textContent = '⏳ Analysing…';
-
-  if (output) {
-    output.className = 'ai-output-loading';
-    output.innerHTML =
-      '<div class="ai-loading-orb"></div>' +
-      '<div class="ai-loading-label">Analysing field data…</div>' +
-      '<div class="ai-loading-steps" id="ai-loading-step">Building territory snapshot</div>';
-  }
-
-  var steps = [
-    'Building territory snapshot',
-    'Computing close rates & coverage',
-    'Scanning competitor landscape',
-    'Evaluating follow-up queue',
-    'Generating deployment recommendations',
-    'Writing briefing…'
-  ];
-  var stepIdx = 0;
-  var stepTimer = setInterval(function() {
-    stepIdx = (stepIdx + 1) % steps.length;
-    var el = document.getElementById('ai-loading-step');
-    if (el) el.textContent = steps[stepIdx];
-  }, 1800);
-
-  // ── Build payload ──────────────────────────────────────
-  var payload;
-  try {
-    payload = buildAIPayload();
-  } catch (buildErr) {
-    clearInterval(stepTimer);
-    renderAIError('Failed to build data payload: ' + buildErr.message);
-    resetBtn('▶ Run Analysis');
-    return;
-  }
-
-  // ── Assemble prompt ────────────────────────────────────
-  var s = payload.summary || {};
-  var summaryLines = [
-    'Total knockable homes: '          + s.totalKnockableHomes,
-    'Total knocked: '                  + s.totalKnocked,
-    'Pending (untouched): '            + s.totalPending,
-    'Total sales today: '              + s.totalSales + ' (' + s.megaSales + ' Mega, ' + s.gigSales + ' Gig)',
-    'Global close rate: '              + s.globalCloseRatePct + '%',
-    'Gig mix: '                        + s.gigMixPct + '%',
-    'Current MRR: $'                   + s.currentMRR,
-    'Projected full-territory MRR: $'  + s.projectedMRR,
-    'Projected additional sales: '     + s.projectedAdditionalSales,
-    'Open follow-up contacts: '        + s.totalFollowUps,
-    'Online reps: '                    + s.onlineReps + ' of ' + s.totalReps
-  ].join('\n');
-
-  var terrLines = (payload.territories || []).map(function(t) {
-    return '  • ' + t.name + ': ' + t.coveragePct + '% coverage, ' +
-      t.closeRatePct + '% close rate, ' + t.sales + ' sales, ' + t.pending + ' pending | ' +
-      'Fiber Competitor=' + t.fibercompetitor + ' InContract=' + t.inContract +
-      ' NotHome=' + t.notHome + ' GoBack=' + t.goBack;
-  }).join('\n') || '  No territory data';
-
-  var repLines = (payload.reps || []).map(function(r) {
-    return '  • ' + r.name + ' [' + (r.online ? 'ONLINE' : 'offline') + '] — ' + r.sales;
-  }).join('\n') || '  No rep data';
-
-  var followUpLines = Object.keys(payload.followUpsByTerritory || {}).map(function(t) {
-    var f = payload.followUpsByTerritory[t];
-    return '  • ' + t + ': ' + f.goBack + ' Go Back, ' + f.notHome + ' Not Home';
-  }).join('\n') || '  None';
-
-  var systemPrompt =
-    'You are a field sales operations analyst for Zito Media, a fiber internet company. ' +
-    'You receive real-time door-knocking data and produce a concise, actionable daily briefing for the sales manager. ' +
-    'Be direct and specific. Use exact numbers. Avoid generic advice. ' +
-    'Prioritize actions by urgency and revenue impact. ' +
-    'Gig Speed ($54.95/mo) is higher value than Mega Speed ($44.95/mo). ' +
-    'Respond ONLY with a valid JSON object — no markdown fences, no preamble. ' +
-    'Schema:\n' +
-    '{\n' +
-    '  "headline": "one punchy sentence",\n' +
-    '  "situation": "2-3 sentences on where things stand",\n' +
-    '  "metrics": [{"label":"Close Rate","value":"12%"}, {"label":"Gig Mix","value":"43%"}, {"label":"Proj. MRR","value":"$4,820"}],\n' +
-    '  "recommendations": [{"priority":"high|medium|low","territory":"name or null","action":"specific action","reasoning":"why, citing data"}],\n' +
-    '  "insights": [{"icon":"📊","text":"insight"}],\n' +
-    '  "repCoaching": [{"rep":"Name","note":"specific note"}],\n' +
-    '  "todaysFocus": "one paragraph: the single most important thing right now"\n' +
-    '}';
-
-  var userPrompt =
-    '── OVERALL SUMMARY ──\n' + summaryLines +
-    '\n\n── TERRITORY BREAKDOWN ──\n' + terrLines +
-    '\n\n── REP STATUS ──\n' + repLines +
-    '\n\n── FOLLOW-UP QUEUE ──\n' + followUpLines +
-    '\n\nProduce the JSON briefing now.';
-
-  // ── Call Anthropic with auto-retry on 529 overloaded ──
-  var MAX_RETRIES = 3;
-  var retryCount  = 0;
-
-  var requestBody = JSON.stringify({
-    model:      'claude-sonnet-4-6',
-    max_tokens: 4000,
-    system:     systemPrompt,
-    messages:   [{ role: 'user', content: userPrompt }]
-  });
-
-  function attemptFetch() {
-    var controller = new AbortController();
-    var timeoutId  = setTimeout(function() { controller.abort(); }, 45000);
-
-    fetch('https://api.anthropic.com/v1/messages', {
-      method:  'POST',
-      signal:  controller.signal,
-      headers: {
-        'Content-Type':      'application/json',
-        'x-api-key':         apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: requestBody
-    })
-    .then(function(r) {
-      clearTimeout(timeoutId);
-      if (r.status === 529 || r.status === 503) {
-        retryCount++;
-        if (retryCount <= MAX_RETRIES) {
-          var delay = retryCount * 8000;
-          var stepEl = document.getElementById('ai-loading-step');
-          if (stepEl) stepEl.textContent = 'API busy — retrying in ' + (delay/1000) + 's (' + retryCount + '/' + MAX_RETRIES + ')';
-          setTimeout(attemptFetch, delay);
-          return null;
-        }
-        return r.text().then(function() {
-          throw new Error('Anthropic API is overloaded. Wait 30–60 seconds and try again.');
-        });
-      }
-      if (!r.ok) return r.text().then(function(t) { throw new Error('HTTP ' + r.status + ': ' + t.substring(0, 200)); });
-      return r.json();
-    })
-    .then(function(apiResult) {
-      if (!apiResult) return;
-      clearInterval(stepTimer);
-      var rawText = apiResult.content && apiResult.content[0] && apiResult.content[0].text
-        ? apiResult.content[0].text.trim() : '';
-      if (!rawText) throw new Error('Empty response from Claude.');
-      // Strip markdown fences
-      rawText = rawText.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
-
-      // Extract just the JSON object if there's surrounding text
-      var braceStart = rawText.indexOf('{');
-      var braceEnd   = rawText.lastIndexOf('}');
-      if (braceStart > 0 || (braceEnd > 0 && braceEnd < rawText.length - 1)) {
-        rawText = rawText.substring(braceStart, braceEnd + 1);
-      }
-
-      var analysis;
-      try {
-        analysis = JSON.parse(rawText);
-      } catch (parseErr) {
-        // Claude occasionally uses single-quoted keys or trailing commas — fix and retry
-        var fixed = rawText
-          .replace(/,\s*([}\]])/g, '$1')                          // trailing commas
-          .replace(/([{,]\s*)'([^']+)'(\s*:)/g, '$1"$2"$3')      // single-quoted keys
-          .replace(/:\s*'([^']*)'/g, ': "$1"');                   // single-quoted string values
-        try {
-          analysis = JSON.parse(fixed);
-        } catch (e2) {
-          throw new Error('Could not parse Claude response as JSON. Raw: ' + rawText.substring(0, 120));
-        }
-      }
-      aiLastResult = { status: 'ok', analysis: analysis };
-      renderAIResult(aiLastResult);
-      var ts = document.getElementById('ai-timestamp');
-      if (ts) ts.textContent = 'Generated ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      resetBtn('\u21bb Re-run Analysis');
-    })
-    .catch(function(err) {
-      clearInterval(stepTimer);
-      clearTimeout(timeoutId);
-      renderAIError(err.name === 'AbortError'
-        ? 'Request timed out after 45 s. Check your API key and try again.'
-        : String(err.message || err));
-      resetBtn('\u21bb Re-run Analysis');
-    });
-  }
-
-  attemptFetch();
-}
+function runAIAnalysis() {}
 
 // ── Render the structured result ───────────────────────────
 function renderAIResult(data) {
