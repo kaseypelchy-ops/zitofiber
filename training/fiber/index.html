@@ -1,0 +1,1039 @@
+
+Claude finished the response
+You said: can you create a field training guide for the Sales Focus Door to Door team from the features and benefits of my app that they will be using?
+
+app.js
+js
+
+
+index.html
+html
+
+
+style.css
+css
+
+
+deploy.yml
+53 lines
+
+yml
+
+
+manifest.json
+37 lines
+
+json
+
+
+sw.js
+132 lines
+
+js
+
+can you create a field training guide for the Sales Focus Door to Door team from the features and benefits of my app that they will be using?   they have a dedicated link which is https://zitofiber.vercel.app/?team=sfi  and I would like it as a QR Code so they can just scan it.
+
+1:08 PM
+Claude responded: Now I have everything I need.
+
+Architected branded training guide with QR code integration
+Architected branded training guide with QR code integration
+Now I have everything I need. Let me build the training guide with an embedded QR code.
+
+
+Ran a command, created a file, read a file
+Ran a command, created a file, read a file
+Your Sales Focus Inc. Field Training Guide is ready! Here's what's included:
+
+QR Code — embedded in the header, scans directly to https://zitofiber.vercel.app/?team=sfi. Print this out and every rep can scan it on day one.
+
+6 Training Sections pulled straight from your app's code:
+
+Getting Started — how to log in, load a territory by name, and install as a PWA
+The Map & Address List — satellite view, color-coded pins, ⚡ existing customer bolts, heat map, route mode, and stale follow-ups
+Packages & Pricing — full Mega ($45.95/mo) and Gig ($55.95/mo) breakdowns with the first-month-free callout
+Sales Workflow — step-by-step from tapping an address through submitting a sale and booking the install slot
+Disposition Guide — all 14 disposition buttons with exactly when to use each and whether a follow-up is expected
+Tips & Best Practices — search, notes, offline mode, booking installs on the spot, and working the follow-up queue
+The guide is styled in Zito's brand blue and is print-friendly — just open in a browser and File → Print to PDF for distribution.
+
+
+Sfi field training guide
+Code · HTML 
+You said: I like the look of this.
+I like the look of this. I need it to be something that I can print and not be so heavy on color
+
+1:12 PM
+Claude responded: Here's the print-friendly version!
+
+Architected print-friendly redesign with minimal color palette
+Architected print-friendly redesign with minimal color palette
+Here's the print-friendly version! The changes made:
+
+White background throughout — no dark fills anywhere
+Light gray cards instead of the deep navy ones
+Color used sparingly — just the Zito blue for headings, section numbers, borders, and the QR code frame
+Disposition table pills are now black/dark gray/light gray so they print cleanly even on a black-and-white printer
+Left-border accents on the package cards instead of full colored backgrounds
+Tip boxes are light gray with a colored left border only — no heavy fills
+To print: open the file in your browser → File → Print → set to "Letter" size. It's designed to fit cleanly across a few pages with proper page-break handling.
+
+
+Sfi field training guide print
+Code · HTML 
+You said: So the pricing is $39.
+So the pricing is $39.95 for Mega Speed, plus $5/mo for the eero and $1/mo for the processing fee.  Gig speed is $49.95/mo, plus $5/mo for the eero and $1/mo for the processing fee. Also the proration is just an estimate and is not an indication of their actual first months bill. Also I would like a color coded legend for each of the dispositions so they can understand
+
+1:24 PM
+Claude responded: Now I'll add the color-coded legend styles and replace the disposition section: Here's what was updated:
+
+Recalculated pricing structure and architected color-coded disposition legend
+Recalculated pricing structure and architected color-coded disposition legend
+Now I'll add the color-coded legend styles and replace the disposition section:
+
+
+Edited 2 files, read a file
+Edited 2 files, read a file
+Here's what was updated:
+
+Pricing corrections:
+
+Mega Speed: $39.95 + $5 eero + $1 processing = $45.95/mo
+Gig Speed: $49.95 + $5 eero + $1 processing = $55.95/mo
+Removed the router rental line and first-month callout
+Proration note now clearly reads as an estimate and explicitly states it is not an indication of their actual first month's bill
+Color-coded disposition legend — added above the table, grouped into four categories:
+
+Sales — purple (Mega) and green (Gig)
+Soft Interest / Follow-up Required — the six warm colors (cyan, green, blue, purple, orange, teal)
+No Sale — amber, red, indigo, pink, stone, blue
+Special — gray for pending, yellow bolt for active Zito customers
+Each row in the detail table now shows the matching colored dot so reps can cross-reference the legend with what they see on the map.
+
+
+Sfi field training guide print
+Code · HTML 
+You said: I would like to build this html page into my vercel domain as a zitofiber.
+I would like to build this html page into my vercel domain as a zitofiber.vercel.app/training how would i do that
+
+1:27 PM
+Claude responded: Since your app is already live on Vercel and connected to a GitHub repo, this is straightforward — no Vercel configuration needed.
+
+Analyzed Vercel deployment setup and formulated straightforward integration steps
+Analyzed Vercel deployment setup and formulated straightforward integration steps
+Since your app is already live on Vercel and connected to a GitHub repo, this is straightforward — no Vercel configuration needed. Vercel will automatically serve any HTML file you add to the repo.
+
+Two steps:
+
+1. Add the file to your repo
+
+Create a folder called training in your repo root and save the guide inside it as index.html:
+
+your-repo/
+├── index.html
+├── app.js
+├── style.css
+├── sw.js
+├── manifest.json
+└── training/
+    └── index.html   ← paste the training guide HTML here
+Naming it index.html inside a training/ folder is what gives you the clean /training URL. If you named it training.html at the root instead, the URL would be /training.html — less clean.
+
+2. Commit and push to main
+
+bash
+git add training/index.html
+git commit -m "Add SFI field training guide"
+git push origin main
+Vercel detects the push and redeploys automatically — usually live within 30–60 seconds. Your guide will then be at:
+
+https://zitofiber.vercel.app/training
+One thing to check in your deploy.yml — your GitHub Actions workflow has this line:
+
+yaml
+exclude_assets: '.github,*.md,package*.json'
+The training/ folder isn't excluded, so it will be included in the deployment automatically. No changes needed there.
+
+Optional but recommended: Since the training page links to zitofiber.vercel.app/?team=sfi, you may also want to update the QR code URL in the training guide's footer to point to itself (/training) if you ever share the page as a link rather than printing it. But for printing purposes it's perfect as-is.
+
+You said: how do i make a folder
+how do i make a folder
+
+1:34 PM
+Claude responded: Depends on how you're managing the repo:
+Depends on how you're managing the repo:
+
+If you're using GitHub's web interface (no code editor):
+
+Go to your repo on github.com
+Click "Add file" → "Create new file"
+In the filename box, type training/index.html — GitHub will automatically create the folder when you type the /
+Paste your training guide HTML into the editor
+Scroll down and click "Commit changes"
+That's it — Vercel picks it up automatically.
+
+If you're using VS Code or a code editor locally:
+
+Right-click in the file explorer panel → "New Folder" → name it training → create a new file inside it called index.html.
+
+If you're using the terminal:
+
+bash
+mkdir training
+touch training/index.html
+Then open training/index.html in your editor, paste the HTML, and push.
+
+The GitHub web interface option is the quickest if you don't have the repo cloned locally — no terminal or editor needed.
+
+You said: can we turn the QR code into a button, that directs them to zitofiber.
+
+<!DOCTYPE html> <html lang="en"> <head> <meta charset="UTF-8"> <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>Zito FieldOS — Sales Focus Field Training Guide</title> <link rel="preconnect" href="https://fonts.googleapis.com"> <link href="https://fonts.googleapis.com/cs
+
+pasted
+
+can we turn the QR code into a button, that directs them to zitofiber.vercel.app/?team=sfi  since they will probably be viewing this on their phone ?
+
+1:40 PM
+Claude responded: Done!
+
+Devised straightforward UI swap replacing QR code with button
+Devised straightforward UI swap replacing QR code with button
+Done! The QR code is replaced with a solid "🚀 Launch App" button that links directly to https://zitofiber.vercel.app/?team=sfi. A few extra things added while I was at it:
+
+On mobile, the button spans full width at the bottom of the header and becomes a horizontal pill layout — easy to tap with a thumb
+On small screens, the "Follow-Up?" column in the disposition table is hidden to keep things readable without horizontal scrolling
+The flow diagram arrows collapse on mobile so the steps wrap cleanly into a 2-column grid instead of overflowing
+
+Sfi field training guide print
+Code · HTML 
+You said: Now I would like to make it for the Fiber Sales Team and their special link ends with ?
+Now I would like to make it for the Fiber Sales Team and their special link ends with ?team=fiber
+
+1:49 PM
+Claude responded: Here's the Fiber Sales Team version.
+
+Strategized targeted edits to rebrand training guide
+Strategized targeted edits to rebrand training guide
+Here's the Fiber Sales Team version. Every reference has been swapped over:
+
+Title, header brand line, and badge → Fiber Sales Team, LLC
+Launch button URL → zitofiber.vercel.app/?team=fiber
+Step 1 instructions → updated URL
+Footer → updated team name and link
+Everything else — pricing, dispositions, workflow, tips — is identical since they're using the same app. You can deploy this one to zitofiber.vercel.app/training-fiber (or whatever path you prefer) the same way as the SFI guide.
+
+
+Fiber field training guide
+Code · HTML 
+You said: Now if I have sfi training guide under subdirectory of /training how can I make it show differently for fiber sales team
+Now if I have sfi training guide under subdirectory of /training how can I make it show differently for fiber sales team
+
+1:50 PM
+Claude responded: You have a few good options depending on how you want to manage it:
+You have a few good options depending on how you want to manage it:
+
+Option 1 — Two separate pages (simplest)
+
+Just put each guide in its own folder:
+
+training/
+├── index.html        ← SFI guide (zitofiber.vercel.app/training)
+└── fiber/
+    └── index.html    ← Fiber guide (zitofiber.vercel.app/training/fiber)
+No logic needed — each team gets their own URL. Share the right link with the right team.
+
+Option 2 — One page, reads the URL to show the right content
+
+Keep a single training/index.html but have it detect the ?team= parameter and swap the content automatically. So:
+
+zitofiber.vercel.app/training?team=sfi → shows SFI guide
+zitofiber.vercel.app/training?team=fiber → shows Fiber guide
+No parameter → shows a default or a picker
+This is a small JavaScript addition at the top of the page:
+
+javascript
+const params = new URLSearchParams(window.location.search);
+const team = params.get('team');
+
+if (team === 'fiber') {
+  document.getElementById('team-name').textContent = 'Fiber Sales Team, LLC';
+  document.getElementById('launch-btn').href = 'https://zitofiber.vercel.app/?team=fiber';
+  document.getElementById('launch-url').textContent = 'zitofiber.vercel.app/?team=fiber';
+  // ...swap any other team-specific text
+}
+Then in your HTML, give the team-specific elements IDs and set the SFI values as defaults. The script only runs if ?team=fiber is detected.
+
+Option 3 — A landing page that routes to each guide
+
+Put a simple page at training/index.html that just shows two buttons, and move the actual guides to subfolders:
+
+training/
+├── index.html        ← "Which team are you?" picker page
+├── sfi/
+│   └── index.html
+└── fiber/
+    └── index.html
+Recommendation: Option 1 is the easiest to maintain — two files, no logic, no chance of one team seeing the other's guide. Option 2 makes sense if you anticipate adding more teams frequently and don't want to manage multiple files. Would you like me to build out whichever approach you prefer?
+
+
+
+
+
+
+Claude is AI and can make mistakes. Please double-check responses.
+Fiber field training guide · HTML
+Copy
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zito FieldOS — Fiber Sales Team Field Training Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --blue:    #005696;
+    --blue-lt: #e8f2fa;
+    --border:  #d0dce8;
+    --border2: #b8cad8;
+    --text:    #1a2533;
+    --muted:   #5a7289;
+    --light:   #f4f7fa;
+    --white:   #ffffff;
+  }
+ 
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+ 
+  body {
+    background: #fff;
+    color: var(--text);
+    font-family: 'Barlow', sans-serif;
+    font-size: 13.5px;
+    line-height: 1.6;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+ 
+  .page {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 0 28px 40px;
+  }
+ 
+  /* ── HEADER ── */
+  .header {
+    border-bottom: 3px solid var(--blue);
+    padding: 28px 0 22px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+  }
+  .brand-line {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 3.5px;
+    text-transform: uppercase;
+    color: var(--blue);
+    margin-bottom: 5px;
+  }
+  .header h1 {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 44px;
+    font-weight: 900;
+    line-height: .95;
+    color: var(--text);
+    text-transform: uppercase;
+    letter-spacing: -0.5px;
+  }
+  .header h1 span { color: var(--blue); }
+  .header-sub {
+    font-size: 12.5px;
+    color: var(--muted);
+    margin-top: 7px;
+    font-weight: 500;
+  }
+  .header-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 12px;
+  }
+  .badge {
+    border: 1px solid var(--border2);
+    border-radius: 3px;
+    padding: 2px 8px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .5px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .badge.blue { border-color: var(--blue); color: var(--blue); background: var(--blue-lt); }
+ 
+  /* ── LAUNCH BUTTON ── */
+  .header-cta {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding-top: 4px;
+  }
+  .launch-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    background: var(--blue);
+    color: #fff;
+    text-decoration: none;
+    border-radius: 14px;
+    padding: 20px 28px;
+    min-width: 150px;
+    text-align: center;
+    box-shadow: 0 4px 16px rgba(0,86,150,.22);
+    border: 2px solid var(--blue);
+    transition: background .15s, transform .1s, box-shadow .15s;
+  }
+  .launch-btn:hover  { background: #004a80; box-shadow: 0 6px 22px rgba(0,86,150,.32); }
+  .launch-btn:active { background: #003d6b; transform: scale(.98); }
+  .launch-btn-icon  { font-size: 30px; line-height: 1; }
+  .launch-btn-label {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 17px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    line-height: 1;
+  }
+  .launch-btn-sub {
+    font-size: 10.5px;
+    opacity: .75;
+    line-height: 1;
+    font-weight: 500;
+  }
+  .cta-hint {
+    font-size: 10px;
+    color: var(--muted);
+    text-align: center;
+    max-width: 150px;
+    line-height: 1.4;
+  }
+ 
+  /* ── SECTIONS ── */
+  .page-body { padding-top: 26px; }
+  .section { margin-bottom: 26px; }
+  .section-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+    padding-bottom: 7px;
+    border-bottom: 1.5px solid var(--border);
+  }
+  .section-num {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 2px;
+    color: var(--blue);
+    background: var(--blue-lt);
+    border: 1px solid #b8d4ec;
+    border-radius: 3px;
+    padding: 1px 7px;
+    text-transform: uppercase;
+  }
+  .section-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 19px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    color: var(--text);
+  }
+ 
+  /* ── CARDS ── */
+  .card {
+    background: var(--light);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin-bottom: 10px;
+  }
+  .card-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--blue);
+    margin-bottom: 8px;
+  }
+ 
+  .step-list { counter-reset: step; list-style: none; }
+  .step-list li {
+    counter-increment: step;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 8px;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .step-list li::before {
+    content: counter(step);
+    flex-shrink: 0;
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: var(--blue);
+    color: #fff;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 800;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 1px;
+  }
+ 
+  /* ── PACKAGES ── */
+  .pkg-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .pkg-card {
+    border: 1.5px solid var(--border2);
+    border-radius: 8px;
+    padding: 16px 18px;
+  }
+  .pkg-card.mega { border-left: 4px solid #7c3aed; }
+  .pkg-card.gig  { border-left: 4px solid #059669; }
+  .pkg-name {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 18px; font-weight: 900;
+    text-transform: uppercase;
+    color: var(--text); margin-bottom: 4px;
+  }
+  .pkg-price {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 32px; font-weight: 900;
+    color: var(--text); line-height: 1; margin: 4px 0;
+  }
+  .pkg-price sup { font-size: 16px; vertical-align: super; }
+  .pkg-price sub { font-size: 13px; font-weight: 500; color: var(--muted); }
+  .pkg-breakdown {
+    font-size: 11.5px; color: var(--muted);
+    margin-top: 6px; line-height: 1.8;
+    border-top: 1px solid var(--border); padding-top: 7px;
+  }
+  .pkg-breakdown .total { font-weight: 700; color: var(--text); font-size: 13px; }
+ 
+  /* ── MAP FEATURES ── */
+  .feature-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+  }
+  .feature-item {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 11px 13px;
+    background: var(--light);
+  }
+  .feature-icon { font-size: 16px; margin-bottom: 3px; }
+  .feature-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 13px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .5px;
+    color: var(--text); margin-bottom: 3px;
+  }
+  .feature-desc { font-size: 11.5px; color: var(--muted); line-height: 1.45; }
+ 
+  /* ── TIP BOXES ── */
+  .tip-box {
+    border-radius: 7px; padding: 10px 14px;
+    display: flex; gap: 9px;
+    align-items: flex-start;
+    font-size: 12.5px; line-height: 1.5;
+    border-left: 3px solid; background: var(--light);
+  }
+  .tip-box.blue  { border-color: var(--blue); }
+  .tip-box.green { border-color: #059669; }
+  .tip-box.amber { border-color: #d97706; }
+  .tip-box .tip-icon { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+ 
+  /* ── WORKFLOW ── */
+  .flow {
+    display: flex; align-items: stretch;
+    flex-wrap: nowrap; margin-bottom: 14px;
+  }
+  .flow-step {
+    background: var(--light); border: 1px solid var(--border);
+    border-radius: 7px; padding: 9px 12px;
+    font-size: 12px; font-weight: 600;
+    text-align: center; flex: 1; min-width: 80px;
+  }
+  .flow-step .fs-icon { font-size: 16px; display: block; margin-bottom: 3px; }
+  .flow-arrow {
+    display: flex; align-items: center; justify-content: center;
+    color: var(--muted); font-size: 14px; padding: 0 3px; flex-shrink: 0;
+  }
+ 
+  /* ── DISPOSITIONS ── */
+  .rules-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .rules-table th {
+    background: var(--blue); color: #fff;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 11px; text-transform: uppercase; letter-spacing: 1px;
+    padding: 7px 11px; text-align: left; font-weight: 700;
+  }
+  .rules-table td {
+    padding: 7px 11px; border-bottom: 1px solid var(--border);
+    vertical-align: middle; color: var(--text);
+  }
+  .rules-table tr:nth-child(even) td { background: var(--light); }
+  .followup-yes   { color: #1a6b3c; font-weight: 600; font-size: 11.5px; }
+  .followup-no    { color: var(--muted); font-size: 11.5px; }
+  .followup-maybe { color: #7a4f00; font-weight: 600; font-size: 11.5px; }
+ 
+  .tips-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+ 
+  /* ── LEGEND ── */
+  .legend-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 6px; margin-bottom: 12px;
+  }
+  .legend-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 10px; border: 1px solid var(--border);
+    border-radius: 6px; background: var(--light);
+    font-size: 11.5px; font-weight: 500;
+  }
+  .legend-dot {
+    width: 12px; height: 12px; border-radius: 50%;
+    flex-shrink: 0; border: 1px solid rgba(0,0,0,.12);
+  }
+  .legend-bolt {
+    width: 10px; height: 14px; flex-shrink: 0;
+    clip-path: polygon(65% 0%,20% 52%,48% 52%,35% 100%,80% 42%,52% 42%,68% 0%);
+  }
+  .legend-group-label {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 10px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 1.5px;
+    color: var(--muted); margin: 8px 0 5px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .legend-group-label::after {
+    content: ''; flex: 1; height: 1px; background: var(--border);
+  }
+  .dispo-row-dot {
+    width: 11px; height: 11px; border-radius: 50%;
+    display: inline-block; vertical-align: middle;
+    margin-right: 6px; border: 1px solid rgba(0,0,0,.1);
+  }
+  .dispo-label { font-size: 12.5px; font-weight: 600; vertical-align: middle; }
+ 
+  /* ── FOOTER ── */
+  .footer {
+    margin-top: 36px; padding-top: 14px;
+    border-top: 1.5px solid var(--border);
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 10.5px; color: var(--muted);
+  }
+  .footer strong { color: var(--text); }
+  .footer a { color: var(--blue); text-decoration: none; }
+ 
+  /* ── PRINT ── */
+  @media print {
+    @page { margin: 0.6in 0.55in; }
+    body { font-size: 12.5px; }
+    .header h1 { font-size: 38px; }
+    .section { page-break-inside: avoid; }
+    .pkg-grid, .rules-table tr { page-break-inside: avoid; }
+    .rules-table { page-break-inside: auto; }
+    .launch-btn { box-shadow: none !important; }
+  }
+ 
+  /* ── MOBILE ── */
+  @media (max-width: 600px) {
+    .page { padding: 0 16px 32px; }
+    .header { flex-direction: column; gap: 0; }
+    .header h1 { font-size: 36px; }
+    .header-cta {
+      flex-direction: row;
+      align-items: center;
+      justify-content: flex-start;
+      width: 100%;
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+      gap: 12px;
+    }
+    .launch-btn {
+      flex-direction: row;
+      padding: 14px 20px;
+      gap: 10px;
+      min-width: unset;
+      flex: 1;
+      border-radius: 10px;
+    }
+    .launch-btn-icon { font-size: 22px; }
+    .cta-hint { text-align: left; max-width: 140px; }
+    .feature-grid { grid-template-columns: 1fr 1fr; }
+    .pkg-grid { grid-template-columns: 1fr; }
+    .legend-grid { grid-template-columns: repeat(2, 1fr); }
+    .tips-grid { grid-template-columns: 1fr 1fr; }
+    .flow { flex-wrap: wrap; gap: 6px; }
+    .flow-arrow { display: none; }
+    .flow-step { min-width: calc(50% - 4px); flex: unset; }
+    .rules-table th:last-child,
+    .rules-table td:last-child { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+ 
+  <div class="header">
+    <div class="header-left">
+      <div class="brand-line">Zito FieldOS · v2.0.1 · Fiber Sales Team, LLC</div>
+      <h1>Field <span>Training</span><br>Guide</h1>
+      <div class="header-sub">Door-to-Door Sales Rep Quick Reference</div>
+      <div class="header-badges">
+        <span class="badge blue">Fiber Sales Team, LLC</span>
+        <span class="badge">Production</span>
+        <span class="badge">Build 2026.03.04</span>
+      </div>
+    </div>
+    <div class="header-cta">
+      <a class="launch-btn" href="https://zitofiber.vercel.app/?team=fiber" target="_blank" rel="noopener">
+        <span class="launch-btn-icon">🚀</span>
+        <span class="launch-btn-label">Launch App</span>
+        <span class="launch-btn-sub">Tap to open FieldOS</span>
+      </a>
+      <div class="cta-hint">Opens in your browser — no download needed</div>
+    </div>
+  </div>
+ 
+  <div class="page-body">
+ 
+    <!-- 01 GETTING STARTED -->
+    <div class="section">
+      <div class="section-head">
+        <span class="section-num">01</span>
+        <span class="section-title">Getting Started</span>
+      </div>
+      <div class="card">
+        <div class="card-title">📱 Launching the App</div>
+        <ol class="step-list">
+          <li>Tap the <strong>Launch App</strong> button above or go to <strong>zitofiber.vercel.app/?team=fiber</strong> — no download required, opens directly in your browser.</li>
+          <li><strong>Add to Home Screen</strong> for one-tap access: tap Share → "Add to Home Screen" in Safari or Chrome. Works offline once installed.</li>
+          <li>On the Setup Screen, enter your <strong>full name</strong> (First Last — must match the Reps sheet exactly), then tap <strong>Load My Territory.</strong></li>
+          <li>Your address list, territory assignment, and rep profile (phone/email) load automatically from the team Google Sheet.</li>
+          <li>Tap <strong>Launch FieldOS</strong> to enter the field view.</li>
+        </ol>
+      </div>
+      <div class="tip-box blue">
+        <span class="tip-icon">💡</span>
+        <div><strong>Offline Mode:</strong> Once loaded, the app works without a signal. Addresses, map tiles, and previously visited data are cached locally. Submissions sync automatically when you reconnect.</div>
+      </div>
+    </div>
+ 
+    <!-- 02 MAP & ADDRESS LIST -->
+    <div class="section">
+      <div class="section-head">
+        <span class="section-num">02</span>
+        <span class="section-title">The Map & Address List</span>
+      </div>
+      <div class="feature-grid">
+        <div class="feature-item">
+          <div class="feature-icon">🛰️</div>
+          <div class="feature-title">Satellite View</div>
+          <div class="feature-desc">Aerial imagery with street labels. See driveways and identify homes vs. businesses before you knock.</div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">📍</div>
+          <div class="feature-title">Color-Coded Pins</div>
+          <div class="feature-desc">Each pin reflects its current status — gray (pending), sold (purple/green), not home (amber), competitor (red), and more.</div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">⚡</div>
+          <div class="feature-title">Existing Customers</div>
+          <div class="feature-desc">Yellow bolt icons = active Zito subscribers. Do NOT sell to these addresses — they already have service.</div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">🗺️</div>
+          <div class="feature-title">Coverage Heat Map</div>
+          <div class="feature-desc">Tap "Coverage Map" to see a color-fill overlay of your progress and spot uncovered blocks.</div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">🧭</div>
+          <div class="feature-title">Route Mode</div>
+          <div class="feature-desc">Re-sorts your address list by distance from your current GPS — nearest homes first for efficient routing.</div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">⏱️</div>
+          <div class="feature-title">Stale Follow-ups</div>
+          <div class="feature-desc">Tap "Follow-ups" to see addresses due for a revisit, sorted by how long ago you knocked.</div>
+        </div>
+      </div>
+      <div style="margin-top:10px">
+        <div class="tip-box amber">
+          <span class="tip-icon">📌</span>
+          <div><strong>Pin Drop:</strong> If you find a home not in your list, tap the map to drop a pin, reverse-geocode the address, and add it as a new lead — it writes back to the shared sheet automatically.</div>
+        </div>
+      </div>
+    </div>
+ 
+    <!-- 03 PACKAGES & PRICING -->
+    <div class="section">
+      <div class="section-head">
+        <span class="section-num">03</span>
+        <span class="section-title">Packages & Pricing</span>
+      </div>
+      <div class="pkg-grid">
+        <div class="pkg-card mega">
+          <div class="pkg-name">⚡ Mega Speed</div>
+          <div class="pkg-price"><sup>$</sup>39<sup>.95</sup><sub>/mo</sub></div>
+          <div class="pkg-breakdown">
+            $39.95 &nbsp; Internet<br>
+            $5.00 &nbsp;&nbsp; eero Wi-Fi<br>
+            $1.00 &nbsp;&nbsp; Processing Fee<br>
+            <span class="total">$45.95/mo total</span>
+          </div>
+        </div>
+        <div class="pkg-card gig">
+          <div class="pkg-name">🚀 Gig Speed</div>
+          <div class="pkg-price"><sup>$</sup>49<sup>.95</sup><sub>/mo</sub></div>
+          <div class="pkg-breakdown">
+            $49.95 &nbsp; Internet<br>
+            $5.00 &nbsp;&nbsp; eero Wi-Fi<br>
+            $1.00 &nbsp;&nbsp; Processing Fee<br>
+            <span class="total">$55.95/mo total</span>
+          </div>
+        </div>
+      </div>
+      <div class="tip-box green">
+        <span class="tip-icon">💰</span>
+        <div>The <strong>Proration Estimator</strong> is built into the sales form. Select a package and install date and the app will display an estimated proration based on remaining days in the billing cycle. <strong>This is an estimate only</strong> and is not an indication of the customer's actual first month's bill.</div>
+      </div>
+    </div>
+ 
+    <!-- 04 SALES WORKFLOW -->
+    <div class="section">
+      <div class="section-head">
+        <span class="section-num">04</span>
+        <span class="section-title">Sales Workflow — Step by Step</span>
+      </div>
+      <div class="flow">
+        <div class="flow-step"><span class="fs-icon">👆</span>Tap Address</div>
+        <div class="flow-arrow">›</div>
+        <div class="flow-step"><span class="fs-icon">🚪</span>Knock Door</div>
+        <div class="flow-arrow">›</div>
+        <div class="flow-step"><span class="fs-icon">📋</span>Pick Outcome</div>
+        <div class="flow-arrow">›</div>
+        <div class="flow-step"><span class="fs-icon">📤</span>Submit</div>
+        <div class="flow-arrow">›</div>
+        <div class="flow-step"><span class="fs-icon">✅</span>Synced</div>
+      </div>
+      <div class="card">
+        <div class="card-title">💼 When You Make a Sale</div>
+        <ol class="step-list">
+          <li>Tap the address pin on the map or find it in the sidebar → tap to open the <strong>Sales Form.</strong></li>
+          <li>Select the <strong>Mega Speed</strong> or <strong>Gig Speed</strong> package card. Pricing details appear automatically.</li>
+          <li>Fill in the customer's <strong>First Name, Last Name, and Phone</strong> (required). Email and notes are optional.</li>
+          <li>Use the <strong>Schedule Picker</strong> to book the install — choose from available Mon–Fri slots (8AM, 10AM, 1PM, 3PM).</li>
+          <li>The proration breakdown auto-calculates when you select the install date. Walk the customer through it on the spot.</li>
+          <li>Tap <strong>Submit.</strong> The app logs the sale, updates the map pin, and syncs to the team sheet instantly.</li>
+        </ol>
+      </div>
+    </div>
+ 
+    <!-- 05 DISPOSITIONS -->
+    <div class="section">
+      <div class="section-head">
+        <span class="section-num">05</span>
+        <span class="section-title">Disposition Guide</span>
+      </div>
+      <p style="font-size:12.5px;color:var(--muted);margin-bottom:10px">Every door you knock must be dispositioned — even if no one answers. This drives your coverage map and management reporting. The colored map pin for each address matches the legend below.</p>
+ 
+      <div class="legend-group-label">Sales</div>
+      <div class="legend-grid" style="grid-template-columns: repeat(2,1fr); margin-bottom:6px;">
+        <div class="legend-item"><div class="legend-dot" style="background:#8b5cf6"></div>⚡ Mega Speed Sale</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#10b981"></div>🚀 Gig Speed Sale</div>
+      </div>
+ 
+      <div class="legend-group-label">Soft Interest — Follow-up Required</div>
+      <div class="legend-grid">
+        <div class="legend-item"><div class="legend-dot" style="background:#06b6d4"></div>🔄 Go Back</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#22c55e"></div>🕒 Maybe Later</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#0ea5e9"></div>📩 Send Info</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#a855f7"></div>💬 Talk to Spouse</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#f97316"></div>💲 Price Concern</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#14b8a6"></div>👤 Not Decision Maker</div>
+      </div>
+ 
+      <div class="legend-group-label">No Sale</div>
+      <div class="legend-grid">
+        <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div>🚪 Not Home</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#ef4444"></div>⚡ Fiber Competitor</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#6366f1"></div>📋 In Contract</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#ec4899"></div>❌ Not Interested</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#78716c"></div>🏚️ Vacant</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#2563eb"></div>🏢 Business</div>
+      </div>
+ 
+      <div class="legend-group-label">Special</div>
+      <div class="legend-grid" style="grid-template-columns: repeat(2,1fr); margin-bottom:12px;">
+        <div class="legend-item"><div class="legend-dot" style="background:#6b7280"></div>⬜ Pending (not yet knocked)</div>
+        <div class="legend-item"><div class="legend-bolt" style="background:#facc15"></div>⚡ Active Zito Customer — Do Not Sell</div>
+      </div>
+ 
+      <table class="rules-table">
+        <thead>
+          <tr>
+            <th style="width:28%">Disposition</th>
+            <th style="width:52%">When to Use</th>
+            <th style="width:20%">Follow-Up?</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="dispo-row-dot" style="background:#8b5cf6"></span><span class="dispo-label">Mega Sale</span></td>
+            <td>Sold the Mega Speed package</td>
+            <td class="followup-no">No — closed</td>
+          </tr>
+          <tr>
+            <td><span class="dispo-row-dot" style="background:#10b981"></span><span class="dispo-label">Gig Sale</span></td>
+            <td>Sold the Gig Speed package</td>
+            <td class="followup-no">No — closed</td>
+          </tr>
+          <tr>
+            <td><span class="dispo-row-dot" style="background:#f59e0b"></span><span class="dispo-label">Not Home</span></td>
+            <td>No answer. App tracks ×1 through ×4 attempts automatically.</td>
+            <td class="followup-maybe">Try again</td>
+          </tr>
+          <tr>
+            <td><span class="dispo-row-dot" style="background:#06b6d4"></span><span class="dispo-label">Go Back</span></td>
+            <td>Homeowner asked you to return at a specific time</td>
+            <td class="followup-yes">Yes — scheduled</td>
+          </tr>
+          <tr>
+            <td><span class="dispo-row-dot" style="background:#22c55e"></span><span class="dispo-label">Maybe Later</span></td>
+            <td>Interested but timing is off (moving, just signed, etc.)</td>
+            <td class="followup-yes">Yes</td>
+          </tr>
+          <tr>
+            <td><span class="dispo-row-dot" style="background:#0ea5e9"></span><span class="dispo-label">Send Info</span></td>
+            <td>Wants information sent before deciding</td>
+            <td class="followup-yes">Yes</td>
+          </tr>
+          <tr>
+            <td><span class="dispo-row-dot" style="background:#a855f7"></span><span class="dispo-label">Talk to Spouse</span></td>
+            <td>Needs to consult partner before signing</td>
+            <td class="followup-yes">Yes</td>
+          </tr>
+          <tr>
+            <td><span class="dispo-row-dot" style="background:#f97316"></span><span class="dispo-label">Price Concern</span></td>
+            <td>Objection was specifically about cost</td>
+            <td class="followup-yes">Yes</td>
+          </tr>
+          <tr>
+            <td><span class="dispo-row-dot" style="background:#14b8a6"></span><span class="dispo-label">Not Decision Maker</span></td>
+            <td>Spoke with a renter or family member who can't authorize</td>
+            <td class="followup-yes">Return for owner</td>
+          </tr>
+          <tr>
+            <td><span class="dispo-row-dot" style="background:#ef4444"></span><span class="dispo-label">Fiber Competitor</span></td>
+            <td>Address already has a competing fiber provider</td>
+            <td class="followup-no">No</td>
+          </tr>
+          <tr>
+            <td><span class="dispo-row-dot" style="background:#6366f1"></span><span class="dispo-label">In Contract</span></td>
+            <td>Currently locked into another provider's contract</td>
+            <td class="followup-maybe">When contract ends</td>
+          </tr>
+          <tr>
+            <td><span class="dispo-row-dot" style="background:#ec4899"></span><span class="dispo-label">Not Interested</span></td>
+            <td>Hard no — no interest in switching</td>
+            <td class="followup-no">No</td>
+          </tr>
+          <tr>
+            <td><span class="dispo-row-dot" style="background:#78716c"></span><span class="dispo-label">Vacant</span></td>
+            <td>Home is empty, for sale, or unoccupied</td>
+            <td class="followup-no">No</td>
+          </tr>
+          <tr>
+            <td><span class="dispo-row-dot" style="background:#2563eb"></span><span class="dispo-label">Business</span></td>
+            <td>Commercial property — not a residential lead</td>
+            <td class="followup-no">No</td>
+          </tr>
+        </tbody>
+      </table>
+ 
+      <div style="margin-top:10px">
+        <div class="tip-box blue">
+          <span class="tip-icon">☑️</span>
+          <div>Check <strong>"Decision Maker Spoken To"</strong> any time you confirm you spoke with the homeowner. Check <strong>"Follow-up Needed"</strong> on soft-interest outcomes — it flags the address in the team's follow-up dashboard automatically.</div>
+        </div>
+      </div>
+    </div>
+ 
+    <!-- 06 TIPS & BEST PRACTICES -->
+    <div class="section">
+      <div class="section-head">
+        <span class="section-num">06</span>
+        <span class="section-title">Tips & Best Practices</span>
+      </div>
+      <div class="tips-grid">
+        <div class="card" style="margin-bottom:0">
+          <div class="card-title">🔍 Use the Search Bar</div>
+          <p style="font-size:12px;color:var(--muted)">Type a street name to instantly filter the address list — great for jumping to a specific block.</p>
+        </div>
+        <div class="card" style="margin-bottom:0">
+          <div class="card-title">📝 Always Add Notes</div>
+          <p style="font-size:12px;color:var(--muted)">Note a dog, best time to return, or any context in the notes field. It syncs to the sheet and helps on callbacks.</p>
+        </div>
+        <div class="card" style="margin-bottom:0">
+          <div class="card-title">🔄 Refresh Your Data</div>
+          <p style="font-size:12px;color:var(--muted)">Tap the refresh button (⟳) any time to pull the latest addresses and teammate updates from the sheet.</p>
+        </div>
+        <div class="card" style="margin-bottom:0">
+          <div class="card-title">🗓️ Book Installs on the Spot</div>
+          <p style="font-size:12px;color:var(--muted)">Live slots show in the Schedule Picker. Book with the customer at the door to maximize your close rate.</p>
+        </div>
+        <div class="card" style="margin-bottom:0">
+          <div class="card-title">⏱️ Work Follow-ups Daily</div>
+          <p style="font-size:12px;color:var(--muted)">Switch to "Follow-ups" each morning. Soft-interest leads age fast — revisit within 24–48 hours.</p>
+        </div>
+        <div class="card" style="margin-bottom:0">
+          <div class="card-title">📶 Low Signal Areas</div>
+          <p style="font-size:12px;color:var(--muted)">Submissions queue locally when offline and sync automatically when you're back in range — nothing is lost.</p>
+        </div>
+      </div>
+    </div>
+ 
+    <!-- FOOTER -->
+    <div class="footer">
+      <div>
+        <strong>Zito FieldOS v2.0.1</strong> · Fiber Sales Team, LLC Team Portal<br>
+        <a href="https://zitofiber.vercel.app/?team=fiber">zitofiber.vercel.app/?team=fiber</a>
+      </div>
+      <div style="text-align:right">
+        Internal Use Only · Zito Media<br>
+        <a href="https://www.zitomedia.net">zitomedia.net</a>
+      </div>
+    </div>
+ 
+  </div>
+</div>
+</body>
+</html>
