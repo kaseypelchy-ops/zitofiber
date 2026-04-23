@@ -613,6 +613,7 @@ function launchApp() {
     updateStats();
     buildList();
     initMap();
+    startGPSPing();
     prefetchTiles();
     geocodeAll();
     maybeAutoCollapse();
@@ -3302,7 +3303,10 @@ var repAccCircle  = null;   // Accuracy radius circle
 
 // ── GPS Permission & Init ─────────────────────────────────
 
-function showGPSPrompt() {}
+function showGPSPrompt() {
+  showGPSBanner('📍 Allow location access to use Route Mode', 'warn');
+  requestGPS();
+}
 
 function dismissGPSPrompt() {}
 
@@ -3407,6 +3411,7 @@ function requestGPS() {
       };
       updateRepMarker(lastGPS.lat, lastGPS.lng, lastGPS.acc);
       showGPSBanner('📍 Location enabled — Route Mode available', 'ok');
+      buildList((document.getElementById('addr-search') && document.getElementById('addr-search').value) || '');
       _startGPSWatch_();  // begin continuous watch
     },
     function(err) {
@@ -3440,6 +3445,7 @@ function _startGPSWatch_() {
     var btn = document.getElementById('btn-route-mode');
     if (btn) btn.classList.remove('no-gps');
     updateRepMarker(lastGPS.lat, lastGPS.lng, lastGPS.acc);
+    if (routeMode) buildList((document.getElementById('addr-search') && document.getElementById('addr-search').value) || '');
     pingNearbyAddresses();
   }, function(err) {
     console.warn('Geolocation watch error:', err);
@@ -3451,7 +3457,11 @@ function _startGPSWatch_() {
 }
 
 // Public entry called from launchApp — shows the in-app prompt first
-function startGPSPing() {}
+function startGPSPing() {
+  // Kick off the browser permission flow / GPS watch on app launch so
+  // Route Mode has a usable starting location without an extra tap.
+  requestGPS();
+}
 
 var _lastNearbyPing = 0;
 var NEARBY_PING_THROTTLE = 180000; // 3 minutes
